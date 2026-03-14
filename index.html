@@ -380,13 +380,13 @@
 <div class="wrapper">
   <nav class="nav-tabs">
     <button class="nav-tab" onclick="switchTab('overview', this)">Overview</button>
+    <button class="nav-tab" onclick="switchTab('system', this)">Sizing</button>
     <button class="nav-tab" onclick="switchTab('review', this)">Trade Review</button>
     <button class="nav-tab" onclick="switchTab('quality', this)">Trade Quality</button>
     <button class="nav-tab" onclick="switchTab('strategy', this)">Strategy</button>
     <button class="nav-tab" onclick="switchTab('risk', this)">Risk-Adjusted</button>
     <button class="nav-tab" onclick="switchTab('timing', this)">Timing</button>
     <button class="nav-tab" onclick="switchTab('equity', this)">Equity</button>
-    <button class="nav-tab" onclick="switchTab('sizing', this)">Sizing</button>
     <button class="nav-tab" onclick="switchTab('monthly', this)">Monthly Review</button>
     <button class="nav-tab" onclick="switchTab('challenge', this)" id="challengeNavTab">Challenge</button>
   </nav>
@@ -615,6 +615,29 @@
   </div>
 
   <div id="tab-challenge" class="panel"></div>
+  <!-- SYSTEM -->
+  <div id="tab-system" class="panel">
+    <!-- Sub-tabs -->
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:28px;margin-top:8px">
+      <button id="systab-challenge" onclick="switchSystemTab('challenge')" style="font-family:'EB Garamond',serif;font-size:0.95rem;letter-spacing:0.06em;text-transform:uppercase;padding:8px 18px;border:none;background:none;color:var(--text);cursor:pointer;border-bottom:2px solid var(--accent);margin-bottom:-1px">Challenge</button>
+      <button id="systab-funded" onclick="switchSystemTab('funded')" style="font-family:'EB Garamond',serif;font-size:0.95rem;letter-spacing:0.06em;text-transform:uppercase;padding:8px 18px;border:none;background:none;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px">Funded <span style="font-size:0.7rem;opacity:0.5;font-style:italic">(soon)</span></button>
+    </div>
+
+    <!-- Funded sub-panel -->
+    <!-- Challenge sub-panel -->
+    <div id="syspane-challenge">
+      <div id="systemContent"></div>
+    </div>
+
+    <!-- Funded sub-panel -->
+    <div id="syspane-funded" style="display:none">
+      <div style="text-align:center;padding:60px 24px;color:var(--muted);font-family:'EB Garamond',serif;font-size:1rem">
+        <div style="font-size:2rem;opacity:0.3;margin-bottom:12px">◎</div>
+        Coming soon — after the challenge is passed.
+      </div>
+    </div>
+  </div>
+
 
   <!-- TRADE LOG -->
   <div id="tab-strategy" class="panel"></div>
@@ -996,6 +1019,19 @@ function switchTab(name, el) {
   if (name === 'review') { renderReviewList(); }
   if (name === 'monthly') { renderMonthlyTab(); }
   if (name === 'challenge') { renderChallenge(); }
+  if (name === 'system') { 
+    if (currentAccount === '5ERS') {
+      document.getElementById('systab-funded') && (document.getElementById('systab-funded').style.display = 'none');
+      document.getElementById('systab-challenge') && (document.getElementById('systab-challenge').style.display = '');
+      document.getElementById('systab-challenge') && (document.getElementById('systab-challenge').textContent = 'Scaling Plan');
+      switchSystemTab('challenge');
+    } else {
+      document.getElementById('systab-funded') && (document.getElementById('systab-funded').style.display = '');
+      document.getElementById('systab-challenge') && (document.getElementById('systab-challenge').style.display = '');
+      document.getElementById('systab-challenge') && (document.getElementById('systab-challenge').innerHTML = 'Challenge');
+      switchSystemTab('challenge');
+    }
+  }
   if (name === 'strategy') { renderStrategy(); }
 }
 
@@ -1101,6 +1137,25 @@ function switchAccount(acct, el) {
   // Show/hide overall read-only banner
   const banner = document.getElementById('overallBanner');
   if (banner) banner.style.display = acct === 'OVERALL' ? 'flex' : 'none';
+  // Show/hide Sizing tab
+  const sizingBtn = document.querySelector('.nav-tab[onclick="switchTab(\'system\', this)"]');
+  if (sizingBtn) sizingBtn.style.display = acct === 'OVERALL' ? 'none' : '';
+  // If on system tab and switching to OVERALL, redirect to overview
+  if (acct === 'OVERALL' && document.getElementById('tab-system').classList.contains('active')) {
+    switchTab('overview', document.querySelector('.nav-tab[onclick="switchTab(\'overview\', this)"]'));
+  }
+  // Set correct system sub-tab when account switches
+  const sysTabOpen = document.getElementById('tab-system') && document.getElementById('tab-system').classList.contains('active');
+  if (sysTabOpen) {
+    if (acct === '5ERS') {
+      document.getElementById('systab-challenge') && (document.getElementById('systab-challenge').style.display = 'none');
+      switchSystemTab('funded');
+    } else {
+      document.getElementById('systab-funded') && (document.getElementById('systab-funded').style.display = '');
+      document.getElementById('systab-challenge') && (document.getElementById('systab-challenge').style.display = '');
+      switchSystemTab('challenge');
+    }
+  }
   renderOverviewFiltered();
   renderTable();
   if (document.getElementById('tab-review').classList.contains('active')) renderReviewList();
@@ -4744,6 +4799,348 @@ window.addEventListener('beforeunload', () => {
   } catch(e) {}
 });
 
+
+function switchSystemTab(tab) {
+  const challenge = document.getElementById('syspane-challenge');
+  const funded = document.getElementById('syspane-funded');
+  const btnChallenge = document.getElementById('systab-challenge');
+  const btnFunded = document.getElementById('systab-funded');
+  if (challenge) challenge.style.display = tab === 'challenge' ? 'block' : 'none';
+  if (funded) funded.style.display = tab === 'funded' ? 'block' : 'none';
+  if (btnChallenge) { btnChallenge.style.color = tab === 'challenge' ? 'var(--text)' : 'var(--muted)'; btnChallenge.style.borderBottom = tab === 'challenge' ? '2px solid var(--accent)' : '2px solid transparent'; }
+  if (btnFunded) { btnFunded.style.color = tab === 'funded' ? 'var(--text)' : 'var(--muted)'; btnFunded.style.borderBottom = tab === 'funded' ? '2px solid var(--accent)' : '2px solid transparent'; }
+  if (tab === 'challenge') renderSystemChallenge();
+}
+
+function renderSystemChallenge() {
+  const acct = currentAccount === 'OVERALL' ? null : currentAccount;
+  const startBal = acct ? getStartingBalance(acct, allTrades[acct] || []) : 0;
+  const totalPnl = acct ? (allTrades[acct] || []).reduce((s,t) => s + (parseFloat(t.pnl)||0), 0) : 0;
+  // For scaling (5ERS), use baseline set at level start
+  const scalingBaseline = parseFloat(localStorage.getItem(`fx_challenge_baseline_${acct}`) || '0');
+  const effectiveBase = scalingBaseline > 0 ? scalingBaseline : startBal;
+  const effectivePnl = scalingBaseline > 0 ? ((startBal + totalPnl) - scalingBaseline) : totalPnl;
+  const pnlPct = effectiveBase > 0 ? (effectivePnl / effectiveBase * 100) : 0;
+
+  // Challenge config per account
+  const configs = {
+    'FTMO':  { phases: [{ label: 'Phase 1', target: 10 }, { label: 'Phase 2', target: 5 }] },
+    'FXIFY': { phases: [{ label: 'Phase 1', target: 5 }, { label: 'Phase 2', target: 5 }, { label: 'Phase 3', target: 5 }] },
+    '5ERS':  { phases: [{ label: 'Level', target: 10 }], scaling: true },
+  };
+  const config = configs[acct];
+  const storedPhase = parseInt(localStorage.getItem(`fx_challenge_phase_${acct}`) || '0');
+  const currentPhase = config ? config.phases[storedPhase] : null;
+  const target = currentPhase ? currentPhase.target : 0;
+
+  // Risk level (same tiers, measured from 0%)
+  let riskLevel, riskPct, riskColor;
+  if (pnlPct < 0) {
+    riskLevel = 'DEFENSE'; riskPct = '0.25%'; riskColor = 'var(--red)';
+  } else if (pnlPct < 1) {
+    riskLevel = 'BASELINE'; riskPct = '0.5%'; riskColor = 'var(--accent)';
+  } else {
+    riskLevel = 'GROWTH'; riskPct = '1%'; riskColor = 'var(--green)';
+  }
+
+  const pnlCol = totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
+  const progress = target > 0 ? Math.min(100, Math.max(0, (pnlPct / target) * 100)) : 0;
+  const remaining = startBal > 0 && target > 0 ? Math.max(0, startBal * (target - pnlPct) / 100) : 0;
+
+  if (!startBal) {
+    document.getElementById('systemContent').innerHTML = `
+      <div style="text-align:center;padding:60px 24px;color:var(--muted);font-family:'EB Garamond',serif;font-size:1rem">
+        No starting balance set. Set it in the Challenge tab.
+      </div>`;
+    return;
+  }
+
+  const phaseButtons = config && !config.scaling ? config.phases.map((p, i) => {
+    const isActive = i === storedPhase;
+    const isUnlocked = i === 0 || parseInt(localStorage.getItem(`fx_challenge_phase_${acct}`) || '0') >= i;
+    const isDone = parseInt(localStorage.getItem(`fx_challenge_phase_${acct}`) || '0') > i;
+    return `<button onclick="${isUnlocked ? `setChallPhase(${i})` : ''}" style="font-family:'EB Garamond',serif;font-size:0.8rem;letter-spacing:0.06em;text-transform:uppercase;padding:4px 12px;border:1px solid ${isActive?'var(--accent)':isUnlocked?'var(--border)':'var(--border)'};background:${isActive?'rgba(123,175,212,0.1)':'transparent'};color:${isActive?'var(--accent)':isUnlocked?'var(--muted)':'var(--border)'};border-radius:3px;cursor:${isUnlocked?'pointer':'not-allowed'};opacity:${isUnlocked?1:0.35}">${p.label}${isDone?' ✓':''}</button>`;
+  }).join('') : '';
+
+  // Congratulations message
+  const targetReached = pnlPct >= target;
+  const isLastPhase = config && !config.scaling && storedPhase === config.phases.length - 1;
+  let congratsMsg = '';
+  if (targetReached) {
+    if (config && config.scaling) {
+      congratsMsg = `<div style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.3);border-radius:4px;padding:20px 24px;margin-bottom:20px;text-align:center">
+        <div style="font-family:'EB Garamond',serif;font-size:1.4rem;font-weight:700;color:var(--gold);margin-bottom:6px">Level ${storedPhase + 1} Complete</div>
+        <div style="font-family:'EB Garamond',serif;font-size:1rem;color:var(--text)">Congratulations — you are a profitable trader.</div>
+      </div>`;
+    } else if (isLastPhase) {
+      congratsMsg = `<div style="background:rgba(109,191,158,0.08);border:1px solid rgba(109,191,158,0.3);border-radius:4px;padding:20px 24px;margin-bottom:20px;text-align:center">
+        <div style="font-family:'EB Garamond',serif;font-size:1.4rem;font-weight:700;color:var(--green);margin-bottom:6px">Challenge Passed</div>
+        <div style="font-family:'EB Garamond',serif;font-size:1rem;color:var(--text)">Congratulations — you are a profitable trader.</div>
+      </div>`;
+    } else {
+      congratsMsg = `<div style="background:rgba(123,175,212,0.08);border:1px solid rgba(123,175,212,0.3);border-radius:4px;padding:20px 24px;margin-bottom:20px;text-align:center">
+        <div style="font-family:'EB Garamond',serif;font-size:1.4rem;font-weight:700;color:var(--accent);margin-bottom:6px">${currentPhase ? currentPhase.label : 'Phase'} Complete</div>
+        <div style="font-family:'EB Garamond',serif;font-size:1rem;color:var(--text)">Congratulations — you are a profitable trader.</div>
+      </div>`;
+    }
+  }
+
+  document.getElementById('systemContent').innerHTML = `
+    ${congratsMsg}
+    <!-- Phase selector -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted);margin-right:4px">${config && config.scaling ? 'Scaling level:' : 'Current phase:'}</span>
+        ${phaseButtons}
+        ${config && config.scaling ? `<span style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted)">Level ${storedPhase + 1}</span>` : ''}
+      </div>
+      ${config && config.scaling ? `<button onclick="${pnlPct >= 10 ? 'confirmNextLevel()' : ''}" style="font-family:'EB Garamond',serif;font-size:0.82rem;letter-spacing:0.06em;text-transform:uppercase;padding:6px 16px;border:1px solid ${pnlPct >= 10 ? 'var(--gold)' : 'var(--border)'};background:${pnlPct >= 10 ? 'rgba(201,168,76,0.08)' : 'transparent'};color:${pnlPct >= 10 ? 'var(--gold)' : 'var(--border)'};border-radius:3px;cursor:${pnlPct >= 10 ? 'pointer' : 'not-allowed'};opacity:${pnlPct >= 10 ? 1 : 0.4}" ${pnlPct >= 10 ? '' : 'title="Reach 10% target to unlock"'}>Next Level ▶</button>` : ''}
+    </div>
+
+    <!-- KPI row -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
+      <div class="chart-card" style="padding:20px;text-align:center">
+        <div style="font-family:'EB Garamond',serif;font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Account P&L</div>
+        <div style="font-family:'EB Garamond',serif;font-size:1.8rem;font-weight:700;color:${pnlCol}">${totalPnl>=0?'+':'-'}$${Math.abs(totalPnl).toLocaleString('en-US',{maximumFractionDigits:0})}</div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:${pnlCol}">${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%</div>
+      </div>
+      <div class="chart-card" style="padding:20px;text-align:center;border-color:${riskColor}">
+        <div style="font-family:'EB Garamond',serif;font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Current Risk</div>
+        <div style="font-family:'EB Garamond',serif;font-size:1.8rem;font-weight:700;color:${riskColor}">${riskPct}</div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:${riskColor}">${riskLevel}</div>
+      </div>
+      <div class="chart-card" style="padding:20px;text-align:center">
+        <div style="font-family:'EB Garamond',serif;font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Phase Target</div>
+        <div style="font-family:'EB Garamond',serif;font-size:1.8rem;font-weight:700;color:#ffd166">${target}%</div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted)">$${(startBal*target/100).toLocaleString('en-US',{maximumFractionDigits:0})}</div>
+      </div>
+      <div class="chart-card" style="padding:20px;text-align:center">
+        <div style="font-family:'EB Garamond',serif;font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Remaining</div>
+        <div style="font-family:'EB Garamond',serif;font-size:1.8rem;font-weight:700;color:var(--text)">$${remaining.toLocaleString('en-US',{maximumFractionDigits:0})}</div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted)">${Math.max(0, target - pnlPct).toFixed(2)}% to go</div>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="chart-card" style="padding:20px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+        <div style="font-family:'EB Garamond',serif;font-size:1rem;font-weight:700;color:var(--text)">${currentPhase ? currentPhase.label : ''} Progress</div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted)">${pnlPct.toFixed(2)}% / ${target}%</div>
+      </div>
+      <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${progress}%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:4px"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;font-family:'EB Garamond',serif;font-size:0.82rem;color:var(--muted)">
+        <span>Start: $${startBal.toLocaleString('en-US',{maximumFractionDigits:0})}</span>
+        <span>Target: $${(startBal*(1+target/100)).toLocaleString('en-US',{maximumFractionDigits:0})}</span>
+      </div>
+    </div>
+
+    <!-- Risk zones -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+      <div style="background:rgba(232,85,85,0.06);border:1px solid rgba(232,85,85,${riskLevel==='DEFENSE'?'0.5':'0.15'});border-radius:4px;padding:14px">
+        <div style="font-family:'EB Garamond',serif;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--red);margin-bottom:4px">Defense${riskLevel==='DEFENSE'?' ◉':''}</div>
+        <div style="font-family:'EB Garamond',serif;font-size:1.4rem;font-weight:700;color:var(--red)">0.25%</div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.82rem;color:var(--muted);margin-top:4px">Below 0%</div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.82rem;color:var(--muted)">$${(startBal*0.0025).toFixed(0)} / trade</div>
+      </div>
+      <div style="background:rgba(123,175,212,0.06);border:1px solid rgba(123,175,212,${riskLevel==='BASELINE'?'0.5':'0.15'});border-radius:4px;padding:14px">
+        <div style="font-family:'EB Garamond',serif;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:4px">Baseline${riskLevel==='BASELINE'?' ◉':''}</div>
+        <div style="font-family:'EB Garamond',serif;font-size:1.4rem;font-weight:700;color:var(--accent)">0.5%</div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.82rem;color:var(--muted);margin-top:4px">0% to 1%</div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.82rem;color:var(--muted)">$${(startBal*0.005).toFixed(0)} / trade</div>
+      </div>
+      <div style="background:rgba(109,191,158,0.06);border:1px solid rgba(109,191,158,${riskLevel==='GROWTH'?'0.5':'0.15'});border-radius:4px;padding:14px">
+        <div style="font-family:'EB Garamond',serif;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);margin-bottom:4px">Growth${riskLevel==='GROWTH'?' ◉':''}</div>
+        <div style="font-family:'EB Garamond',serif;font-size:1.4rem;font-weight:700;color:var(--green)">1%</div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.82rem;color:var(--muted);margin-top:4px">Above 1%</div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.82rem;color:var(--muted)">$${(startBal*0.01).toFixed(0)} / trade</div>
+      </div>
+    </div>
+
+    <!-- Mandatory rules -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="chart-card" style="padding:16px">
+        <div style="font-family:'EB Garamond',serif;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:6px">◉ Rule 01 — 1R Break Even</div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted);line-height:1.5">Move SL to entry once price hits <strong style="color:var(--text)">1:1 (1R)</strong>.</div>
+      </div>
+      <div class="chart-card" style="padding:16px">
+        <div style="font-family:'EB Garamond',serif;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:6px">◉ Rule 02 — 3R Take Profit</div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted);line-height:1.5">TP set at <strong style="color:var(--text)">3R</strong> when trade opens.</div>
+      </div>
+    </div>
+  `;
+}
+
+function setChallPhase(idx) {
+  const acct = currentAccount;
+  const configs = {
+    'FTMO':  { phases: [{ target: 10 }, { target: 5 }] },
+    'FXIFY': { phases: [{ target: 5 }, { target: 5 }, { target: 5 }] },
+  };
+  const config = configs[acct];
+  const currentPhaseIdx = parseInt(localStorage.getItem(`fx_challenge_phase_${acct}`) || '0');
+  // Only allow moving forward if target was reached, or going back
+  if (idx > currentPhaseIdx) {
+    const startBal = getStartingBalance(acct, allTrades[acct] || []);
+    const totalPnl = (allTrades[acct] || []).reduce((s,t) => s + (parseFloat(t.pnl)||0), 0);
+    const pnlPct = startBal > 0 ? (totalPnl / startBal * 100) : 0;
+    const targetReached = pnlPct >= config.phases[currentPhaseIdx].target;
+    if (!targetReached) { toast(`Complete Phase ${currentPhaseIdx+1} target first`); return; }
+  }
+  localStorage.setItem(`fx_challenge_phase_${acct}`, String(idx));
+  renderSystemChallenge();
+}
+
+function confirmNextLevel() {
+  const acct = currentAccount;
+  const startBal = getStartingBalance(acct, allTrades[acct] || []);
+  const totalPnl = (allTrades[acct] || []).reduce((s,t) => s + (parseFloat(t.pnl)||0), 0);
+  const pnlPct = startBal > 0 ? (totalPnl / startBal * 100) : 0;
+  const currentLevel = parseInt(localStorage.getItem(`fx_challenge_phase_${acct}`) || '0') + 1;
+  if (!confirm(`Move to Level ${currentLevel + 1}?\n\nCurrent P&L: ${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%\n\nThis will reset the progress tracker to zero for the new level. Your trades are not affected.`)) return;
+  const newLevel = parseInt(localStorage.getItem(`fx_challenge_phase_${acct}`) || '0') + 1;
+  localStorage.setItem(`fx_challenge_phase_${acct}`, String(newLevel));
+  localStorage.setItem(`fx_challenge_baseline_${acct}`, String(startBal + totalPnl));
+  renderSystemChallenge();
+  toast(`Level ${newLevel + 1} started!`);
+}
+
+function renderSystemFunded() {
+  const acct = currentAccount === 'OVERALL' ? null : currentAccount;
+  const startBal = acct ? getStartingBalance(acct, allTrades[acct] || []) : 0;
+  const totalPnl = acct ? (allTrades[acct] || []).reduce((s,t) => s + (parseFloat(t.pnl)||0), 0) : 0;
+  const pnlPct = startBal > 0 ? (totalPnl / startBal * 100) : 0;
+
+  // Determine current phase
+  let phase = 0; // 0 = Phase 1, 1 = Cycle A, 2 = Cycle B, 3 = Fortress
+  let floor = 0; // floor as % of starting balance
+  if (pnlPct >= 10) { phase = 3; floor = 6; }
+  else if (pnlPct >= 4) { phase = 2; floor = 4; }
+  else if (pnlPct >= 2) { phase = 1; floor = 2; }
+  else { phase = 0; floor = 0; }
+
+  // Risk level
+  const aboveFloor = pnlPct - floor;
+  let riskLevel, riskPct, riskColor;
+  if (phase === 3 && pnlPct < 5) {
+    riskLevel = 'DEFENSE'; riskPct = '0.25%'; riskColor = 'var(--red)';
+  } else if (pnlPct < floor) {
+    riskLevel = 'DEFENSE'; riskPct = '0.25%'; riskColor = 'var(--red)';
+  } else if (aboveFloor < 1) {
+    riskLevel = 'BASELINE'; riskPct = '0.5%'; riskColor = 'var(--accent)';
+  } else {
+    riskLevel = 'GROWTH'; riskPct = '1%'; riskColor = 'var(--green)';
+  }
+
+  // Phase info
+  const phases = [
+    { name: 'Phase 1 — Account Opening', target: 6, cashout: 4, retain: 2, newFloor: 2 },
+    { name: 'Cycle A — Buffer 2%', target: 6, cashout: 4, retain: 4, newFloor: 4 },
+    { name: 'Cycle B — Buffer 4%', target: 6, cashout: 4, retain: 6, newFloor: 6 },
+    { name: 'Cycle C — The Fortress', target: null, cashout: null, retain: null, newFloor: null },
+  ];
+  const curPhase = phases[phase];
+  const targetPct = curPhase.target;
+  const targetAmt = startBal > 0 && targetPct ? (startBal * (floor + targetPct) / 100) : null;
+  const remaining = targetAmt ? Math.max(0, targetAmt - (startBal + totalPnl)) : null;
+  const progress = targetPct ? Math.min(100, Math.max(0, (aboveFloor / targetPct) * 100)) : 100;
+
+  const pnlCol = totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
+  const pnlSign = totalPnl >= 0 ? '+' : '';
+
+  if (!startBal) {
+    document.getElementById('systemContent').innerHTML = `
+      <div style="text-align:center;padding:60px 24px;color:var(--muted);font-family:'EB Garamond',serif;font-size:1rem">
+        No account balance set for <strong>${acct || 'this account'}</strong>.<br>
+        Set it in the Challenge tab or Overview to activate the system tracker.
+      </div>`;
+    return;
+  }
+
+  document.getElementById('systemContent').innerHTML = `
+    <!-- Current Status -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">
+      <div class="chart-card" style="padding:20px;text-align:center">
+        <div style="font-family:'EB Garamond',serif;font-size:0.8rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Account P&L</div>
+        <div style="font-family:'EB Garamond',serif;font-size:1.8rem;font-weight:700;color:${pnlCol}">${totalPnl>=0?'+':'-'}$${Math.abs(totalPnl).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:${pnlCol}">${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%</div>
+      </div>
+      <div class="chart-card" style="padding:20px;text-align:center;border-color:${riskColor}">
+        <div style="font-family:'EB Garamond',serif;font-size:0.8rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Current Risk</div>
+        <div style="font-family:'EB Garamond',serif;font-size:1.8rem;font-weight:700;color:${riskColor}">${riskPct}</div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:${riskColor}">${riskLevel}</div>
+      </div>
+      <div class="chart-card" style="padding:20px;text-align:center">
+        <div style="font-family:'EB Garamond',serif;font-size:0.8rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Buffer Floor</div>
+        <div style="font-family:'EB Garamond',serif;font-size:1.8rem;font-weight:700;color:#ffd166">${floor}%</div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted)">$${(startBal * floor / 100).toLocaleString('en-US',{maximumFractionDigits:0})}</div>
+      </div>
+      <div class="chart-card" style="padding:20px;text-align:center">
+        <div style="font-family:'EB Garamond',serif;font-size:0.8rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Phase</div>
+        <div style="font-family:'EB Garamond',serif;font-size:1rem;font-weight:700;color:var(--text);margin-top:6px">${curPhase.name}</div>
+      </div>
+    </div>
+
+    <!-- Progress to next cashout -->
+    ${targetPct ? `
+    <div class="chart-card" style="padding:20px;margin-bottom:24px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:12px;align-items:center">
+        <div style="font-family:'EB Garamond',serif;font-size:1rem;font-weight:700;color:var(--text)">Progress to Cashout</div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted)">${aboveFloor.toFixed(2)}% / ${targetPct}% above floor · $${remaining ? remaining.toLocaleString('en-US',{maximumFractionDigits:0}) : 0} remaining</div>
+      </div>
+      <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${progress}%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:4px;transition:width 0.4s ease"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px;font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted)">
+        <span>Floor: ${floor}% ($${(startBal*(floor)/100).toLocaleString('en-US',{maximumFractionDigits:0})})</span>
+        <span>Target: ${floor+targetPct}% ($${(startBal*(floor+targetPct)/100).toLocaleString('en-US',{maximumFractionDigits:0})})</span>
+      </div>
+    </div>` : `
+    <div class="chart-card" style="padding:20px;margin-bottom:24px;border-color:#ffd166">
+      <div style="font-family:'EB Garamond',serif;font-size:1rem;font-weight:700;color:#ffd166;margin-bottom:4px">🏰 The Fortress is built</div>
+      <div style="font-family:'EB Garamond',serif;font-size:0.95rem;color:var(--muted)">Buffer floor locked at 6%. Trade with freedom — the fortress protects you.</div>
+    </div>`}
+
+    <!-- Risk zones -->
+    <div class="chart-card" style="padding:20px;margin-bottom:24px">
+      <div style="font-family:'EB Garamond',serif;font-size:1rem;font-weight:700;color:var(--text);margin-bottom:16px">Risk Zone Map — Current Account</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        <div style="background:rgba(232,85,85,0.08);border:1px solid rgba(232,85,85,${riskLevel==='DEFENSE'?'0.5':'0.15'});border-radius:4px;padding:14px;${riskLevel==='DEFENSE'?'box-shadow:0 0 0 1px var(--red)':''}">
+          <div style="font-family:'EB Garamond',serif;font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--red);margin-bottom:4px">Defense${riskLevel==='DEFENSE'?' ◉':''}</div>
+          <div style="font-family:'EB Garamond',serif;font-size:1.4rem;font-weight:700;color:var(--red)">0.25%</div>
+          <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted);margin-top:4px">Below ${floor}%${phase===3?' or below 5%':''}</div>
+          <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted)">$${(startBal * 0.0025).toFixed(0)} / trade</div>
+        </div>
+        <div style="background:rgba(123,175,212,0.08);border:1px solid rgba(123,175,212,${riskLevel==='BASELINE'?'0.5':'0.15'});border-radius:4px;padding:14px;">
+          <div style="font-family:'EB Garamond',serif;font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:4px">Baseline${riskLevel==='BASELINE'?' ◉':''}</div>
+          <div style="font-family:'EB Garamond',serif;font-size:1.4rem;font-weight:700;color:var(--accent)">0.5%</div>
+          <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted);margin-top:4px">${floor}% to ${floor+1}%</div>
+          <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted)">$${(startBal * 0.005).toFixed(0)} / trade</div>
+        </div>
+        <div style="background:rgba(109,191,158,0.08);border:1px solid rgba(109,191,158,${riskLevel==='GROWTH'?'0.5':'0.15'});border-radius:4px;padding:14px;">
+          <div style="font-family:'EB Garamond',serif;font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);margin-bottom:4px">Growth${riskLevel==='GROWTH'?' ◉':''}</div>
+          <div style="font-family:'EB Garamond',serif;font-size:1.4rem;font-weight:700;color:var(--green)">1%</div>
+          <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted);margin-top:4px">Above ${floor+1}%</div>
+          <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted)">$${(startBal * 0.01).toFixed(0)} / trade</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mandatory rules -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="chart-card" style="padding:20px">
+        <div style="font-family:'EB Garamond',serif;font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:8px">◉ Rule 01 — 1R Break Even</div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.95rem;color:var(--muted);line-height:1.6">Move SL to entry once price hits <strong style="color:var(--text)">1:1 (1R)</strong>. A proven setup never results in a loss.</div>
+      </div>
+      <div class="chart-card" style="padding:20px">
+        <div style="font-family:'EB Garamond',serif;font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:8px">◉ Rule 02 — 3R Take Profit</div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.95rem;color:var(--muted);line-height:1.6">TP set at <strong style="color:var(--text)">3R</strong> when trade opens. Non-negotiable. Winners pay for losers.</div>
+      </div>
+    </div>
+  `;
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 // Pre-load settings
 if (!localStorage.getItem('fx_startbal_FTMO')) localStorage.setItem('fx_startbal_FTMO', '200000');
@@ -4754,6 +5151,18 @@ if (!localStorage.getItem('fx_challenge_phases_5ERS')) localStorage.setItem('fx_
 
 renderAccountButtons();
 renderOverviewFiltered();
+// Hide Sizing tab if starting on OVERALL
+if (currentAccount === 'OVERALL') {
+  const sizingBtn = document.querySelector('.nav-tab[onclick="switchTab(\'system\', this)"]');
+  if (sizingBtn) sizingBtn.style.display = 'none';
+}
+// Set correct system sub-tab on init
+if (currentAccount === '5ERS') {
+  document.getElementById('systab-challenge') && (document.getElementById('systab-challenge').style.display = 'none');
+  switchSystemTab('funded');
+} else if (currentAccount === 'FTMO' || currentAccount === 'FXIFY') {
+  switchSystemTab('challenge');
+}
 autoSyncReviews();
 renderTable();
 document.getElementById('f_date').value = new Date().toISOString().slice(0,10);
