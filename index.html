@@ -1019,16 +1019,16 @@ function switchTab(name, el) {
   if (name === 'review') { renderReviewList(); }
   if (name === 'monthly') { renderMonthlyTab(); }
   if (name === 'challenge') { renderChallenge(); }
-  if (name === 'system') { 
+  if (name === 'system') {
+    const btnFunded = document.getElementById('systab-funded');
+    const btnChallenge = document.getElementById('systab-challenge');
     if (currentAccount === '5ERS') {
-      document.getElementById('systab-funded') && (document.getElementById('systab-funded').style.display = 'none');
-      document.getElementById('systab-challenge') && (document.getElementById('systab-challenge').style.display = '');
-      document.getElementById('systab-challenge') && (document.getElementById('systab-challenge').textContent = 'Scaling Plan');
+      if (btnFunded) btnFunded.style.display = 'none';
+      if (btnChallenge) { btnChallenge.style.display = ''; btnChallenge.innerHTML = 'Scaling Plan'; }
       switchSystemTab('challenge');
     } else {
-      document.getElementById('systab-funded') && (document.getElementById('systab-funded').style.display = '');
-      document.getElementById('systab-challenge') && (document.getElementById('systab-challenge').style.display = '');
-      document.getElementById('systab-challenge') && (document.getElementById('systab-challenge').innerHTML = 'Challenge');
+      if (btnFunded) { btnFunded.style.display = ''; btnFunded.innerHTML = 'Funded <span style="font-size:0.7rem;opacity:0.5;font-style:italic">(soon)</span>'; }
+      if (btnChallenge) { btnChallenge.style.display = ''; btnChallenge.innerHTML = 'Challenge'; }
       switchSystemTab('challenge');
     }
   }
@@ -1147,12 +1147,15 @@ function switchAccount(acct, el) {
   // Set correct system sub-tab when account switches
   const sysTabOpen = document.getElementById('tab-system') && document.getElementById('tab-system').classList.contains('active');
   if (sysTabOpen) {
+    const btnFunded = document.getElementById('systab-funded');
+    const btnChallenge = document.getElementById('systab-challenge');
     if (acct === '5ERS') {
-      document.getElementById('systab-challenge') && (document.getElementById('systab-challenge').style.display = 'none');
-      switchSystemTab('funded');
+      if (btnFunded) btnFunded.style.display = 'none';
+      if (btnChallenge) { btnChallenge.style.display = ''; btnChallenge.innerHTML = 'Scaling Plan'; }
+      switchSystemTab('challenge');
     } else {
-      document.getElementById('systab-funded') && (document.getElementById('systab-funded').style.display = '');
-      document.getElementById('systab-challenge') && (document.getElementById('systab-challenge').style.display = '');
+      if (btnFunded) { btnFunded.style.display = ''; btnFunded.innerHTML = 'Funded <span style="font-size:0.7rem;opacity:0.5;font-style:italic">(soon)</span>'; }
+      if (btnChallenge) { btnChallenge.style.display = ''; btnChallenge.innerHTML = 'Challenge'; }
       switchSystemTab('challenge');
     }
   }
