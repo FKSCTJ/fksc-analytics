@@ -3806,7 +3806,18 @@ function closeCalDayModal() {
 function buildAiReviewPane(type, key, tradesArr) {
   const storageKey = `fx_ai_review_${type}_${key}`;
   const saved = localStorage.getItem(storageKey);
-  const savedHtml = saved ? JSON.parse(saved) : null;
+  let savedHtml = saved ? JSON.parse(saved) : null;
+  // Invalidate stale cache from old API-based versions
+  if (savedHtml && savedHtml.html && (
+    savedHtml.html.includes('API Key Required') ||
+    savedHtml.html.includes('Add API Key') ||
+    savedHtml.html.includes('Failed to generate') ||
+    savedHtml.html.includes('Try Again') ||
+    savedHtml.html.includes('AI-generated')
+  )) {
+    localStorage.removeItem(storageKey);
+    savedHtml = null;
+  }
   return `
     <div id="ai-pane-${type}-${key}">
       ${savedHtml ? `
