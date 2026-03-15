@@ -4873,7 +4873,8 @@ function calGoToday() {}
 function renderMonthlyTabOld() {}
 
 function getApiKey() {
-  return localStorage.getItem('fx_anthropic_api_key') || '';
+  const raw = localStorage.getItem('fx_anthropic_api_key') || '';
+  return raw.replace(/[\s]/g, '').replace(/[\u200B-\u200D\uFEFF]/g, '');
 }
 
 function updateApiKeyIndicator() {
@@ -4895,14 +4896,16 @@ function closeApiKeyModal() {
 }
 
 function saveApiKey() {
-  const val = (document.getElementById('apiKeyInput').value || '').trim();
+  // Strip ALL whitespace including newlines, tabs, zero-width chars that can sneak in from copy-paste
+  const raw = document.getElementById('apiKeyInput').value || '';
+  const val = raw.replace(/[\s]/g, '').replace(/[\u200B-\u200D\uFEFF]/g, '');
   const status = document.getElementById('apiKeyStatus');
   if (!val) { status.style.display='block'; status.style.color='var(--red)'; status.textContent='Please enter a key.'; return; }
-  if (!val.startsWith('sk-ant-')) { status.style.display='block'; status.style.color='var(--red)'; status.textContent='Key should start with sk-ant-'; return; }
+  if (!val.startsWith('sk-ant-')) { status.style.display='block'; status.style.color='var(--red)'; status.textContent='Key should start with sk-ant- — check you copied the full key.'; return; }
   localStorage.setItem('fx_anthropic_api_key', val);
   updateApiKeyIndicator();
-  status.style.display='block'; status.style.color='var(--green)'; status.textContent='✓ Key saved.';
-  setTimeout(() => closeApiKeyModal(), 800);
+  status.style.display='block'; status.style.color='var(--green)'; status.textContent='✓ Saved: ' + val.slice(0,14) + '...' + val.slice(-4);
+  setTimeout(() => closeApiKeyModal(), 1400);
   toast('API key saved');
 }
 
