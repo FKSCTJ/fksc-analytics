@@ -56,25 +56,44 @@
   .logo span { color: var(--muted); font-weight: 700; }
   .header-tag { font-family: 'EB Garamond', serif; font-size: 0.9rem; color: var(--muted); border: 1px solid var(--border); padding: 4px 10px; border-radius: 2px; letter-spacing: 0.1em; text-transform: uppercase; transition: color 0.2s, border-color 0.2s, background 0.2s; }
   .header-tag:hover { color: var(--text); border-color: var(--accent); background: rgba(123,175,212,0.07); }
-  .nav-tabs { display: flex; gap: 2px; padding: 16px 0 0; border-bottom: 1px solid var(--border); }
-  .nav-tab { font-family: 'EB Garamond', serif; font-size: 0.95rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 18px; border: none; background: none; color: #7a93ae; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
-  .nav-tab:hover { color: var(--text); }
+  .nav-tabs { display: flex; justify-content: space-between; padding: 16px 0 0; border-bottom: 1px solid var(--border); }
+  .nav-tab { font-family: 'EB Garamond', serif; font-size: 0.95rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 4px; border: none; background: none; color: #7a93ae; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; white-space: nowrap; }
+  .nav-tab:hover { color: var(--text); border-bottom-color: var(--accent); opacity: 0.6; }
   .nav-tab.active { color: var(--text); border-bottom-color: var(--accent); }
   .panel { display: none; padding: 32px 0; }
   .panel.active { display: block; }
-  .panel.active:not(#tab-strategy) .chart-card,
-  .panel.active:not(#tab-strategy) .rv-card,
-  .panel.active:not(#tab-strategy) .table-wrap {
-    animation: stackIn 0.7s ease both;
-  }
-  .panel.active:not(#tab-strategy) .chart-card:nth-child(1) { animation-delay: 0.00s; }
-  .panel.active:not(#tab-strategy) .chart-card:nth-child(2) { animation-delay: 0.08s; }
-  .panel.active:not(#tab-strategy) .chart-card:nth-child(3) { animation-delay: 0.16s; }
-  .panel.active:not(#tab-strategy) .chart-card:nth-child(4) { animation-delay: 0.24s; }
-  .panel.active:not(#tab-strategy) .chart-card:nth-child(5) { animation-delay: 0.32s; }
-  .panel.active:not(#tab-strategy) .chart-card:nth-child(6) { animation-delay: 0.40s; }
-  .panel.active:not(#tab-strategy) .chart-card:nth-child(7) { animation-delay: 0.48s; }
-  .panel.active:not(#tab-strategy) .chart-card:nth-child(8) { animation-delay: 0.56s; }
+  .panel.tab-entered .chart-card,
+  .panel.tab-entered .kpi-card,
+  .panel.tab-entered .rv-card,
+  .panel.tab-entered .table-wrap { animation: stackIn 0.45s ease both; }
+  .panel.tab-entered .chart-card:nth-child(1)  { animation-delay: 0.00s; }
+  .panel.tab-entered .chart-card:nth-child(2)  { animation-delay: 0.06s; }
+  .panel.tab-entered .chart-card:nth-child(3)  { animation-delay: 0.12s; }
+  .panel.tab-entered .chart-card:nth-child(4)  { animation-delay: 0.18s; }
+  .panel.tab-entered .chart-card:nth-child(5)  { animation-delay: 0.24s; }
+  .panel.tab-entered .chart-card:nth-child(6)  { animation-delay: 0.30s; }
+  .panel.tab-entered .chart-card:nth-child(7)  { animation-delay: 0.36s; }
+  .panel.tab-entered .chart-card:nth-child(8)  { animation-delay: 0.42s; }
+  .panel.tab-entered .kpi-card:nth-child(1)  { animation-delay: 0.00s; }
+  .panel.tab-entered .kpi-card:nth-child(2)  { animation-delay: 0.06s; }
+  .panel.tab-entered .kpi-card:nth-child(3)  { animation-delay: 0.12s; }
+  .panel.tab-entered .kpi-card:nth-child(4)  { animation-delay: 0.18s; }
+  .panel.tab-entered .kpi-card:nth-child(5)  { animation-delay: 0.24s; }
+  .panel.tab-entered .kpi-card:nth-child(6)  { animation-delay: 0.30s; }
+  .panel.tab-entered .kpi-card:nth-child(7)  { animation-delay: 0.36s; }
+  .panel.tab-entered .kpi-card:nth-child(8)  { animation-delay: 0.42s; }
+  .panel.tab-entered .rv-card:nth-child(1)   { animation-delay: 0.00s; }
+  .panel.tab-entered .rv-card:nth-child(2)   { animation-delay: 0.04s; }
+  .panel.tab-entered .rv-card:nth-child(3)   { animation-delay: 0.08s; }
+  .panel.tab-entered .rv-card:nth-child(4)   { animation-delay: 0.12s; }
+  .panel.tab-entered .rv-card:nth-child(5)   { animation-delay: 0.16s; }
+  .panel.tab-entered .rv-card:nth-child(6)   { animation-delay: 0.20s; }
+  .panel.tab-entered .rv-card:nth-child(7)   { animation-delay: 0.24s; }
+  .panel.tab-entered .rv-card:nth-child(8)   { animation-delay: 0.28s; }
+  .panel.tab-entered .rv-card:nth-child(9)   { animation-delay: 0.32s; }
+  .panel.tab-entered .rv-card:nth-child(10)  { animation-delay: 0.36s; }
+  .panel.tab-entered .rv-card:nth-child(n+11){ animation-delay: 0.36s; }
+  .panel.tab-entered .kpi-defs .kpi-def-card { animation: none !important; }
   @keyframes stackIn {
     from { opacity: 0; transform: translateY(14px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -213,7 +232,7 @@
   .rv-card.open .rv-card-chevron { transform: rotate(180deg); color: var(--accent); }
   .rv-card-body { display: none; padding: 0 18px 18px; border-top: 1px solid var(--border); }
   .rv-card.open .rv-card-body { display: block; }
-  .rv-card-date { font-family:'EB Garamond',serif; font-size: 0.9rem; color: var(--muted); flex-shrink:0; width: 90px; }
+  .rv-card-date { font-family:'EB Garamond',serif; font-size: 0.9rem; color: var(--muted); flex-shrink:0; width: 120px; }
   .rv-card-pair { font-family:'EB Garamond',serif; font-size: 1rem; font-weight: 700; flex-shrink:0; width: 75px; }
   .rv-card-pnl { font-family:'EB Garamond',serif; font-size: 1rem; font-weight: 700; flex-shrink:0; width: 90px; text-align:right; }
   .rv-card-meta { font-family:'EB Garamond',serif; font-size: 0.9rem; color: var(--muted); flex-shrink:0; width: 60px; }
@@ -466,13 +485,6 @@
     <button class="nav-tab" onclick="switchTab('monthly', this)">Monthly Review</button>
     <button class="nav-tab" onclick="switchTab('challenge', this)" id="challengeNavTab">Challenge</button>
   </nav>
-
-  <!-- Overall banner -->
-  <div id="overallBanner" style="display:none;align-items:center;gap:12px;background:rgba(255,209,102,0.06);border:1px solid rgba(255,209,102,0.2);border-radius:4px;padding:10px 16px;margin-top:12px;font-family:'EB Garamond',serif;font-size:0.9rem;color:#ffd166">
-    <span style="font-size:1rem">◎</span>
-    <span><strong>Overall View</strong> — All accounts merged · FTMO + 5ERS + FXIFY · Read-only</span>
-    <span id="overallStats" style="margin-left:auto;color:var(--muted)"></span>
-  </div>
 
   <!-- OVERVIEW -->
   <div id="tab-overview" class="panel active">
@@ -1089,9 +1101,10 @@ let csvHeaders = [], csvRows = [];
 const ANALYTICS_TABS = ['overview','risk','timing','quality','equity','sizing'];
 
 function switchTab(name, el) {
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => { p.classList.remove('active'); p.classList.remove('tab-entered'); });
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
+  const panel = document.getElementById('tab-' + name);
+  panel.classList.add('active');
   if (el) el.classList.add('active');
   if (ANALYTICS_TABS.includes(name)) renderDashSubTab(name);
   if (name === 'trades') renderTable();
@@ -1112,6 +1125,9 @@ function switchTab(name, el) {
     }
   }
   if (name === 'strategy') { renderStrategy(); }
+  // Trigger animation AFTER all content is rendered
+  void panel.offsetWidth;
+  panel.classList.add('tab-entered');
 }
 
 // ── Undo stack ────────────────────────────────────────────────────────────────
@@ -1213,9 +1229,6 @@ function switchAccount(acct, el) {
   localStorage.setItem('fx_current_account', acct);
   document.querySelectorAll('.acct-btn').forEach(b => b.classList.remove('acct-active'));
   if (el) el.classList.add('acct-active');
-  // Show/hide overall read-only banner
-  const banner = document.getElementById('overallBanner');
-  if (banner) banner.style.display = acct === 'OVERALL' ? 'flex' : 'none';
   // Show/hide Sizing tab
   const sizingBtn = document.querySelector('.nav-tab[onclick="switchTab(\'system\', this)"]');
   if (sizingBtn) sizingBtn.style.display = acct === 'OVERALL' ? 'none' : '';
@@ -1520,15 +1533,6 @@ function renderOverviewFiltered() {
     ? `${filtered.length} trades · ${fmtD(dates[0])} – ${fmtD(dates[dates.length-1])} · ${labels[period]||''}`
     : `0 trades · ${labels[period]||''}`;
   // Overall banner stats
-  const statsEl = document.getElementById('overallStats');
-  if (statsEl && currentAccount === 'OVERALL') {
-    const breakdown = ACCOUNTS.map(a => {
-      const t = (allTrades[a]||[]);
-      const pnl = t.reduce((s,x)=>s+(parseFloat(x.pnl)||0),0);
-      return `${a}: ${pnl>=0?'+':''}$${pnl.toFixed(0)}`;
-    }).join(' · ');
-    statsEl.textContent = breakdown;
-  }
   const s = calcStatsFor(filtered);
   renderOverview(s, filtered);
   renderEquityTab(s, filtered);
@@ -1750,6 +1754,26 @@ function renderOverview(s, filteredArr) {
   renderTraderLevel(s, arr);
 }
 
+function animateCards(containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const cards = el.querySelectorAll('.kpi-card, .chart-card');
+  cards.forEach((card, i) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(14px)';
+    card.style.transition = 'none';
+  });
+  requestAnimationFrame(() => {
+    cards.forEach((card, i) => {
+      setTimeout(() => {
+        card.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+      }, i * 60);
+    });
+  });
+}
+
 function renderRisk(s){
   // --- Compute advanced metrics ---
   const sorted = [...trades].sort((a,b)=>new Date(a.date)-new Date(b.date));
@@ -1890,6 +1914,9 @@ function renderRisk(s){
       }
     }
   });
+  // Animate the kpi cards
+  animateCards('kpiRisk');
+  animateCards('kpiVolatility');
 }
 
 function renderTiming(s){
@@ -2130,9 +2157,12 @@ function renderEquityTab(s, filteredArr){
   const startBalEq = getStartingBalance(currentAccount, arr);
   const pnlEq = parseFloat(s.totalPnl);
   const pnlPctEq = startBalEq>0 ? ` · ${(pnlEq/startBalEq*100).toFixed(2)}%` : '';
+  const totalCosts = totalComm + totalSwap;
+  const costsPct = pnlEq !== 0 ? (Math.abs(totalCosts) / Math.abs(pnlEq) * 100).toFixed(1) : '—';
   document.getElementById('kpiEquity').innerHTML=
     kpiCard('$','Total Commission',`$${Math.abs(totalComm).toFixed(2)}`,totalComm<=0?'neg':'pos',`${s.total} trades`,totalComm<0?'Costs eating into profits — factor into edge calculation':'No commission recorded')+
-    kpiCard('↺','Total Swap',`$${totalSwap>=0?'+':''}${totalSwap.toFixed(2)}`,totalSwap>=0?'pos':'neg','Overnight financing',totalSwap<0?'Negative swap — avoid holding overnight where possible':'Positive swap — carry trade benefit');
+    kpiCard('↺','Total Swap',`$${totalSwap>=0?'+':''}${totalSwap.toFixed(2)}`,totalSwap>=0?'pos':'neg','Overnight financing',totalSwap<0?'Negative swap — avoid holding overnight where possible':'Positive swap — carry trade benefit')+
+    kpiCard('◈','Total Costs',`${totalCosts>=0?'+':''}$${totalCosts.toFixed(2)}`,totalCosts>=0?'pos':'neg',`${costsPct !== '—' ? costsPct+'% of net P&L' : 'No P&L yet'}`,`Comm + Swap · Net P&L ${pnlEq>=0?'+':''}$${pnlEq.toFixed(2)}`);
   const sorted=[...arr].sort((a,b)=>new Date(a.date)-new Date(b.date));
   let eq=0;const labels=['Start'],data=[0],eqMeta=[null];
   sorted.forEach(t=>{eq+=parseFloat(t.pnl)||0;labels.push(t.date?t.date.slice(5):'');data.push(parseFloat(eq.toFixed(2)));eqMeta.push(t);});
@@ -2158,7 +2188,7 @@ function renderPairBreakdown(){
   trades.forEach(t=>{const p=t.pair||'Unknown';map[p]=(map[p]||0)+(parseFloat(t.pnl)||0);});
   const sorted=Object.entries(map).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,8);
   const max=Math.max(...sorted.map(([,v])=>Math.abs(v)),1);
-  el.innerHTML=sorted.map(([pair,pnl])=>`<div class="pair-bar-row"><span class="pair-name">${pair}</span><div class="pair-bar-wrap"><div class="pair-bar-fill ${pnl<0?'neg':''}" style="width:${(Math.abs(pnl)/max*100).toFixed(1)}%"></div></div><span class="pair-val ${pnl>=0?'pnl-pos':'pnl-neg'}">$${pnl.toFixed(0)}</span></div>`).join('')||'<p style="font-family:EB Garamond;font-size:0.95rem;color:var(--muted)">No data yet.</p>';
+  el.innerHTML=sorted.map(([pair,pnl])=>`<div class="pair-bar-row"><span class="pair-name">${pair}</span><div class="pair-bar-wrap"><div class="pair-bar-fill ${pnl<0?'neg':''}" style="width:${(Math.abs(pnl)/max*100).toFixed(1)}%"></div></div><span class="pair-val ${pnl>=0?'pnl-pos':'pnl-neg'}">$${pnl.toFixed(2)}</span></div>`).join('')||'<p style="font-family:EB Garamond;font-size:0.95rem;color:var(--muted)">No data yet.</p>';
 }
 
 function renderTable() {
@@ -3210,12 +3240,6 @@ function renderStrategy() {
     </div>`;
   })();
   const stratEquityId = 'strat-eq-canvas-' + Date.now();
-  const equityEmbedHtml = `
-    <div id="strat-kpi-equity" class="kpi-grid" style="margin-bottom:12px"></div>
-    <div class="chart-card" style="margin-bottom:20px">
-      <div class="chart-card-title">Equity Curve</div>
-      <canvas id="${stratEquityId}" height="200"></canvas>
-    </div>`;
 
   // ── 0.33% SL section ──
   const sl033Trades = trades.filter(t => t.sl033 === 'yes');
@@ -3285,7 +3309,6 @@ function renderStrategy() {
     panel.innerHTML = `
       <div class="section-heading" style="margin-bottom:16px">&#9632; Strategy Analysis</div>
       <div id="strat-static" style="margin-bottom:20px">
-        ${equityEmbedHtml}
       </div>
       <div id="strat-dynamic"></div>
       ${beSection}
@@ -3297,42 +3320,19 @@ function renderStrategy() {
   const dynEl = document.getElementById('strat-dynamic');
   if (dynEl) dynEl.innerHTML = `${trendSection}${tfCardHtml}${baseCardHtml}`;
 
-  // Draw charts
-  requestAnimationFrame(() => {
-    // ── Equity tab KPI cards ──
-    const kpiEl = document.getElementById('strat-kpi-equity');
-    if (kpiEl && trades.length) {
-      const s = calcStats(trades);
-      const startBalSt = getStartingBalance(currentAccount, trades);
-      const pnlSt = parseFloat(s.totalPnl);
-      const pnlPctSt = startBalSt>0 ? ` · ${(pnlSt/startBalSt*100).toFixed(2)}%` : '';
-      kpiEl.innerHTML =
-        kpiCard('◉','Net P&L',`$${pnlSt>=0?'+':''}${s.totalPnl}`,pnlSt>=0?'pos':'neg',`${s.total} trades${pnlPctSt}`,getComment('pnl',s.totalPnl))+
-        kpiCard('△','Max Drawdown',`$${s.maxDD}`,'neg','Peak to trough',getComment('maxDD',s.maxDD))+
-        kpiCard('◇','Profit Factor',s.profitFactor,parseFloat(s.profitFactor)>=1.5?'pos':'warn',`Gross win $${s.grossWin}`,getComment('profitFactor',s.profitFactor))+
-        kpiCard('◈','Recovery Factor',s.maxDD>0?(parseFloat(s.totalPnl)/parseFloat(s.maxDD)).toFixed(2):'—','hi','Net P&L / Max DD','Above 2.0 is excellent resilience');
-    }
-
-    // ── Equity curve ──
-    const ctx = document.getElementById(stratEquityId);
-    if (ctx && trades.length) {
-      const sorted = [...trades].sort((a,b) => new Date(a.date)-new Date(b.date));
-      let eq = 0;
-      const eqLabels = ['Start'], eqData = [0];
-      sorted.forEach(t => { eq += parseFloat(t.pnl)||0; eqLabels.push(t.date?t.date.slice(5):''); eqData.push(parseFloat(eq.toFixed(2))); });
-      const eqCtx = ctx.getContext('2d');
-      const grad = eqCtx.createLinearGradient(0,0,0,200);
-      grad.addColorStop(0,'rgba(0,229,160,0.25)'); grad.addColorStop(1,'rgba(0,229,160,0)');
-      const eqMeta2=['start',...sorted];
-      mkChart(stratEquityId, { type:'line', data:{ labels:eqLabels, datasets:[{ data:eqData, borderColor:'#00e5a0', backgroundColor:grad, borderWidth:2, pointRadius:3, pointHoverRadius:6, pointBackgroundColor:eqData.map((_,i)=>{if(i===0)return'#00e5a0';const t=eqMeta2[i];if(!t||t==='start')return'#00e5a0';const p=parseFloat(t.pnl)||0;return Math.abs(p)<100?'#7bafd4':p>0?'#6dbf9e':'#e85555';}), tension:0.3, fill:true }] }, options:{...CD, plugins:{...CD.plugins, tooltip:{...CD.plugins.tooltip, callbacks:{label:c=>{const t=eqMeta2[c.dataIndex];if(!t||t==='start')return`Equity: $${c.raw}`;const p=parseFloat(t.pnl)||0;return[`Equity: $${c.raw}`,`${t.pair||''} ${(t.direction||'').toUpperCase()}`,`P&L: ${p>=0?'+':''}$${p.toFixed(2)}`];}}}}, scales:{...CD.scales, y:{...CD.scales.y, ticks:{...CD.scales.y.ticks, callback:v=>`$${v}`}}}} });
-    }
-
-  });
 }
 
 function setStratTrendSel(type) {
   stratTrendSel = stratTrendSel === type ? null : type;
   renderStrategy();
+  // suppress re-animation on drill-down — clear inline animation styles set by switchTab
+  const dynEl = document.getElementById('strat-dynamic');
+  if (dynEl) {
+    dynEl.querySelectorAll('.chart-card, .kpi-card').forEach(card => {
+      card.style.animation = 'none';
+      card.style.animationDelay = '';
+    });
+  }
 }
 
 function toggleReviewCard(i) {
@@ -3502,10 +3502,10 @@ function renderMonthlyTab() {
     <div class="rv-card" id="qrc-${qKey}" style="margin:4px 0 8px;border-left:3px solid var(--accent)">
       <div class="rv-card-header" onclick="toggleQuarterCard('${qKey}')" style="cursor:pointer">
         <div class="rv-reviewed-dot ${hasReview?'':'empty'}" title="${hasReview?'Reviewed':'Not reviewed'}"></div>
-        <span style="font-family:'EB Garamond',serif;font-size:1rem;font-weight:700;color:var(--accent);letter-spacing:0.08em;min-width:56px">${yr} Q${q}</span>
+        <span class="rv-card-date" style="color:var(--accent);font-weight:700;letter-spacing:0.08em">${yr} Q${q}</span>
         <span class="rv-card-meta">${qt.length} trades</span>
         <span style="font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700;color:${parseInt(wr)>=50?'var(--green)':'var(--red)'};margin-left:8px">${wr}% WR</span>
-        <span class="rv-card-meta" style="margin-left:8px">${wins}W / ${losses}L${beCount>0?` · <span style="color:var(--muted)">${beCount}BE</span>`:''}</span>
+        <span class="rv-card-meta" style="margin-left:8px;white-space:nowrap">${wins}W / ${losses}L${beCount>0?` · <span style="color:var(--muted)">${beCount}BE</span>`:''}</span>
         <span style="font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700;color:${pnlCol};margin-left:auto">${pnl>=0?'+':''}$${Math.abs(pnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
         <span class="rv-card-chevron" style="margin-left:12px">▼</span>
       </div>
@@ -3545,11 +3545,10 @@ function renderMonthlyTab() {
       return d && d.startsWith(ym);
     });
     const netPnl = monthTrades.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
-    const wins = monthTrades.filter(t=>parseFloat(t.pnl)>0).length;
-    const losses = monthTrades.filter(t=>parseFloat(t.pnl)<0).length;
-    const bes = monthTrades.filter(t=>Math.abs(parseFloat(t.pnl)||0)<100 && parseFloat(t.pnl)!==parseFloat(t.pnl) || (Math.abs(parseFloat(t.pnl)||0)===0)).length;
-    const beCount = monthTrades.filter(t => { const p=parseFloat(t.pnl)||0; return Math.abs(p)<1; }).length;
-    const wr = monthTrades.length ? ((wins/monthTrades.length)*100).toFixed(0) : 0;
+    const wins   = monthTrades.filter(t=>(parseFloat(t.pnl)||0)>0 && !isBreakEven(t.pnl)).length;
+    const losses = monthTrades.filter(t=>(parseFloat(t.pnl)||0)<0 && !isBreakEven(t.pnl)).length;
+    const beCount= monthTrades.filter(t=>isBreakEven(t.pnl)).length;
+    const wr = (wins+losses) > 0 ? ((wins/(wins+losses))*100).toFixed(0) : 0;
     const pnlCol = netPnl>=0?'var(--green)':'var(--red)';
     const pnlSign = netPnl>=0?'+':'';
     const saved = JSON.parse(localStorage.getItem(getMonthlyReviewKey(yr, mo-1)) || '{}');
@@ -3557,17 +3556,15 @@ function renderMonthlyTab() {
     const isCurrentMonth = yr===now.getFullYear() && mo-1===now.getMonth();
 
     html += `<div class="rv-card" id="mrc-${ym}">
-      <div class="rv-card-header" onclick="toggleMonthCard('${ym}')">
+      <div class="rv-card-header" onclick="toggleMonthCard('${ym}')" style="cursor:pointer">
         <div class="rv-reviewed-dot ${hasReview?'':'empty'}" title="${hasReview?'Reviewed':'Not reviewed'}"></div>
         <span class="rv-card-date">${MONTH_NAMES[mo-1]} ${yr}</span>
-        <span style="flex-shrink:0;width:100px;font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700;color:${pnlCol}">${pnlSign}$${Math.abs(netPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
-        <span style="flex-shrink:0;width:70px;font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted)">${monthTrades.length} trades</span>
-        <span style="flex-shrink:0;width:70px;font-family:'EB Garamond',serif;font-size:0.9rem;color:${parseInt(wr)>=50?'var(--green)':'var(--red)'}">${wr}% WR</span>
-        <span style="flex-shrink:0;width:110px;font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted)">${wins}W / ${losses}L${beCount>0?` / ${beCount}BE`:''}</span>
-        <span style="margin-left:auto;display:inline-flex;align-items:center;gap:8px">
-          ${isCurrentMonth?`<span class="sync-badge">Current</span>`:''}
-          <span class="rv-card-chevron">▼</span>
-        </span>
+        <span class="rv-card-meta">${monthTrades.length} trades</span>
+        <span style="font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700;color:${parseInt(wr)>=50?'var(--green)':'var(--red)'};margin-left:8px">${wr}% WR</span>
+        <span class="rv-card-meta" style="margin-left:8px;white-space:nowrap">${wins}W / ${losses}L${beCount>0?` · <span style="color:var(--muted)">${beCount}BE</span>`:''}</span>
+        <span style="font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700;color:${pnlCol};margin-left:auto">${pnlSign}$${Math.abs(netPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+
+        <span class="rv-card-chevron" style="margin-left:12px">▼</span>
       </div>
       <div class="rv-card-body" id="mrb-${ym}" style="padding:20px">
         ${buildMonthBody(ym, yr, mo-1, monthTrades)}
@@ -4058,7 +4055,7 @@ function renderChallenge() {
           </div>
           <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted);margin-bottom:16px">${cfg.name} · $${(bal/1000).toFixed(0)}K</div>
 
-          <div style="font-family:'EB Garamond',serif;font-size:1.8rem;font-weight:700;color:${pnlCol};margin-bottom:2px">${totalPnl>=0?'+':''}$${Math.abs(totalPnl).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+          <div style="font-family:'EB Garamond',serif;font-size:1.8rem;font-weight:700;color:${pnlCol};margin-bottom:2px">${totalPnl>=0?'+':''}$${Math.abs(totalPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
           <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted);margin-bottom:16px">${pnlPct ? pnlPct+'% return' : 'No balance set'}</div>
 
           ${type !== 'scaling' && !funded ? `
@@ -4212,7 +4209,7 @@ function renderChallenge() {
               <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
                 <div style="height:100%;width:${profProg}%;background:${pnlPct>=config.targetPct?'#6dbf9e':'#7bafd4'};border-radius:4px;transition:width 0.4s ease"></div>
               </div>
-              <div style="font-family:'EB Garamond',serif;font-size:0.8rem;color:var(--muted);margin-top:3px">${ls.pnl>=0?'+':''}$${ls.pnl.toFixed(0)} · Need $${Math.max(0, ls.target - ls.pnl).toFixed(0)} more → unlocks $${((ls.bal*2)/1000).toFixed(0)}K</div>
+              <div style="font-family:'EB Garamond',serif;font-size:0.8rem;color:var(--muted);margin-top:3px">${ls.pnl>=0?'+':''}$${ls.pnl.toFixed(2)} · Need $${Math.max(0, ls.target - ls.pnl).toFixed(2)} more → unlocks $${((ls.bal*2)/1000).toFixed(0)}K</div>
             </div>
             <div style="margin-bottom:14px">
               <div style="display:flex;justify-content:space-between;margin-bottom:5px">
@@ -4222,7 +4219,7 @@ function renderChallenge() {
               <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
                 <div style="height:100%;width:${ddProg}%;background:${ddProg>80?'#e85555':ddProg>50?'#ffd166':'#6dbf9e'};border-radius:4px;transition:width 0.4s ease"></div>
               </div>
-              <div style="font-family:'EB Garamond',serif;font-size:0.8rem;color:var(--muted);margin-top:3px">$${Math.abs(Math.min(0,ls.pnl)).toFixed(0)} used · $${Math.max(0,(ls.bal*config.maxDDPct/100)+Math.min(0,ls.pnl)).toFixed(0)} remaining buffer</div>
+              <div style="font-family:'EB Garamond',serif;font-size:0.8rem;color:var(--muted);margin-top:3px">$${Math.abs(Math.min(0,ls.pnl)).toFixed(2)} used · $${Math.max(0,(ls.bal*config.maxDDPct/100)+Math.min(0,ls.pnl)).toFixed(2)} remaining buffer</div>
             </div>
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding-top:12px;border-top:1px solid var(--border)">
               ${[['Trades',ls.trades.length],['Win Rate',wr],['Daily Pause',-`$${(ls.bal*config.dailyPausePct/100).toFixed(0)}`],['Next Level',`$${((ls.bal*2)/1000).toFixed(0)}K`]].map(([l,v])=>`
@@ -4236,7 +4233,7 @@ function renderChallenge() {
               levelStats.filter(l=>l.passed).map((l,i)=>`
                 <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
                   <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:#6dbf9e;font-weight:700">✓ $${(l.bal/1000).toFixed(0)}K</div>
-                  <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted)">${l.trades.length} trades · +$${l.pnl.toFixed(0)}</div>
+                  <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted)">${l.trades.length} trades · +$${l.pnl.toFixed(2)}</div>
                 </div>`).join('')}
           </div>
         </div>`;
@@ -5010,7 +5007,7 @@ function renderSystemChallenge() {
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
       <div class="chart-card" style="padding:20px;text-align:center">
         <div style="font-family:'EB Garamond',serif;font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Account P&L</div>
-        <div style="font-family:'EB Garamond',serif;font-size:1.8rem;font-weight:700;color:${pnlCol}">${totalPnl>=0?'+':'-'}$${Math.abs(totalPnl).toLocaleString('en-US',{maximumFractionDigits:0})}</div>
+        <div style="font-family:'EB Garamond',serif;font-size:1.8rem;font-weight:700;color:${pnlCol}">${totalPnl>=0?'+':'-'}$${Math.abs(totalPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
         <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:${pnlCol}">${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%</div>
       </div>
       <div class="chart-card" style="padding:20px;text-align:center;border-color:${riskColor}">
@@ -5172,7 +5169,7 @@ function renderSystemFunded() {
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">
       <div class="chart-card" style="padding:20px;text-align:center">
         <div style="font-family:'EB Garamond',serif;font-size:0.8rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Account P&L</div>
-        <div style="font-family:'EB Garamond',serif;font-size:1.8rem;font-weight:700;color:${pnlCol}">${totalPnl>=0?'+':'-'}$${Math.abs(totalPnl).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+        <div style="font-family:'EB Garamond',serif;font-size:1.8rem;font-weight:700;color:${pnlCol}">${totalPnl>=0?'+':'-'}$${Math.abs(totalPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
         <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:${pnlCol}">${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%</div>
       </div>
       <div class="chart-card" style="padding:20px;text-align:center;border-color:${riskColor}">
