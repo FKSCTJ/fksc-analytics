@@ -460,7 +460,6 @@
         <div class="ms-option" onclick="document.getElementById('importBackupFile').click();toggleJournalMenu()" style="padding:10px 16px;color:var(--green)">&#11014; Import backup</div>
         <input type="file" id="importBackupFile" accept=".json" style="display:none" onchange="importBackup(this)">
         <div style="border-top:1px solid var(--border);margin:4px 0"></div>
-        <div class="ms-option" onclick="openApiKeyModal();toggleJournalMenu()" style="padding:10px 16px;color:var(--accent);display:flex;align-items:center;gap:8px">✦ AI API Key<span id="apiKeyIndicator" style="width:7px;height:7px;border-radius:50%;background:var(--border);flex-shrink:0"></span></div>
         <div style="border-top:1px solid var(--border);margin:4px 0"></div>
         <div class="ms-option" onclick="openAddAccountModal();toggleJournalMenu()" style="padding:10px 16px;color:var(--accent)">+ Add account</div>
 
@@ -1002,32 +1001,6 @@
 
 <div class="toast-container" id="toastContainer"></div>
 
-<!-- API Key Modal -->
-<div class="modal-overlay" id="apiKeyModal" onclick="if(event.target===this)closeApiKeyModal()">
-  <div class="modal-box" style="max-width:480px;width:100%">
-    <div class="modal-header">
-      <h3 style="font-family:'EB Garamond',serif;font-size:1rem;letter-spacing:0.06em">✦ AI API KEY</h3>
-      <button class="btn btn-ghost" onclick="closeApiKeyModal()" style="padding:6px 12px">&#10005;</button>
-    </div>
-    <div class="modal-body" style="padding:20px 24px">
-      <p style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted);margin-bottom:6px;line-height:1.6">Enter your Anthropic API key to enable AI Reviews. Your key is stored only in your browser's local storage and never sent anywhere except Anthropic's API.</p>
-      <p style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted);margin-bottom:16px">Get a key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a></p>
-      <div class="form-group" style="margin-bottom:0">
-        <label>API Key</label>
-        <input type="password" id="apiKeyInput" placeholder="sk-ant-..." style="font-family:monospace;font-size:0.85rem"
-          onkeydown="if(event.key==='Enter')saveApiKey()">
-      </div>
-      <div id="apiKeyStatus" style="font-family:'EB Garamond',serif;font-size:0.85rem;margin-top:10px;display:none"></div>
-    </div>
-    <div class="modal-footer" style="justify-content:space-between">
-      <button class="btn btn-ghost" onclick="clearApiKey()" style="color:var(--red)">Clear Key</button>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost" onclick="closeApiKeyModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveApiKey()">Save Key</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- Calendar Day Trade Modal -->
 <div class="modal-overlay" id="calDayModal" onclick="if(event.target===this)closeCalDayModal()">
@@ -3853,18 +3826,11 @@ function buildAiReviewPane(type, key, tradesArr) {
     </div>`;
 }
 
-async function generateAiReview(type, key) {
+function generateAiReview(type, key) {
   const pane = document.getElementById(`ai-pane-${type}-${key}`);
   if (!pane) return;
 
-  // Replace pane contents with loading state
-  pane.innerHTML = `
-    <div style="text-align:center;padding:60px 20px">
-      <div style="font-family:'EB Garamond',serif;font-size:1.5rem;color:var(--accent);margin-bottom:16px;animation:pulse 1.5s infinite">✦</div>
-      <div style="font-family:'EB Garamond',serif;font-size:0.95rem;color:var(--muted)">Analysing your trades<span class="ai-dots"></span></div>
-    </div>`;
-
-  // Gather trades for this period
+  // Gather trades
   let periodTrades;
   if (type === 'month') {
     periodTrades = trades.filter(t => { const d = t.closeDate||t.date; return d && d.startsWith(key); });
@@ -3876,285 +3842,277 @@ async function generateAiReview(type, key) {
   }
 
   if (!periodTrades.length) {
-    pane.innerHTML = `<div style="text-align:center;padding:40px 20px;font-family:'EB Garamond',serif;font-size:0.95rem;color:var(--muted)">No trades found for this period.</div>`;
-    toast('No trades found for this period', true);
+    pane.innerHTML = `<div style="text-align:center;padding:40px;font-family:'EB Garamond',serif;color:var(--muted)">No trades found for this period.</div>`;
     return;
   }
 
-  // Compute stats
-  const wins = periodTrades.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl));
-  const losses = periodTrades.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl));
-  const bes = periodTrades.filter(t => isBreakEven(t.pnl));
-  const netPnl = periodTrades.reduce((a,t) => a+(parseFloat(t.pnl)||0), 0);
-  const wr = (wins.length+losses.length) > 0 ? ((wins.length/(wins.length+losses.length))*100).toFixed(1) : 0;
-  const avgWin = wins.length ? wins.reduce((a,t) => a+(parseFloat(t.pnl)||0), 0)/wins.length : 0;
-  const avgLoss = losses.length ? Math.abs(losses.reduce((a,t) => a+(parseFloat(t.pnl)||0), 0)/losses.length) : 0;
-  const rr = avgLoss > 0 ? (avgWin/avgLoss).toFixed(2) : 'N/A';
-  const scores = periodTrades.map(t => calcTradeScore(t)).filter(s => s !== null);
-  const avgScore = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(0) : 'N/A';
+  // ── Core stats ──────────────────────────────────────────────────────────────
+  const trueWins   = periodTrades.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl));
+  const trueLosses = periodTrades.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl));
+  const besTrades  = periodTrades.filter(t => isBreakEven(t.pnl));
+  const besSaved   = besTrades.filter(t => t.beOutcome === 'saved');
+  const besStopped = besTrades.filter(t => t.beOutcome === 'stopped');
+  const netPnl     = periodTrades.reduce((a,t) => a+(parseFloat(t.pnl)||0), 0);
+  const grossWin   = trueWins.reduce((a,t) => a+(parseFloat(t.pnl)||0), 0);
+  const grossLoss  = Math.abs(trueLosses.reduce((a,t) => a+(parseFloat(t.pnl)||0), 0));
+  const avgWin     = trueWins.length ? grossWin/trueWins.length : 0;
+  const avgLoss    = trueLosses.length ? grossLoss/trueLosses.length : 0;
+  const wr         = (trueWins.length+trueLosses.length) > 0 ? (trueWins.length/(trueWins.length+trueLosses.length)*100) : 0;
+  const rr         = avgLoss > 0 ? avgWin/avgLoss : 0;
+  const scores     = periodTrades.map(t => calcTradeScore(t)).filter(s => s !== null);
+  const avgScore   = scores.length ? scores.reduce((a,b)=>a+b,0)/scores.length : null;
 
-  // Mistakes tally
-  const mistakeCounts = {};
-  periodTrades.forEach(t => {
-    if (Array.isArray(t.mistakes)) t.mistakes.forEach(m => { mistakeCounts[m] = (mistakeCounts[m]||0)+1; });
-  });
-  const mistakesSummary = Object.entries(mistakeCounts).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k} (×${v})`).join(', ') || 'None recorded';
+  // ── Behaviour flags ─────────────────────────────────────────────────────────
+  const getMistakes = t => Array.isArray(t.mistakes) ? t.mistakes : [];
+  const closedEarly  = periodTrades.filter(t => getMistakes(t).includes('Closed Early'));
+  const movedSL      = periodTrades.filter(t => getMistakes(t).includes('Moved SL'));
+  const forcedSetups = periodTrades.filter(t => getMistakes(t).includes('Forced Setup'));
+  const emotional    = periodTrades.filter(t => getMistakes(t).includes('Emotional'));
+  const impatient    = periodTrades.filter(t => getMistakes(t).includes('Impatience'));
+  const brokeplan    = periodTrades.filter(t => t.followedPlan === 'no');
+  const followedplan = periodTrades.filter(t => t.followedPlan === 'yes');
+  const sl033        = periodTrades.filter(t => t.sl033 === 'yes');
 
-  // Setup breakdown
-  const setupCounts = {};
-  periodTrades.forEach(t => { if (t.setup) { setupCounts[t.setup] = (setupCounts[t.setup]||0)+1; }});
-  const topSetups = Object.entries(setupCounts).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([k,v])=>`${k} (${v})`).join(', ') || 'N/A';
-
-  // Trend direction
-  const trendCounts = {};
-  periodTrades.forEach(t => { if (t.trendDir) { trendCounts[t.trendDir] = (trendCounts[t.trendDir]||0)+1; }});
-  const trendSummary = Object.entries(trendCounts).map(([k,v])=>`${k}: ${v}`).join(', ') || 'N/A';
-
-  // Discipline
-  const followedPlan = periodTrades.filter(t => t.followedPlan === 'yes').length;
-  const notFollowed = periodTrades.filter(t => t.followedPlan === 'no').length;
-  const execRated = periodTrades.filter(t => t.execRating);
-  const avgExec = execRated.length ? execRated.reduce((a,t) => a+(parseInt(t.execRating)||0), 0)/execRated.length : 0;
-
-  // Grade distribution
-  const gradeCounts = {A:0, B:0, C:0};
-  periodTrades.forEach(t => { if (t.entryRating && gradeCounts[t.entryRating] !== undefined) gradeCounts[t.entryRating]++; });
-
-  // Individual trade breakdown — full detail, nothing truncated
-  const tradeDetails = periodTrades.map((t, i) => {
-    const p = parseFloat(t.pnl)||0;
-    const isbe = isBreakEven(p);
-    const isTrueWin = p > 0 && !isbe;
-    const isTrueLoss = p < 0 && !isbe;
-
-    // Classify outcome vs strategy rules
-    let outcomeTag = '';
-    if (isbe && t.beOutcome === 'saved') outcomeTag = 'BE — saved by 1R rule (price reversed after BE)';
-    else if (isbe && t.beOutcome === 'stopped') outcomeTag = 'BE — stopped at breakeven (moved SL to entry at 1R)';
-    else if (isbe) outcomeTag = 'BE — near zero result';
-    else if (isTrueWin) {
-      // Check if it should have been 3R but was closed early
-      const mistakes = Array.isArray(t.mistakes) ? t.mistakes : [];
-      const closedEarly = mistakes.some(m => m === 'Closed Early');
-      outcomeTag = closedEarly ? `WIN — but CLOSED EARLY (missed 3R target, strategy breach)` : `WIN`;
-    } else if (isTrueLoss) {
-      const mistakes = Array.isArray(t.mistakes) ? t.mistakes : [];
-      const movedSL = mistakes.some(m => m === 'Moved SL');
-      outcomeTag = movedSL ? `LOSS — SL was moved (strategy breach)` : `LOSS`;
-    }
-
-    const mistakes = Array.isArray(t.mistakes) ? t.mistakes : (t.mistakes ? [t.mistakes] : []);
-    const mistakeStr = mistakes.length ? `Mistakes: ${mistakes.join(', ')}` : 'No mistakes recorded';
-
-    return `[Trade ${i+1}] ${t.pair||'?'} ${(t.direction||'').toUpperCase()} | Date: ${t.closeDate||t.date||'?'}
-  Outcome: ${outcomeTag || (p>=0?'WIN':'LOSS')} | P&L: ${p>=0?'+':''}$${p.toFixed(2)} | BE outcome: ${t.beOutcome||'N/A'}
-  Setup: ${t.setup||'?'} | TF: ${t.timeframeReview||'?'} | Trend dir: ${t.trendDir||'?'}
-  Entry Grade: ${t.entryRating||'?'} | Exec Rating: ${t.execRating||'?'}/3 | Followed Plan: ${t.followedPlan||'?'} | sl033: ${t.sl033||'no'}
-  ${mistakeStr}
-  Trader's own notes: "${t.reviewNotes ? t.reviewNotes.replace(/\n/g,' ') : 'None'}"`;
-  }).join('\n\n');
-
-  // Identify specific failure patterns
-  const besSaved = periodTrades.filter(t => t.beOutcome === 'saved').length;
-  const besStopped = periodTrades.filter(t => t.beOutcome === 'stopped').length;
-  const closedEarlyTrades = periodTrades.filter(t => Array.isArray(t.mistakes) && t.mistakes.includes('Closed Early'));
-  const movedSLTrades = periodTrades.filter(t => Array.isArray(t.mistakes) && t.mistakes.includes('Moved SL'));
-  const forcedSetups = periodTrades.filter(t => Array.isArray(t.mistakes) && t.mistakes.includes('Forced Setup'));
-  const emotionalTrades = periodTrades.filter(t => Array.isArray(t.mistakes) && t.mistakes.includes('Emotional'));
-  const sl033Trades = periodTrades.filter(t => t.sl033 === 'yes');
-
-  // ── Statistical breakdowns for "What's Working" ──
-  function dimStats(group) {
-    const w = group.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl)).length;
-    const l = group.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl)).length;
-    const b = group.filter(t => isBreakEven(t.pnl)).length;
-    const pnl = group.reduce((a,t) => a+(parseFloat(t.pnl)||0), 0);
-    const wr = (w+l) > 0 ? ((w/(w+l))*100).toFixed(0) : 'N/A';
-    const avgPnl = group.length ? (pnl/group.length).toFixed(0) : 0;
-    return { n: group.length, w, l, b, pnl: pnl.toFixed(0), wr, avgPnl };
-  }
-
-  function buildDimTable(keyFn, labelPrefix) {
+  // ── Dimension breakdown helper ───────────────────────────────────────────────
+  function dimBreak(keyFn) {
     const map = {};
     periodTrades.forEach(t => {
-      const keys = keyFn(t);
-      (Array.isArray(keys) ? keys : [keys]).forEach(k => {
-        if (!k || k === '?' || k === '') return;
-        if (!map[k]) map[k] = [];
-        map[k].push(t);
+      const keys = [].concat(keyFn(t)).filter(k => k && k !== '?' && k !== '');
+      keys.forEach(k => {
+        if (!map[k]) map[k] = { trades:[], pnl:0, wins:0, losses:0, bes:0 };
+        const p = parseFloat(t.pnl)||0;
+        map[k].trades.push(t);
+        map[k].pnl += p;
+        if (isBreakEven(p)) map[k].bes++;
+        else if (p > 0) map[k].wins++;
+        else map[k].losses++;
       });
     });
     return Object.entries(map)
-      .sort((a,b) => b[1].length - a[1].length)
-      .map(([k, group]) => {
-        const s = dimStats(group);
-        return `  ${labelPrefix}${k}: ${s.n} trades | WR ${s.wr}% (${s.w}W/${s.l}L/${s.b}BE) | Net $${s.pnl} | Avg/trade $${s.avgPnl}`;
-      }).join('\n');
+      .filter(([,v]) => v.trades.length > 0)
+      .sort((a,b) => b[1].pnl - a[1].pnl)
+      .map(([k,v]) => ({
+        label: k, n: v.trades.length, wins: v.wins, losses: v.losses, bes: v.bes,
+        pnl: v.pnl, wr: (v.wins+v.losses)>0 ? Math.round(v.wins/(v.wins+v.losses)*100) : null,
+        avgPnl: v.pnl / v.trades.length
+      }));
   }
 
-  // Parse setup tags (comma-separated, e.g. "RBD, Fresh, Inducement")
-  const setupDimTable = buildDimTable(t => {
-    if (!t.setup) return '?';
-    return t.setup.split(',').map(s => s.trim()).filter(Boolean);
-  }, '');
+  const bySetup  = dimBreak(t => (t.setup||'').split(',').map(s=>s.trim()).filter(Boolean));
+  const byTf     = dimBreak(t => t.timeframeReview || '?');
+  const byTrend  = dimBreak(t => t.trendDir || '?');
+  const byGrade  = dimBreak(t => t.entryRating || '?');
+  const byPair   = dimBreak(t => t.pair || '?');
+  const DOW      = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const byDow    = dimBreak(t => { const d=t.closeDate||t.date; return d ? DOW[new Date(d).getDay()] : '?'; });
+  const byPlan   = dimBreak(t => t.followedPlan==='yes'?'Followed Plan':t.followedPlan==='no'?'Broke Plan':t.followedPlan==='partial'?'Partial':'?');
 
-  const tfDimTable    = buildDimTable(t => t.timeframeReview || '?', '');
-  const trendDimTable = buildDimTable(t => t.trendDir || '?', '');
-  const gradeDimTable = buildDimTable(t => t.entryRating || '?', 'Grade ');
-  const pairDimTable  = buildDimTable(t => t.pair || '?', '');
+  // ── Render helpers ───────────────────────────────────────────────────────────
+  const fmt$ = v => (v>=0?'+':'')+`$${Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
+  const pnlCol = v => v > 0 ? 'var(--green)' : v < 0 ? 'var(--red)' : 'var(--muted)';
+  const signal = (row, minTrades=2) => {
+    if (row.n < minTrades) return { icon:'○', col:'var(--muted)', label:'Too few trades' };
+    if (row.pnl > 0 && (row.wr === null || row.wr >= 50)) return { icon:'●', col:'var(--green)', label:'Edge' };
+    if (row.pnl < 0) return { icon:'●', col:'var(--red)', label:'Drag' };
+    return { icon:'◐', col:'#ffd166', label:'Neutral' };
+  };
 
-  // Day of week (based on closeDate)
-  const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const dowDimTable = buildDimTable(t => {
-    const d = t.closeDate || t.date;
-    if (!d) return '?';
-    return DOW[new Date(d).getDay()] || '?';
-  }, '');
-
-  // Followed plan vs not
-  const planDimTable = buildDimTable(t => t.followedPlan === 'yes' ? 'Followed Plan' : t.followedPlan === 'no' ? 'Broke Plan' : t.followedPlan === 'partial' ? 'Partial Plan' : 'Unrecorded', '');
-
-  const periodLabel = type === 'month' ? `Month ${key}` : `Quarter ${key}`;
-
-  const prompt = `You are a strict but constructive FX trading coach reviewing a trader's journal. Your job is to cut through surface stats and identify the real patterns in their behaviour and execution.
-
-## MANDATORY STRATEGY RULES (the trader must follow these — violations must be flagged):
-1. **1R Break Even Rule**: Once price hits 1R profit, the Stop Loss is AUTOMATICALLY moved to entry (BE). This is mandatory.
-2. **3R Take Profit Rule**: The full Take Profit target is set at 3R the moment a trade is opened. The trader must NOT close early. This is mandatory.
-3. **Risk Tiers**: Defense 0.25% (balance below zero), Baseline 0.5% (balance 0–1%), Growth 1% (balance above 1%). Risk level is dictated by account balance only.
-4. **BE outcome classification**: "saved" = BE rule protected the trade (price reversed after BE, would have been a loss). "stopped" = price hit 1R, SL moved to BE, then price came back and stopped out — sometimes a deeper SL based on structure is better for high-conviction zones.
-5. A trade that shows a small positive P&L but the notes say it was "closed early" is a STRATEGY BREACH — the trader sabotaged what could have been a 3R winner.
-6. The trader uses Supply & Demand / Smart Money: RBD (Rally-Base-Drop), DBD (Drop-Base-Drop), RBR (Rally-Base-Rally) zones with inducement, fresh zones, BOS (break of structure), original vs non-original zones.
-
-## ${periodLabel} — Performance Summary
-- Net P&L: ${netPnl >= 0 ? '+' : ''}$${netPnl.toFixed(2)}
-- Trades: ${periodTrades.length} total | ${wins.length} True Wins | ${losses.length} True Losses | ${bes.length} Break Evens
-- Of BE trades: ${besSaved} saved by BE rule | ${besStopped} stopped at BE
-- Win Rate (excl. BE): ${wr}%
-- Avg Win: $${avgWin.toFixed(0)} | Avg Loss: $${avgLoss.toFixed(0)} | R:R: ${rr}
-- Average Trade Score: ${avgScore}/100
-- Entry Grades: A×${gradeCounts.A}, B×${gradeCounts.B}, C×${gradeCounts.C}
-- Avg Execution: ${avgExec.toFixed(1)}/3
-- Followed Plan: ${followedPlan}/${periodTrades.length} | Broke Plan: ${notFollowed}
-
-## Key Behaviour Flags
-- Closed early (missed 3R): ${closedEarlyTrades.length} trade(s)${closedEarlyTrades.length ? ' → ' + closedEarlyTrades.map(t=>t.pair).join(', ') : ''}
-- Moved SL (strategy breach): ${movedSLTrades.length} trade(s)${movedSLTrades.length ? ' → ' + movedSLTrades.map(t=>t.pair).join(', ') : ''}
-- Forced setups: ${forcedSetups.length} trade(s)${forcedSetups.length ? ' → ' + forcedSetups.map(t=>t.pair).join(', ') : ''}
-- Emotional decisions: ${emotionalTrades.length} trade(s)${emotionalTrades.length ? ' → ' + emotionalTrades.map(t=>t.pair).join(', ') : ''}
-- SL set below 0.33R (undersized): ${sl033Trades.length} trade(s)
-- Top mistakes: ${mistakesSummary}
-- Setups traded: ${topSetups}
-- Trend direction split: ${trendSummary}
-
-## Statistical Breakdowns (use these to identify what's working and what's not)
-
-### By Setup Tag
-${setupDimTable || '  No setup data'}
-
-### By Timeframe
-${tfDimTable || '  No timeframe data'}
-
-### By Trend Direction
-${trendDimTable || '  No trend data'}
-
-### By Entry Grade
-${gradeDimTable || '  No grade data'}
-
-### By Pair / Instrument
-${pairDimTable || '  No pair data'}
-
-### By Day of Week (close date)
-${dowDimTable || '  No date data'}
-
-### By Plan Discipline
-${planDimTable || '  No plan data'}
-
-## Individual Trades (read every note carefully)
-${tradeDetails}
-
----
-
-Write a structured coaching review using HTML (use <h3> for titles, <p> for paragraphs, <ul><li> for bullets, <strong> for emphasis). Be ruthlessly specific — name the trades, quote the trader's own notes back at them when relevant, call out exact strategy violations. Do not give generic advice. Do not praise BE trades as "good risk management" — they are neutral outcomes at best.
-
-<h3>💪 Strengths</h3>
-What was genuinely executed well — only count real wins or clean BE saves. Be specific.
-
-<h3>⚠️ Weaknesses</h3>
-The honest breakdown. Call out every strategy breach. If a trade had good entry but terrible management, say so. If the trader sabotaged a 3R winner, name it and explain the full cost.
-
-<h3>📈 Improvement Plan</h3>
-3–5 concrete, rule-based actions. Reference the actual strategy rules. Examples: "Never move the SL after going BE", "Trust the 3R and don't touch the trade", "Do not open trades after NY session close".
-
-<h3>🎯 Single Focus for Next Period</h3>
-The ONE most important thing to fix. Be decisive.
-
-<h3>📊 What's Working / What's Not</h3>
-Using the statistical breakdowns provided, give a clear signal-based summary. For each dimension where there is enough data to draw a conclusion, state clearly whether it is a green light (keep doing it), red light (stop or reduce), or amber (needs more data). Format as a compact table or tight bullet list — no padding. Cover: setups, timeframes, trend direction, entry grades, pairs, days of week, and plan discipline. Flag any dimension with a clear edge or a clear drag. If sample size is too small to conclude, say so briefly and move on. Do not repeat what was already said in the coaching sections above.
-
-Keep total response under 900 words. Be a coach, not a cheerleader. No fluff.`;
-
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    pane.innerHTML = `
-      <div style="text-align:center;padding:48px 20px">
-        <div style="font-family:'EB Garamond',serif;font-size:1.1rem;color:var(--text);margin-bottom:8px">API Key Required</div>
-        <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted);margin-bottom:24px;max-width:380px;margin-left:auto;margin-right:auto">Add your Anthropic API key to enable AI Reviews. Your key stays in your browser only.</div>
-        <button class="btn btn-primary" onclick="openApiKeyModal()" style="font-size:0.95rem;padding:10px 28px">✦ Add API Key</button>
+  function dimTable(rows, title, minTrades=2) {
+    if (!rows.length) return '';
+    const rowsHtml = rows.map(r => {
+      const s = signal(r, minTrades);
+      const wrStr = r.wr !== null ? `${r.wr}% WR` : '—';
+      return `<tr>
+        <td style="padding:5px 10px 5px 0;font-weight:600;color:var(--text)">${r.label}</td>
+        <td style="padding:5px 8px;color:var(--muted);text-align:center">${r.n}</td>
+        <td style="padding:5px 8px;text-align:center;color:var(--muted)">${r.wins}W/${r.losses}L${r.bes?'/'+r.bes+'BE':''}</td>
+        <td style="padding:5px 8px;text-align:right;color:${pnlCol(r.pnl)};font-weight:600">${fmt$(r.pnl)}</td>
+        <td style="padding:5px 8px;text-align:center;color:var(--muted)">${wrStr}</td>
+        <td style="padding:5px 8px 5px 10px;text-align:center"><span style="color:${s.col};font-size:0.75rem;font-weight:700;letter-spacing:0.05em">${s.icon} ${s.label}</span></td>
+      </tr>`;
+    }).join('');
+    return `
+      <div style="margin-bottom:20px">
+        <div style="font-family:'EB Garamond',serif;font-size:0.78rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:8px">${title}</div>
+        <table style="width:100%;border-collapse:collapse;font-family:'EB Garamond',serif;font-size:0.9rem">
+          <thead><tr style="border-bottom:1px solid var(--border)">
+            <th style="padding:4px 10px 6px 0;text-align:left;color:var(--muted);font-weight:400;font-size:0.78rem;letter-spacing:0.06em"></th>
+            <th style="padding:4px 8px 6px;text-align:center;color:var(--muted);font-weight:400;font-size:0.78rem">Trades</th>
+            <th style="padding:4px 8px 6px;text-align:center;color:var(--muted);font-weight:400;font-size:0.78rem">W/L/BE</th>
+            <th style="padding:4px 8px 6px;text-align:right;color:var(--muted);font-weight:400;font-size:0.78rem">P&L</th>
+            <th style="padding:4px 8px 6px;text-align:center;color:var(--muted);font-weight:400;font-size:0.78rem">Win Rate</th>
+            <th style="padding:4px 8px 6px 10px;text-align:center;color:var(--muted);font-weight:400;font-size:0.78rem">Signal</th>
+          </tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
       </div>`;
-    return;
   }
 
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-        'x-api-key': apiKey
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1600,
-        messages: [{ role: 'user', content: prompt }]
-      })
+  // ── Build findings ───────────────────────────────────────────────────────────
+  const findings = { strengths:[], weaknesses:[], actions:[], focus:'' };
+
+  // P&L outcome
+  if (netPnl > 0) findings.strengths.push(`Positive month: net <strong>${fmt$(netPnl)}</strong> across ${periodTrades.length} trades.`);
+  else findings.weaknesses.push(`Negative month: net <strong>${fmt$(netPnl)}</strong>. Capital is moving in the wrong direction.`);
+
+  // Win rate
+  if (wr >= 60) findings.strengths.push(`Strong win rate of <strong>${wr.toFixed(0)}%</strong> — setups are being selected well.`);
+  else if (wr < 40 && (trueWins.length+trueLosses.length) >= 3) findings.weaknesses.push(`Win rate of <strong>${wr.toFixed(0)}%</strong> is below the threshold needed to be profitable at your R:R. You need either higher WR or better R:R.`);
+
+  // R:R
+  if (rr >= 2.5) findings.strengths.push(`Excellent R:R of <strong>${rr.toFixed(2)}</strong> — winners are significantly larger than losers.`);
+  else if (rr < 1 && trueLosses.length >= 2) findings.weaknesses.push(`R:R of <strong>${rr.toFixed(2)}</strong> means your average loss is bigger than your average win. The 3R rule exists to fix this — use it.`);
+
+  // BE analysis
+  if (besSaved.length > 0) findings.strengths.push(`The 1R BE rule <strong>saved ${besSaved.length} trade(s)</strong> from becoming losses — the system is working when followed.`);
+  if (besStopped.length > 0) findings.weaknesses.push(`<strong>${besStopped.length} trade(s)</strong> were stopped at BE after price reversed — consider wider structure-based SL on A-grade zones instead of mechanical 1R.`);
+
+  // Closed early — biggest potential mistake
+  if (closedEarly.length > 0) {
+    const missedR = closedEarly.map(t => {
+      const p = parseFloat(t.pnl)||0;
+      const potentialLoss = trueLosses.length ? avgLoss : 100;
+      const missed = (potentialLoss * 3) - p;
+      return `${t.pair} (closed +${fmt$(p)}, could have been ~${fmt$(potentialLoss*3)})`;
     });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      const errMsg = data?.error?.message || `API error ${response.status}`;
-      throw new Error(errMsg);
-    }
-
-    const text = data.content?.map(b => b.text || '').join('') || '';
-
-    if (!text) throw new Error('Empty response');
-
-    // Save to localStorage
-    const storageKey = `fx_ai_review_${type}_${key}`;
-    const saveData = { html: text, date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) };
-    localStorage.setItem(storageKey, JSON.stringify(saveData));
-
-    // Render result
-    pane.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-        <div style="font-family:'EB Garamond',serif;font-size:0.8rem;color:var(--muted)">✦ AI-generated · ${saveData.date}</div>
-        <button class="btn btn-ghost" style="font-size:0.8rem;padding:4px 12px" onclick="generateAiReview('${type}','${key}')">↻ Regenerate</button>
-      </div>
-      <div class="ai-review-body">${text}</div>`;
-
-  } catch(err) {
-    pane.innerHTML = `
-      <div style="text-align:center;padding:40px 20px">
-        <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--red);margin-bottom:8px">Failed to generate review.</div>
-        <div style="font-family:'EB Garamond',serif;font-size:0.8rem;color:var(--muted);margin-bottom:20px;max-width:420px;margin-left:auto;margin-right:auto">${err.message || 'Unknown error — check the browser console for details.'}</div>
-        <button class="btn btn-primary" onclick="generateAiReview('${type}','${key}')" style="font-size:0.95rem;padding:10px 28px">↻ Try Again</button>
-      </div>`;
-    console.error('AI Review error:', err);
+    findings.weaknesses.push(`<strong>Closed early on ${closedEarly.length} trade(s)</strong> — you sabotaged your own 3R rule. ${missedR.join(', ')}. This is the single most costly habit to break.`);
+    findings.actions.push(`Never close a trade manually before 3R. If the setup was good enough to enter, trust the exit. Set your TP at 3R the moment you open.`);
   }
+
+  // Moved SL
+  if (movedSL.length > 0) {
+    findings.weaknesses.push(`<strong>Moved SL on ${movedSL.length} trade(s)</strong> (${movedSL.map(t=>t.pair).join(', ')}) — this is a strategy breach. SL is set at entry, moved to BE at 1R, and never touched again.`);
+    findings.actions.push(`Once you set the SL, it has one and only one allowed move: to BE when price hits 1R. Any other SL adjustment is a rule violation.`);
+  }
+
+  // Forced setups
+  if (forcedSetups.length > 0) {
+    const forcedPnl = forcedSetups.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
+    findings.weaknesses.push(`<strong>${forcedSetups.length} forced setup(s)</strong> (${forcedSetups.map(t=>t.pair).join(', ')}) — net P&L on these: <strong style="color:${pnlCol(forcedPnl)}">${fmt$(forcedPnl)}</strong>. No setup = no trade.`);
+    findings.actions.push(`If you have to force the analysis to justify an entry, the setup doesn't exist. Walk away.`);
+  }
+
+  // Emotional / impatience
+  if (emotional.length + impatient.length > 0) {
+    const pairs = [...emotional, ...impatient].map(t=>t.pair).filter((v,i,a)=>a.indexOf(v)===i).join(', ');
+    findings.weaknesses.push(`<strong>Emotional/impatience flags on ${emotional.length+impatient.length} trade(s)</strong> (${pairs}) — emotions are overriding the system. Every deviation costs.`);
+  }
+
+  // Plan discipline
+  if (followedplan.length > 0 && brokeplan.length === 0) {
+    findings.strengths.push(`<strong>100% plan adherence</strong> — every trade followed the plan. This is the standard to maintain.`);
+  } else if (brokeplan.length > 0) {
+    const brokePnl = brokeplan.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
+    findings.weaknesses.push(`Broke the plan on <strong>${brokeplan.length}/${periodTrades.length} trades</strong>. P&L when breaking plan: <strong style="color:${pnlCol(brokePnl)}">${fmt$(brokePnl)}</strong>.`);
+    if (followedplan.length > 0) {
+      const followedPnl = followedplan.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
+      findings.strengths.push(`P&L when following the plan: <strong style="color:${pnlCol(followedPnl)}">${fmt$(followedPnl)}</strong> — the plan works when respected.`);
+    }
+  }
+
+  // Grade analysis
+  const gradeA = byGrade.find(g=>g.label==='A');
+  const gradeC = byGrade.find(g=>g.label==='C');
+  if (gradeA && gradeA.n >= 2 && gradeA.pnl > 0) findings.strengths.push(`A-grade entries are profitable: <strong>${fmt$(gradeA.pnl)}</strong> across ${gradeA.n} trades.`);
+  if (gradeC && gradeC.n > 0) {
+    findings.weaknesses.push(`<strong>${gradeC.n} C-grade trade(s)</strong> taken — P&L: <strong style="color:${pnlCol(gradeC.pnl)}">${fmt$(gradeC.pnl)}</strong>. C grades should not be taken.`);
+    findings.actions.push(`Only take A and B grade setups. If it's a C, it's a no-trade.`);
+  }
+
+  // Trend direction
+  const contTrades = byTrend.find(t=>t.label==='Continuation');
+  const ctrTrades  = byTrend.find(t=>t.label==='Countertrend');
+  if (contTrades && ctrTrades && contTrades.n >= 2 && ctrTrades.n >= 2) {
+    if (contTrades.pnl > 0 && ctrTrades.pnl < 0)
+      findings.strengths.push(`Continuation trades are your edge: <strong>${fmt$(contTrades.pnl)}</strong>. Countertrend is draining: <strong style="color:var(--red)">${fmt$(ctrTrades.pnl)}</strong>. Trade with the HTF trend.`);
+    else if (ctrTrades.pnl > contTrades.pnl)
+      findings.weaknesses.push(`Countertrend P&L (${fmt$(ctrTrades.pnl)}) is outperforming continuation (${fmt$(contTrades.pnl)}) — small sample, don't over-read, but monitor closely.`);
+  }
+
+  // Top performing setup
+  const posSetups = bySetup.filter(s => s.pnl > 0 && s.n >= 2);
+  const negSetups = bySetup.filter(s => s.pnl < 0 && s.n >= 2);
+  if (posSetups.length > 0) findings.strengths.push(`Best performing setup tag: <strong>${posSetups[0].label}</strong> — ${posSetups[0].n} trades, ${fmt$(posSetups[0].pnl)}.`);
+  if (negSetups.length > 0) findings.weaknesses.push(`Worst performing setup tag: <strong>${negSetups[negSetups.length-1].label}</strong> — ${negSetups[negSetups.length-1].n} trades, ${fmt$(negSetups[negSetups.length-1].pnl)}.`);
+
+  // Actions defaults
+  if (findings.actions.length === 0 && findings.weaknesses.length === 0) {
+    findings.actions.push('Maintain current discipline — the system is working.');
+  }
+  if (findings.actions.length < 2 && sl033.length > 0) {
+    findings.actions.push(`${sl033.length} trade(s) had SL below 0.33R — ensure your stop is sized correctly relative to the zone before entering.`);
+  }
+
+  // Focus
+  if (closedEarly.length > 0) findings.focus = 'Stop closing trades early. Set 3R TP at entry and do not touch it.';
+  else if (movedSL.length > 0) findings.focus = 'Stop moving the SL. One move only: to BE when price hits 1R.';
+  else if (forcedSetups.length > 0) findings.focus = 'No more forced entries. If the zone is not clean, there is no trade.';
+  else if (brokeplan.length > periodTrades.length/2) findings.focus = 'Follow the plan on every single trade — no exceptions.';
+  else if (netPnl < 0 && wr < 45) findings.focus = 'Setup selection — only take A and B grade zones aligned with HTF trend.';
+  else findings.focus = 'Maintain discipline and let the system work.';
+
+  // ── Build HTML output ────────────────────────────────────────────────────────
+  const sectionStyle = `margin-bottom:28px`;
+  const h3Style = `font-family:'EB Garamond',serif;font-size:1.05rem;letter-spacing:0.06em;text-transform:uppercase;color:var(--accent);margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)`;
+  const liStyle = `margin-bottom:7px;line-height:1.6`;
+
+  const strengthsHtml = findings.strengths.length
+    ? `<ul style="margin:0;padding-left:18px">${findings.strengths.map(s=>`<li style="${liStyle}">${s}</li>`).join('')}</ul>`
+    : `<p style="color:var(--muted);font-style:italic">No clear strengths identified this period — focus on fixing the weaknesses below.</p>`;
+
+  const weaknessesHtml = findings.weaknesses.length
+    ? `<ul style="margin:0;padding-left:18px">${findings.weaknesses.map(s=>`<li style="${liStyle}">${s}</li>`).join('')}</ul>`
+    : `<p style="color:var(--muted);font-style:italic">No major weaknesses flagged — clean period.</p>`;
+
+  const actionsHtml = findings.actions.length
+    ? `<ul style="margin:0;padding-left:18px">${findings.actions.map(s=>`<li style="${liStyle}">${s}</li>`).join('')}</ul>`
+    : `<p style="color:var(--muted);font-style:italic">Keep doing what you're doing.</p>`;
+
+  const statsHtml = `
+    ${dimTable(bySetup, 'By Setup Tag')}
+    ${dimTable(byTf, 'By Timeframe')}
+    ${dimTable(byTrend, 'By Trend Direction')}
+    ${dimTable(byGrade, 'By Entry Grade')}
+    ${dimTable(byPair, 'By Pair')}
+    ${dimTable(byDow, 'By Day of Week')}
+    ${dimTable(byPlan, 'By Plan Discipline')}`;
+
+  const html = `
+    <div style="${sectionStyle}">
+      <h3 style="${h3Style}">💪 Strengths</h3>
+      <div class="ai-review-body">${strengthsHtml}</div>
+    </div>
+    <div style="${sectionStyle}">
+      <h3 style="${h3Style}">⚠️ Weaknesses</h3>
+      <div class="ai-review-body">${weaknessesHtml}</div>
+    </div>
+    <div style="${sectionStyle}">
+      <h3 style="${h3Style}">📈 Improvement Plan</h3>
+      <div class="ai-review-body">${actionsHtml}</div>
+    </div>
+    <div style="margin-bottom:28px;padding:14px 18px;background:var(--surface2);border-left:3px solid var(--accent);border-radius:2px">
+      <div style="font-family:'EB Garamond',serif;font-size:0.78rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:6px">🎯 Single Focus</div>
+      <div class="ai-review-body" style="font-size:1rem"><strong>${findings.focus}</strong></div>
+    </div>
+    <div style="${sectionStyle}">
+      <h3 style="${h3Style}">📊 What's Working / What's Not</h3>
+      <div style="font-family:'EB Garamond',serif;font-size:0.8rem;color:var(--muted);margin-bottom:16px">● Edge &nbsp; ◐ Neutral &nbsp; ○ Too few trades &nbsp; ● Drag</div>
+      ${statsHtml}
+    </div>`;
+
+  // Save and render
+  const storageKey = `fx_ai_review_${type}_${key}`;
+  const saveData = { html, date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) };
+  localStorage.setItem(storageKey, JSON.stringify(saveData));
+
+  pane.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-family:'EB Garamond',serif;font-size:0.8rem;color:var(--muted)">✦ Generated · ${saveData.date}</div>
+      <button class="btn btn-ghost" style="font-size:0.8rem;padding:4px 12px" onclick="generateAiReview('${type}','${key}')">↻ Regenerate</button>
+    </div>
+    ${html}`;
 }
+
 
 function switchMonthTab(ym, tab) {
   ['cal','stats','review','ai'].forEach(t => {
@@ -4872,50 +4830,11 @@ function calNav(dir) {}
 function calGoToday() {}
 function renderMonthlyTabOld() {}
 
-function getApiKey() {
-  const raw = localStorage.getItem('fx_anthropic_api_key') || '';
-  return raw.replace(/[\s]/g, '').replace(/[\u200B-\u200D\uFEFF]/g, '');
-}
 
-function updateApiKeyIndicator() {
-  const dot = document.getElementById('apiKeyIndicator');
-  if (dot) dot.style.background = getApiKey() ? '#6dbf9e' : 'var(--border)';
-}
 
-function openApiKeyModal() {
-  const input = document.getElementById('apiKeyInput');
-  const status = document.getElementById('apiKeyStatus');
-  if (input) input.value = getApiKey();
-  if (status) status.style.display = 'none';
-  document.getElementById('apiKeyModal').classList.add('open');
-  setTimeout(() => input && input.focus(), 50);
-}
 
-function closeApiKeyModal() {
-  document.getElementById('apiKeyModal').classList.remove('open');
-}
 
-function saveApiKey() {
-  // Strip ALL whitespace including newlines, tabs, zero-width chars that can sneak in from copy-paste
-  const raw = document.getElementById('apiKeyInput').value || '';
-  const val = raw.replace(/[\s]/g, '').replace(/[\u200B-\u200D\uFEFF]/g, '');
-  const status = document.getElementById('apiKeyStatus');
-  if (!val) { status.style.display='block'; status.style.color='var(--red)'; status.textContent='Please enter a key.'; return; }
-  if (!val.startsWith('sk-ant-')) { status.style.display='block'; status.style.color='var(--red)'; status.textContent='Key should start with sk-ant- — check you copied the full key.'; return; }
-  localStorage.setItem('fx_anthropic_api_key', val);
-  updateApiKeyIndicator();
-  status.style.display='block'; status.style.color='var(--green)'; status.textContent='✓ Saved: ' + val.slice(0,14) + '...' + val.slice(-4);
-  setTimeout(() => closeApiKeyModal(), 1400);
-  toast('API key saved');
-}
 
-function clearApiKey() {
-  localStorage.removeItem('fx_anthropic_api_key');
-  document.getElementById('apiKeyInput').value = '';
-  const status = document.getElementById('apiKeyStatus');
-  status.style.display='block'; status.style.color='var(--muted)'; status.textContent='Key cleared.';
-  updateApiKeyIndicator();
-}
 
 function toggleJournalMenu() {
   const menu = document.getElementById('journalMenu');
@@ -5708,7 +5627,6 @@ if (currentAccount === '5ERS') {
 autoSyncReviews();
 renderTable();
 document.getElementById('f_date').value = new Date().toISOString().slice(0,10);
-updateApiKeyIndicator();
 </script>
 </body>
 </html>
