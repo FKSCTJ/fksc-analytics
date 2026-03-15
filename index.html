@@ -54,13 +54,31 @@
   .acct-switcher { display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; }
   .logo { font-family: 'Playfair Display', serif; font-size: 1.15rem; font-weight: 900; letter-spacing: 0.01em; color: var(--accent); }
   .logo span { color: var(--muted); font-weight: 700; }
-  .header-tag { font-family: 'EB Garamond', serif; font-size: 0.9rem; color: var(--muted); border: 1px solid var(--border); padding: 4px 10px; border-radius: 2px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .header-tag { font-family: 'EB Garamond', serif; font-size: 0.9rem; color: var(--muted); border: 1px solid var(--border); padding: 4px 10px; border-radius: 2px; letter-spacing: 0.1em; text-transform: uppercase; transition: color 0.2s, border-color 0.2s, background 0.2s; }
+  .header-tag:hover { color: var(--text); border-color: var(--accent); background: rgba(123,175,212,0.07); }
   .nav-tabs { display: flex; gap: 2px; padding: 16px 0 0; border-bottom: 1px solid var(--border); }
   .nav-tab { font-family: 'EB Garamond', serif; font-size: 0.95rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 18px; border: none; background: none; color: #7a93ae; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
   .nav-tab:hover { color: var(--text); }
   .nav-tab.active { color: var(--text); border-bottom-color: var(--accent); }
   .panel { display: none; padding: 32px 0; }
   .panel.active { display: block; }
+  .panel.active:not(#tab-strategy) .chart-card,
+  .panel.active:not(#tab-strategy) .rv-card,
+  .panel.active:not(#tab-strategy) .table-wrap {
+    animation: stackIn 0.7s ease both;
+  }
+  .panel.active:not(#tab-strategy) .chart-card:nth-child(1) { animation-delay: 0.00s; }
+  .panel.active:not(#tab-strategy) .chart-card:nth-child(2) { animation-delay: 0.08s; }
+  .panel.active:not(#tab-strategy) .chart-card:nth-child(3) { animation-delay: 0.16s; }
+  .panel.active:not(#tab-strategy) .chart-card:nth-child(4) { animation-delay: 0.24s; }
+  .panel.active:not(#tab-strategy) .chart-card:nth-child(5) { animation-delay: 0.32s; }
+  .panel.active:not(#tab-strategy) .chart-card:nth-child(6) { animation-delay: 0.40s; }
+  .panel.active:not(#tab-strategy) .chart-card:nth-child(7) { animation-delay: 0.48s; }
+  .panel.active:not(#tab-strategy) .chart-card:nth-child(8) { animation-delay: 0.56s; }
+  @keyframes stackIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
   .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
   @media(max-width:700px){ .stats-grid { grid-template-columns: repeat(2,1fr); } }
   .stat-card { background: var(--surface); border: 1px solid var(--border); padding: 20px; border-radius: 4px; position: relative; overflow: hidden; }
@@ -230,7 +248,8 @@
     padding: 7px 14px; border-radius: 3px; border: 1px solid var(--border);
     background: var(--surface2); color: var(--muted); cursor: pointer; transition: all 0.15s;
   }
-  .base-btn:hover { border-color: var(--accent); color: var(--text); }
+  .no-spinner::-webkit-outer-spin-button,
+  .no-spinner::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   .base-btn.base-active { background: rgba(123,175,212,0.12); border-color: var(--accent); color: var(--accent); }
 
   .multi-select { position: relative; font-family: 'EB Garamond', serif; }
@@ -240,13 +259,45 @@
     padding: 9px 12px; cursor: pointer; font-size: 0.95rem; color: var(--text);
     transition: border-color 0.15s;
   }
+  #periodDropdown .ms-trigger {
+    padding: 4px 10px;
+    min-width: 0;
+    width: fit-content;
+    background: transparent;
+    border-radius: 2px;
+    border-color: var(--border);
+    font-family: 'EB Garamond', serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    transition: border-color 0.2s, background 0.2s, color 0.2s;
+  }
+  #periodDropdown .ms-trigger:hover,
+  #periodDropdown.open .ms-trigger {
+    color: var(--text);
+    border-color: var(--accent);
+    background: rgba(123,175,212,0.07);
+  }
+  #periodDropdown .ms-dropdown {
+    left: auto; right: 0; min-width: 160px;
+  }
   .ms-trigger:hover, .multi-select.open .ms-trigger { border-color: var(--accent); }
   .ms-dropdown {
-    display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    position: absolute; top: calc(100% + 8px); left: 0; right: 0;
     background: var(--surface); border: 1px solid var(--accent); border-radius: 3px;
     z-index: 50; overflow: hidden;
+    transform-origin: top;
+    transform: scaleY(0) translateY(-8px);
+    opacity: 0;
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+    pointer-events: none;
+    display: block;
   }
-  .multi-select.open .ms-dropdown { display: block; }
+  .multi-select.open .ms-dropdown {
+    transform: scaleY(1) translateY(0);
+    opacity: 1;
+    pointer-events: all;
+  }
   #journalMenu {
     transform-origin: top;
     transform: scaleY(0) translateY(-8px);
@@ -412,7 +463,6 @@
     <button class="nav-tab" onclick="switchTab('strategy', this)">Strategy</button>
     <button class="nav-tab" onclick="switchTab('risk', this)">Risk-Adjusted</button>
     <button class="nav-tab" onclick="switchTab('timing', this)">Timing</button>
-    <button class="nav-tab" onclick="switchTab('equity', this)">Equity</button>
     <button class="nav-tab" onclick="switchTab('monthly', this)">Monthly Review</button>
     <button class="nav-tab" onclick="switchTab('challenge', this)" id="challengeNavTab">Challenge</button>
   </nav>
@@ -428,10 +478,10 @@
   <div id="tab-overview" class="panel active">
     <div id="dashMeta" style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted);padding:14px 0 4px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
       <span id="dashMetaLeft">0 trades</span>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="multi-select" id="periodDropdown" style="min-width:160px">
+      <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+        <div class="multi-select" id="periodDropdown" style="position:relative;width:fit-content">
           <div class="ms-trigger" onclick="togglePeriodDropdown()" id="periodTrigger">
-            <span id="periodLabel">All Time</span>
+            <span id="periodLabel" style="display:none">All Time</span>
             <span style="font-size:0.9rem;color:var(--muted)">▼</span>
           </div>
           <div class="ms-dropdown" id="period-drop">
@@ -450,7 +500,15 @@
       </div>
     </div>
     <div id="dsub-overview" class="dsub active">
+      <div class="chart-card-title" style="margin-bottom:12px">&#9632; KPI'S</div>
       <div class="kpi-grid" id="kpiGrid"></div>
+      <div style="margin-bottom:24px">
+        <div class="chart-card-title" style="margin-bottom:12px">&#9632; EQUITY CURVE</div>
+        <div class="chart-card" style="padding:24px">
+          <canvas id="equityCanvas" height="200"></canvas>
+        </div>
+        <div class="kpi-grid" id="kpiEquity" style="margin-top:12px"></div>
+      </div>
       <div style="margin-bottom:24px">
         <div class="chart-card-title" style="margin-bottom:12px">&#9632; WEEKLY P&amp;L DISTRIBUTION</div>
         <div class="chart-card" style="padding:24px">
@@ -604,16 +662,6 @@
   </div>
 
   <!-- EQUITY & DRAWDOWN -->
-  <div id="tab-equity" class="panel">
-    <div id="dsub-equity" class="dsub active">
-      <div class="kpi-grid" id="kpiEquity"></div>
-      <div class="chart-card" style="margin-top:8px">
-        <div class="chart-card-title">Equity Curve</div>
-        <canvas id="equityCanvas" height="200"></canvas>
-      </div>
-    </div>
-  </div>
-
   <!-- SIZING & DISCIPLINE -->
   <div id="tab-sizing" class="panel">
     <div id="dsub-sizing" class="dsub active">
@@ -1383,7 +1431,6 @@ function renderDashSubTab(name){
   else if(name==='risk')renderRisk(s);
   else if(name==='timing')renderTiming(s);
   else if(name==='quality')renderQuality(s);
-  else if(name==='equity')renderEquityTab(s);
   else if(name==='sizing')renderSizing(s);
 }
 
@@ -1429,7 +1476,11 @@ function togglePeriodDropdown() {
   const dd = document.getElementById('periodDropdown');
   const isOpen = dd.classList.contains('open');
   document.querySelectorAll('.multi-select.open').forEach(el => el.classList.remove('open'));
-  if (!isOpen) dd.classList.add('open');
+  if (!isOpen) {
+    dd.classList.add('open');
+  } else {
+    document.getElementById('periodLabel').style.display = 'none';
+  }
 }
 
 function setPeriod(value, label) {
@@ -1446,6 +1497,7 @@ function setPeriod(value, label) {
     `<div class="ms-option ${v===value?'ms-selected':''}" onclick="setPeriod('${v}','${l}')">${v===value?'✓ ':'\u00a0\u00a0'}${l}</div>`
   ).join('');
   document.getElementById('periodDropdown').classList.remove('open');
+  document.getElementById('periodLabel').style.display = 'none';
   const custom = value === 'custom';
   document.getElementById('customPeriodInputs').style.display = custom ? 'flex' : 'none';
   renderOverviewFiltered();
@@ -1463,8 +1515,9 @@ function renderOverviewFiltered() {
   const dates = filtered.map(t=>t.date).filter(Boolean).sort();
   const period = currentPeriod || 'all';
   const labels = {all:'All Time', current_month:'Current Month', last_month:'Last Month', current_year:'Current Year', custom:'Custom Period'};
+  const fmtD = d => { const p=d.split('-'); return `${p[2]}/${p[1]}/${p[0]}`; };
   document.getElementById('dashMetaLeft').textContent = dates.length
-    ? `${filtered.length} trades · ${dates[0]} – ${dates[dates.length-1]} · ${labels[period]||''}`
+    ? `${filtered.length} trades · ${fmtD(dates[0])} – ${fmtD(dates[dates.length-1])} · ${labels[period]||''}`
     : `0 trades · ${labels[period]||''}`;
   // Overall banner stats
   const statsEl = document.getElementById('overallStats');
@@ -1476,7 +1529,9 @@ function renderOverviewFiltered() {
     }).join(' · ');
     statsEl.textContent = breakdown;
   }
-  renderOverview(calcStatsFor(filtered), filtered);
+  const s = calcStatsFor(filtered);
+  renderOverview(s, filtered);
+  renderEquityTab(s, filtered);
 }
 
 function calcStatsFor(arr) {
@@ -1595,7 +1650,7 @@ function renderOverview(s, filteredArr) {
   const pnlPct = startBal>0 ? ` · ${(pnl/startBal*100).toFixed(2)}%` : '';
   const hasTradeBal = trades.some(t=>t.balance);
   const storedBal = parseFloat(localStorage.getItem(`fx_startbal_${currentAccount}`)||'0');
-  const balInputHtml = (currentAccount !== 'OVERALL' && !hasTradeBal) ? `
+  const balInputHtml = (currentAccount !== 'OVERALL' && currentAccount !== 'FXIFY' && !hasTradeBal) ? `
     <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px">
       <span style="font-family:'EB Garamond',serif;font-size:0.8rem;color:var(--muted);white-space:nowrap">Start balance</span>
       <input type="number" value="${storedBal||''}" placeholder="e.g. 100000"
@@ -1631,26 +1686,32 @@ function renderOverview(s, filteredArr) {
     kpiCard('△','Max Drawdown',`$${s.maxDD}`,'neg','Peak to trough',getComment('maxDD',s.maxDD))+
     kpiCard('$','Expectancy',`$${s.expectancy}`,parseFloat(s.expectancy)>0?'pos':'neg','Expected $ per trade',getComment('expectancy',s.expectancy))+
     kpiCard('◌','Avg R-Multiple',`${s.avgR}R`,parseFloat(s.avgR)>=1?'pos':'warn','Risk-adjusted return',getComment('avgR',s.avgR))+
-    kpiCard('▣','Sizing Gap',`${s.avgLotsWin} vs ${s.avgLotsLoss}`,parseFloat(s.avgLotsLoss)>parseFloat(s.avgLotsWin)?'neg':'pos','Win lots vs Loss lots',getComment('sizing',parseFloat(s.avgLotsLoss)-parseFloat(s.avgLotsWin)));
+    kpiCard('◈','Recovery Factor',s.maxDD>0?(parseFloat(s.totalPnl)/parseFloat(s.maxDD)).toFixed(2):'—','hi','Net P&L / Max DD','Above 2.0 is excellent resilience');
 
   const arr = filteredArr || trades;
   const weekMap={};
-  arr.forEach(t=>{if(!t.date)return;const d=new Date(t.date);const m=new Date(d);m.setDate(d.getDate()-((d.getDay()+6)%7));const key=m.toISOString().slice(5,10);weekMap[key]=(weekMap[key]||0)+(parseFloat(t.pnl)||0);});
+  arr.forEach(t=>{
+    const raw=t.closeDate||t.date;
+    if(!raw)return;
+    const d=new Date(raw);
+    const m=new Date(d);
+    m.setDate(d.getDate()-((d.getDay()+6)%7));
+    const key=m.toISOString().slice(0,10); // full YYYY-MM-DD for sorting
+    weekMap[key]=(weekMap[key]||0)+(parseFloat(t.pnl)||0);
+  });
+  const fmtWeek=k=>{const p=k.split('-');return `${p[2]}/${p[1]}`;};
   // Fill in all weeks between first and last trade (including empty ones)
   const sortedKeys=Object.keys(weekMap).sort();
   if(sortedKeys.length>1){
-    const start=new Date('2024-'+sortedKeys[0]); // use full date
-    const allKeys=Object.keys(weekMap).sort();
-    const firstDate=new Date(new Date().getFullYear()-1+'-'+allKeys[0]);
-    // get monday of first week
-    let cur=new Date(arr.filter(t=>t.date).map(t=>new Date(t.date)).sort((a,b)=>a-b)[0]);
+    const allDates=arr.filter(t=>t.closeDate||t.date).map(t=>new Date(t.closeDate||t.date)).sort((a,b)=>a-b);
+    let cur=new Date(allDates[0]);
     cur.setDate(cur.getDate()-((cur.getDay()+6)%7));
-    const last=new Date(arr.filter(t=>t.date).map(t=>new Date(t.date)).sort((a,b)=>b-a)[0]);
+    const last=new Date(allDates[allDates.length-1]);
     last.setDate(last.getDate()-((last.getDay()+6)%7));
-    while(cur<=last){const k=cur.toISOString().slice(5,10);if(!(k in weekMap))weekMap[k]=0;cur.setDate(cur.getDate()+7);}
+    while(cur<=last){const k=cur.toISOString().slice(0,10);if(!(k in weekMap))weekMap[k]=0;cur.setDate(cur.getDate()+7);}
   }
   const weeks=Object.entries(weekMap).sort((a,b)=>a[0].localeCompare(b[0])).slice(-16);
-  mkChart('weeklyPnlCanvas',{type:'bar',data:{labels:weeks.map(([w])=>w),datasets:[{data:weeks.map(([,v])=>parseFloat(v.toFixed(2))),backgroundColor:weeks.map(([,v])=>v>0?'rgba(0,229,160,0.75)':v<0?'rgba(232,85,85,0.75)':'rgba(255,255,255,0.1)'),borderRadius:3}]},options:{...CD,scales:{...CD.scales,y:{...CD.scales.y,ticks:{...CD.scales.y.ticks,callback:v=>`$${v}`}}}}});
+  mkChart('weeklyPnlCanvas',{type:'bar',data:{labels:weeks.map(([w])=>fmtWeek(w)),datasets:[{data:weeks.map(([,v])=>parseFloat(v.toFixed(2))),backgroundColor:weeks.map(([,v])=>v>0?'rgba(0,229,160,0.75)':v<0?'rgba(232,85,85,0.75)':'rgba(255,255,255,0.1)'),borderRadius:3}]},options:{...CD,scales:{...CD.scales,y:{...CD.scales.y,ticks:{...CD.scales.y.ticks,callback:v=>`$${v}`}}}}});
 
   // Volatility & Distribution stats for overview
   const pnlsOv = arr.map(t=>parseFloat(t.pnl)||0);
@@ -2062,22 +2123,17 @@ function renderQuality(s){
   document.getElementById('qualityWorst').innerHTML = worstTrades.length ? worstTrades.map(tradeRow).join('') : '<p style="font-family:EB Garamond;font-size:0.95rem;color:var(--muted)">No reviewed trades yet.</p>';
 }
 
-function renderEquityTab(s){
-  const totalComm = trades.reduce((a,t)=>a+(parseFloat(t.commission)||0),0);
-  const totalSwap = trades.reduce((a,t)=>a+(parseFloat(t.swap)||0),0);
-  const totalCost = totalComm + totalSwap;
-  const sortedEq = [...trades].sort((a,b)=>new Date(a.date)-new Date(b.date));
-  const startBalEq = getStartingBalance(currentAccount, trades);
+function renderEquityTab(s, filteredArr){
+  const arr = filteredArr || trades;
+  const totalComm = arr.reduce((a,t)=>a+(parseFloat(t.commission)||0),0);
+  const totalSwap = arr.reduce((a,t)=>a+(parseFloat(t.swap)||0),0);
+  const startBalEq = getStartingBalance(currentAccount, arr);
   const pnlEq = parseFloat(s.totalPnl);
   const pnlPctEq = startBalEq>0 ? ` · ${(pnlEq/startBalEq*100).toFixed(2)}%` : '';
   document.getElementById('kpiEquity').innerHTML=
-    kpiCard('◉','Net P&L',`$${pnlEq>=0?'+':''}${s.totalPnl}`,pnlEq>=0?'pos':'neg',`${s.total} trades${pnlPctEq}`,getComment('pnl',s.totalPnl))+
-    kpiCard('△','Max Drawdown',`$${s.maxDD}`,'neg','Peak to trough',getComment('maxDD',s.maxDD))+
-    kpiCard('◇','Profit Factor',s.profitFactor,parseFloat(s.profitFactor)>=1.5?'pos':'warn',`Gross win $${s.grossWin}`,getComment('profitFactor',s.profitFactor))+
-    kpiCard('◈','Recovery Factor',s.maxDD>0?(parseFloat(s.totalPnl)/parseFloat(s.maxDD)).toFixed(2):'—','hi','Net P&L / Max DD','Above 2.0 is excellent resilience')+
     kpiCard('$','Total Commission',`$${Math.abs(totalComm).toFixed(2)}`,totalComm<=0?'neg':'pos',`${s.total} trades`,totalComm<0?'Costs eating into profits — factor into edge calculation':'No commission recorded')+
     kpiCard('↺','Total Swap',`$${totalSwap>=0?'+':''}${totalSwap.toFixed(2)}`,totalSwap>=0?'pos':'neg','Overnight financing',totalSwap<0?'Negative swap — avoid holding overnight where possible':'Positive swap — carry trade benefit');
-  const sorted=[...trades].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const sorted=[...arr].sort((a,b)=>new Date(a.date)-new Date(b.date));
   let eq=0;const labels=['Start'],data=[0],eqMeta=[null];
   sorted.forEach(t=>{eq+=parseFloat(t.pnl)||0;labels.push(t.date?t.date.slice(5):'');data.push(parseFloat(eq.toFixed(2)));eqMeta.push(t);});
   const ctx=document.getElementById('equityCanvas').getContext('2d');
@@ -3223,21 +3279,23 @@ function renderStrategy() {
       </div>`}
     </div>`;
 
-  panel.innerHTML = `
-    <div class="section-heading" style="margin-bottom:16px">&#9632; Strategy Analysis</div>
+  // Only rebuild full panel on first render or account switch
+  const existingHeading = panel.querySelector('.section-heading');
+  if (!existingHeading) {
+    panel.innerHTML = `
+      <div class="section-heading" style="margin-bottom:16px">&#9632; Strategy Analysis</div>
+      <div id="strat-static" style="margin-bottom:20px">
+        ${equityEmbedHtml}
+      </div>
+      <div id="strat-dynamic"></div>
+      ${beSection}
+      ${sl033Section}
+      ${mistakesSection}`;
+  }
 
-    <div style="margin-bottom:20px">
-      ${equityEmbedHtml}
-      ${trendSection}
-      ${tfCardHtml}
-      ${baseCardHtml}
-    </div>
-
-    ${beSection}
-
-    ${sl033Section}
-
-    ${mistakesSection}`;
+  // Always update the dynamic drill section only
+  const dynEl = document.getElementById('strat-dynamic');
+  if (dynEl) dynEl.innerHTML = `${trendSection}${tfCardHtml}${baseCardHtml}`;
 
   // Draw charts
   requestAnimationFrame(() => {
@@ -4256,7 +4314,8 @@ function renderChallenge() {
       <div style="display:flex;align-items:center;gap:8px">
         <span style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted)">Account size</span>
         <input type="number" value="${accountBal}" placeholder="${config.defaultBal}"
-          style="width:100px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'EB Garamond',serif;font-size:0.9rem;padding:4px 8px"
+          style="width:100px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'EB Garamond',serif;font-size:0.9rem;padding:4px 8px;-moz-appearance:textfield"
+          class="no-spinner"
           onchange="saveChallengeBalance(this.value)" onblur="saveChallengeBalance(this.value)">
       </div>
     </div>`;
@@ -4504,10 +4563,12 @@ function renderAccountButtons() {
 document.addEventListener('click', e => {
   if (!e.target.closest('#journalMenuBtn')) {
     const menu = document.getElementById('journalMenu');
-    if (menu) menu.style.display = 'none';
+    if (menu) menu.classList.remove('menu-open');
   }
   if (!e.target.closest('.multi-select')) {
     document.querySelectorAll('.multi-select.open').forEach(el => el.classList.remove('open'));
+    const lbl = document.getElementById('periodLabel');
+    if (lbl) lbl.style.display = 'none';
   }
 });
 
