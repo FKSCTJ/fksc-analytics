@@ -21,13 +21,29 @@
     --red: #e85555;
     --surface-light: #1e3a56;
   }
+  [data-theme="light"] {
+    --bg: #f0f4f8;
+    --surface: #ffffff;
+    --surface2: #e8eef5;
+    --border: #c8d8e8;
+    --accent: #2e6a9e;
+    --accent2: #2e6a9e;
+    --accent3: #3d7db5;
+    --text: #1a2e42;
+    --muted: #5a7a94;
+    --green: #1a7a55;
+    --red: #c0392b;
+    --surface-light: #d4e4f0;
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { transition: background 0.25s, color 0.25s; }
   body {
     background: var(--bg);
     color: var(--text);
     font-family: 'EB Garamond', serif;
     min-height: 100vh;
     overflow-x: hidden;
+    transition: background 0.25s, color 0.25s;
   }
   body::before {
     content: '';
@@ -56,6 +72,48 @@
   .logo span { color: var(--muted); font-weight: 700; }
   .header-tag { font-family: 'EB Garamond', serif; font-size: 0.9rem; color: var(--muted); border: 1px solid var(--border); padding: 4px 10px; border-radius: 2px; letter-spacing: 0.1em; text-transform: uppercase; transition: color 0.2s, border-color 0.2s, background 0.2s; }
   .header-tag:hover { color: var(--text); border-color: var(--accent); background: rgba(123,175,212,0.07); }
+  /* Theme toggle */
+  .theme-toggle { display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 10px;border:1px solid var(--border);border-radius:2px;background:none;transition:all 0.15s;flex-shrink:0; }
+  .theme-toggle:hover { border-color:var(--accent);background:rgba(123,175,212,0.07); }
+  .theme-toggle-track { width:32px;height:17px;background:var(--border);border-radius:20px;position:relative;transition:background 0.2s;flex-shrink:0; }
+  [data-theme="light"] .theme-toggle-track { background:var(--accent); }
+  .theme-toggle-thumb { position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:transform 0.2s,background 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+  [data-theme="light"] .theme-toggle-thumb { transform:translateX(15px); }
+  .theme-toggle-label { font-family:'EB Garamond',serif;font-size:0.82rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);transition:color 0.15s;white-space:nowrap; }
+  /* Light mode overrides for grid bg */
+  [data-theme="light"] body::before { display:none; }
+  [data-theme="light"] header { background:rgba(240,244,248,0.95); }
+  [data-theme="light"] .nav-tab { color:#5a7a94; }
+  [data-theme="light"] .nav-tab.active,.nav-tab:hover { color:var(--accent); }
+  [data-theme="light"] .chart-card { background:#fff;border-color:#c8d8e8; }
+  [data-theme="light"] .kpi-card { background:#fff;border-color:#c8d8e8; }
+  [data-theme="light"] .modal { background:#fff; }
+  [data-theme="light"] .form-group input,[data-theme="light"] .form-group select,[data-theme="light"] .form-group textarea { background:#f0f4f8;border-color:#c8d8e8;color:var(--text); }
+  [data-theme="light"] .btn { background:#e8eef5;color:var(--text); }
+  [data-theme="light"] .btn-primary { background:var(--accent);color:#fff; }
+  [data-theme="light"] .scroll-table { background:#fff; }
+  [data-theme="light"] .trade-table th { background:#e8eef5;color:var(--muted); }
+  [data-theme="light"] .trade-table td { border-color:#e0eaf0; }
+  [data-theme="light"] .trade-table tr:hover td { background:#f5f9fc; }
+  [data-theme="light"] #quoteBanner { background:#e8eef5; }
+  [data-theme="light"] .ms-trigger { background:#f0f4f8;border-color:#c8d8e8; }
+  [data-theme="light"] .ms-options { background:#fff;border-color:#c8d8e8; }
+  [data-theme="light"] .ms-option:hover { background:#f0f4f8; }
+  [data-theme="light"] #rmOverlay { background:#f0f4f8; }
+  [data-theme="light"] .rm-page { color:#1a2e42; }
+  [data-theme="light"] .rm-card { background:rgba(46,106,158,0.05);border-color:rgba(46,106,158,0.18); }
+  [data-theme="light"] .rm-card-accent { background:rgba(26,122,85,0.06);border-color:rgba(26,122,85,0.2); }
+  [data-theme="light"] .rm-card-warn { background:rgba(180,120,0,0.06);border-color:rgba(180,120,0,0.2); }
+  [data-theme="light"] .rm-highlight { background:rgba(46,106,158,0.08);border-left-color:var(--accent); }
+  [data-theme="light"] .rm-section-number { color:rgba(46,106,158,0.2); }
+  [data-theme="light"] .rm-sim-stat { background:rgba(46,106,158,0.05);border-color:rgba(46,106,158,0.15); }
+  [data-theme="light"] .rm-divider { border-color:rgba(46,106,158,0.15); }
+  [data-theme="light"] .rm-conc-table td { color:var(--text); }
+  [data-theme="light"] .rm-streak-detail { color:var(--text); }
+  [data-theme="light"] .rm-card-body { color:#2a4a62; }
+  [data-theme="light"] .rm-cover-title { color:#1a2e42; }
+  [data-theme="light"] .rm-section-title { color:#1a2e42; }
+  [data-theme="light"] #corrAssetA,[data-theme="light"] #corrAssetB { background:#f0f4f8;border-color:#c8d8e8;color:var(--text); }
   .nav-tabs { display: flex; justify-content: space-between; padding: 16px 0 0; border-bottom: 1px solid var(--border); }
   .nav-tab { font-family: 'EB Garamond', serif; font-size: 0.95rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 4px; border: none; background: none; color: #7a93ae; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; white-space: nowrap; }
   .nav-tab:hover { color: var(--text); border-bottom-color: var(--accent); opacity: 0.6; }
@@ -486,7 +544,7 @@
   <div class="wrapper">
     <div class="logo">FKSC<span> / </span>KPI Analyser</div>
     <div class="acct-switcher" id="acctSwitcher"></div>
-    <div style="flex:1;display:flex;justify-content:flex-end">
+    <div style="flex:1;display:flex;justify-content:flex-end;align-items:center;gap:10px">
     <div class="header-tag" style="position:relative;cursor:pointer" onclick="toggleJournalMenu()" id="journalMenuBtn">
       ···
       <div id="journalMenu" style="position:absolute;top:calc(100% + 8px);right:0;background:var(--surface);border:1px solid var(--accent);border-radius:3px;min-width:170px;z-index:200;overflow:hidden">
@@ -498,6 +556,11 @@
         <div class="ms-option" onclick="exportBackup();toggleJournalMenu()" style="padding:10px 16px;color:var(--green);display:flex;align-items:center;gap:8px">&#11015; Export backup<span id="unsavedIndicator" style="display:none;width:8px;height:8px;border-radius:50%;background:#ffd166;flex-shrink:0"></span></div>
         <div class="ms-option" onclick="document.getElementById('importBackupFile').click();toggleJournalMenu()" style="padding:10px 16px;color:var(--green)">&#11014; Import backup</div>
         <input type="file" id="importBackupFile" accept=".json" style="display:none" onchange="importBackup(this)">
+        <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+        <div class="ms-option" onclick="toggleTheme()" style="padding:10px 16px;display:flex;align-items:center;justify-content:space-between">
+          <span id="themeLabel">Light mode</span>
+          <div class="theme-toggle-track" style="margin-left:12px"><div class="theme-toggle-thumb"></div></div>
+        </div>
         <div style="border-top:1px solid var(--border);margin:4px 0"></div>
         <div class="ms-option" onclick="openAddAccountModal();toggleJournalMenu()" style="padding:10px 16px;color:var(--accent)">+ Add account</div>
 
@@ -6946,6 +7009,30 @@ function renderSystemFunded() {
   `;
 }
 
+// ── Theme Toggle ─────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const isLight = html.getAttribute('data-theme') === 'light';
+  const newTheme = isLight ? 'dark' : 'light';
+  html.setAttribute('data-theme', newTheme);
+  localStorage.setItem('fksc_theme', newTheme);
+  updateThemeLabel(newTheme);
+}
+
+function updateThemeLabel(theme) {
+  const label = document.getElementById('themeLabel');
+  if (label) label.textContent = theme === 'light' ? 'Dark' : 'Light';
+}
+
+(function initTheme() {
+  const saved = localStorage.getItem('fksc_theme');
+  if (saved === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    // Label updated after DOM loads
+    document.addEventListener('DOMContentLoaded', () => updateThemeLabel('light'));
+  }
+})();
+
 // ── Correlation Tool ─────────────────────────────────────────────────────────
 const CORR_DATA = [
   { a:'EURUSD', b:'GBPUSD',  corr:0.88,  note:'Both vs USD' },
@@ -7190,75 +7277,73 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRMPage(
 </script>
 
 <style>
-  #rmOverlay { position:fixed;inset:0;z-index:9999;background:#0a1220;overflow-y:auto;opacity:0;pointer-events:none;transition:opacity 0.35s ease; }
+  #rmOverlay { position:fixed;inset:0;z-index:9999;background:#122040;overflow-y:auto;opacity:0;pointer-events:none;transition:opacity 0.35s ease; }
   #rmOverlay.rm-open { opacity:1;pointer-events:all; }
-  .rm-close { position:fixed;top:24px;right:32px;background:none;border:1px solid rgba(123,175,212,0.25);color:#7bafd4;font-family:'EB Garamond',serif;font-size:0.85rem;letter-spacing:0.1em;text-transform:uppercase;padding:7px 18px;border-radius:2px;cursor:pointer;transition:all 0.15s;z-index:10000; }
-  .rm-close:hover { background:rgba(123,175,212,0.08);color:#c8d8e8;border-color:#7bafd4; }
-  .rm-page { max-width:960px;margin:0 auto;padding:60px 40px 100px;font-family:'EB Garamond',serif;color:#c8d8e8; }
-  .rm-cover { text-align:center;padding:80px 0 70px;border-bottom:1px solid rgba(123,175,212,0.12);margin-bottom:70px; }
-  .rm-cover-title { font-family:'Playfair Display',serif;font-size:clamp(2.4rem,5vw,4rem);font-weight:900;letter-spacing:0.06em;color:#c8d8e8;margin:0 0 14px;text-transform:uppercase; }
-  .rm-cover-sub { font-size:0.85rem;letter-spacing:0.2em;text-transform:uppercase;color:#7bafd4; }
-  .rm-cover-line { width:60px;height:1px;background:linear-gradient(90deg,transparent,#7bafd4,transparent);margin:20px auto 0; }
-  .rm-fksc-badge { font-family:'Playfair Display',serif;font-size:0.7rem;letter-spacing:0.25em;text-transform:uppercase;color:rgba(123,175,212,0.4);margin-top:30px; }
+  .rm-close { position:fixed;top:24px;right:32px;background:none;border:1px solid rgba(123,175,212,0.35);color:#9ec8e0;font-family:'EB Garamond',serif;font-size:0.85rem;letter-spacing:0.1em;text-transform:uppercase;padding:7px 18px;border-radius:2px;cursor:pointer;transition:all 0.15s;z-index:10000; }
+  .rm-close:hover { background:rgba(123,175,212,0.12);color:#e0eaf4;border-color:#9ec8e0; }
+  .rm-page { max-width:960px;margin:0 auto;padding:60px 40px 100px;font-family:'EB Garamond',serif;color:#deeaf6; }
+  .rm-cover { text-align:center;padding:80px 0 70px;border-bottom:1px solid rgba(158,200,224,0.25);margin-bottom:70px; }
+  .rm-cover-title { font-family:'Playfair Display',serif;font-size:clamp(2.4rem,5vw,4rem);font-weight:900;letter-spacing:0.06em;color:#edf4fb;margin:0 0 14px;text-transform:uppercase; }
+  .rm-cover-sub { font-size:0.85rem;letter-spacing:0.2em;text-transform:uppercase;color:#9ec8e0; }
+  .rm-cover-line { width:60px;height:1px;background:linear-gradient(90deg,transparent,#9ec8e0,transparent);margin:20px auto 0; }
+  .rm-fksc-badge { font-family:'Playfair Display',serif;font-size:0.7rem;letter-spacing:0.25em;text-transform:uppercase;color:rgba(158,200,224,0.55);margin-top:30px; }
   .rm-intro { max-width:640px;margin:0 auto 80px;text-align:center; }
-  .rm-intro p { font-size:1.05rem;line-height:1.85;color:rgba(200,216,232,0.75);margin:0 0 20px; }
-  .rm-intro .rm-focus { font-size:0.85rem;letter-spacing:0.18em;text-transform:uppercase;color:#7bafd4;margin-top:28px; }
+  .rm-intro p { font-size:1.05rem;line-height:1.85;color:rgba(222,234,246,0.9);margin:0 0 20px; }
+  .rm-intro .rm-focus { font-size:0.85rem;letter-spacing:0.18em;text-transform:uppercase;color:#9ec8e0;margin-top:28px; }
   .rm-section { margin-bottom:70px; }
   .rm-section-header { display:flex;align-items:flex-start;gap:24px;margin-bottom:36px; }
-  .rm-section-number { font-family:'Playfair Display',serif;font-size:3.5rem;font-weight:900;line-height:1;color:rgba(123,175,212,0.15);flex-shrink:0;padding-top:4px; }
-  .rm-section-label { font-size:0.72rem;letter-spacing:0.2em;text-transform:uppercase;color:#7bafd4;margin-bottom:6px; }
-  .rm-section-title { font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:700;color:#c8d8e8;margin:0; }
-  .rm-section-line { width:40px;height:2px;background:#7bafd4;margin-top:12px;opacity:0.5; }
+  .rm-section-number { font-family:'Playfair Display',serif;font-size:3.5rem;font-weight:900;line-height:1;color:rgba(158,200,224,0.30);flex-shrink:0;padding-top:4px; }
+  .rm-section-label { font-size:0.72rem;letter-spacing:0.2em;text-transform:uppercase;color:#9ec8e0;margin-bottom:6px; }
+  .rm-section-title { font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:700;color:#edf4fb;margin:0; }
+  .rm-section-line { width:40px;height:2px;background:#9ec8e0;margin-top:12px;opacity:0.7; }
   .rm-two-col { display:grid;grid-template-columns:1fr 1fr;gap:24px; }
   @media(max-width:700px){ .rm-two-col { grid-template-columns:1fr; } }
-  .rm-card { background:rgba(123,175,212,0.04);border:1px solid rgba(123,175,212,0.12);border-radius:4px;padding:28px 28px 24px; }
-  .rm-card-accent { background:rgba(0,229,160,0.04);border:1px solid rgba(0,229,160,0.15); }
-  .rm-card-warn { background:rgba(255,209,102,0.04);border:1px solid rgba(255,209,102,0.15); }
-  .rm-card-title { font-size:0.72rem;letter-spacing:0.18em;text-transform:uppercase;color:#7bafd4;margin-bottom:10px; }
+  .rm-card { background:rgba(158,200,224,0.10);border:1px solid rgba(158,200,224,0.22);border-radius:4px;padding:28px 28px 24px; }
+  .rm-card-accent { background:rgba(0,229,160,0.08);border:1px solid rgba(0,229,160,0.25); }
+  .rm-card-warn { background:rgba(255,209,102,0.08);border:1px solid rgba(255,209,102,0.25); }
+  .rm-card-title { font-size:0.72rem;letter-spacing:0.18em;text-transform:uppercase;color:#9ec8e0;margin-bottom:10px; }
   .rm-card-title.green { color:#6dbf9e; } .rm-card-title.gold { color:#ffd166; }
-  .rm-card-rule { font-size:0.75rem;letter-spacing:0.12em;text-transform:uppercase;color:#7bafd4;margin-bottom:14px; }
+  .rm-card-rule { font-size:0.75rem;letter-spacing:0.12em;text-transform:uppercase;color:#9ec8e0;margin-bottom:14px; }
   .rm-card-rule.green { color:#6dbf9e; }
-  .rm-card-body { font-size:0.97rem;line-height:1.75;color:rgba(200,216,232,0.7); }
-  .rm-card-body strong { color:#c8d8e8;font-weight:700; }
-  .rm-highlight { background:rgba(123,175,212,0.06);border-left:3px solid #7bafd4;padding:20px 24px;border-radius:0 4px 4px 0;margin:28px 0;font-size:1.02rem;line-height:1.75;color:rgba(200,216,232,0.75); }
-  .rm-highlight strong { color:#c8d8e8; }
-  .rm-tier { display:flex;align-items:center;gap:20px;padding:20px 0;border-bottom:1px solid rgba(123,175,212,0.08); }
+  .rm-card-body { font-size:0.97rem;line-height:1.75;color:rgba(222,234,246,0.85); }
+  .rm-card-body strong { color:#edf4fb;font-weight:700; }
+  .rm-highlight { background:rgba(158,200,224,0.13);border-left:3px solid #9ec8e0;padding:20px 24px;border-radius:0 4px 4px 0;margin:28px 0;font-size:1.02rem;line-height:1.75;color:rgba(222,234,246,0.90); }
+  .rm-highlight strong { color:#edf4fb; }
+  .rm-tier { display:flex;align-items:center;gap:20px;padding:20px 0;border-bottom:1px solid rgba(158,200,224,0.14); }
   .rm-tier:last-child { border-bottom:none; }
   .rm-tier-pct { font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:900;min-width:70px; }
-  .rm-tier-pct.red { color:#e85555; } .rm-tier-pct.blue { color:#7bafd4; } .rm-tier-pct.green { color:#6dbf9e; }
+  .rm-tier-pct.red { color:#e85555; } .rm-tier-pct.blue { color:#9ec8e0; } .rm-tier-pct.green { color:#6dbf9e; }
   .rm-tier-label { font-size:0.72rem;letter-spacing:0.18em;text-transform:uppercase;min-width:90px; }
-  .rm-tier-label.red { color:#e85555; } .rm-tier-label.blue { color:#7bafd4; } .rm-tier-label.green { color:#6dbf9e; }
-  .rm-tier-desc { font-size:0.95rem;color:rgba(200,216,232,0.6);line-height:1.5; }
-  .rm-cycle { display:grid;grid-template-columns:110px 1fr;gap:14px;align-items:start;padding:18px 0;border-bottom:1px solid rgba(123,175,212,0.08); }
+  .rm-tier-label.red { color:#e85555; } .rm-tier-label.blue { color:#9ec8e0; } .rm-tier-label.green { color:#6dbf9e; }
+  .rm-tier-desc { font-size:0.95rem;color:rgba(222,234,246,0.75);line-height:1.5; }
+  .rm-cycle { display:grid;grid-template-columns:110px 1fr;gap:14px;align-items:start;padding:18px 0;border-bottom:1px solid rgba(158,200,224,0.12); }
   .rm-cycle:last-child { border-bottom:none; }
-  .rm-cycle-label { font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:#7bafd4; }
-  .rm-cycle-desc { font-size:0.95rem;color:rgba(200,216,232,0.65);line-height:1.6; }
+  .rm-cycle-label { font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:#9ec8e0; }
+  .rm-cycle-desc { font-size:0.95rem;color:rgba(222,234,246,0.80);line-height:1.6; }
   .rm-cycle-desc span { color:#6dbf9e;font-weight:700; }
-  .rm-equilibrium { text-align:center;padding:40px 28px;border:1px solid rgba(123,175,212,0.15);border-radius:4px;background:rgba(123,175,212,0.03); }
-  .rm-equilibrium-num { font-family:'Playfair Display',serif;font-size:5rem;font-weight:900;line-height:1;color:#7bafd4;opacity:0.7; }
-  .rm-equilibrium-label { font-size:0.75rem;letter-spacing:0.25em;text-transform:uppercase;color:#7bafd4;margin-top:8px; }
-  .rm-equilibrium-desc { font-size:0.9rem;line-height:1.7;color:rgba(200,216,232,0.55);margin-top:16px; }
-  .rm-buffer-big { text-align:center;padding:36px 20px;border:1px solid rgba(255,209,102,0.2);border-radius:4px;background:rgba(255,209,102,0.03); }
+  .rm-equilibrium { text-align:center;padding:40px 28px;border:1px solid rgba(158,200,224,0.25);border-radius:4px;background:rgba(158,200,224,0.08); }
+  .rm-equilibrium-num { font-family:'Playfair Display',serif;font-size:5rem;font-weight:900;line-height:1;color:#9ec8e0;opacity:0.9; }
+  .rm-equilibrium-label { font-size:0.75rem;letter-spacing:0.25em;text-transform:uppercase;color:#9ec8e0;margin-top:8px; }
+  .rm-equilibrium-desc { font-size:0.9rem;line-height:1.7;color:rgba(222,234,246,0.70);margin-top:16px; }
+  .rm-buffer-big { text-align:center;padding:36px 20px;border:1px solid rgba(255,209,102,0.30);border-radius:4px;background:rgba(255,209,102,0.07); }
   .rm-buffer-big-num { font-family:'Playfair Display',serif;font-size:5rem;font-weight:900;line-height:1;color:#ffd166; }
-  .rm-buffer-big-label { font-size:0.75rem;letter-spacing:0.25em;text-transform:uppercase;color:#ffd166;margin-top:8px;opacity:0.7; }
-  .rm-mandatory { font-size:0.72rem;letter-spacing:0.18em;text-transform:uppercase;color:#e85555;margin-top:22px;opacity:0.8; }
-  .rm-divider { border:none;border-top:1px solid rgba(123,175,212,0.08);margin:56px 0; }
-  /* Concurrent trades table */
+  .rm-buffer-big-label { font-size:0.75rem;letter-spacing:0.25em;text-transform:uppercase;color:#ffd166;margin-top:8px;opacity:0.9; }
+  .rm-mandatory { font-size:0.72rem;letter-spacing:0.18em;text-transform:uppercase;color:#e85555;margin-top:22px; }
+  .rm-divider { border:none;border-top:1px solid rgba(158,200,224,0.18);margin:56px 0; }
   .rm-conc-table { width:100%;border-collapse:collapse;margin-top:4px; }
-  .rm-conc-table th { font-size:0.68rem;letter-spacing:0.14em;text-transform:uppercase;color:rgba(123,175,212,0.5);padding:8px 12px;text-align:left;font-weight:400;border-bottom:1px solid rgba(123,175,212,0.1); }
-  .rm-conc-table td { font-family:'EB Garamond',serif;font-size:0.93rem;padding:10px 12px;border-bottom:1px solid rgba(123,175,212,0.06);color:rgba(200,216,232,0.7);line-height:1.4; }
-  .rm-conc-table td strong { color:#c8d8e8; }
+  .rm-conc-table th { font-size:0.68rem;letter-spacing:0.14em;text-transform:uppercase;color:rgba(158,200,224,0.65);padding:8px 12px;text-align:left;font-weight:400;border-bottom:1px solid rgba(158,200,224,0.18); }
+  .rm-conc-table td { font-family:'EB Garamond',serif;font-size:0.93rem;padding:10px 12px;border-bottom:1px solid rgba(158,200,224,0.10);color:rgba(222,234,246,0.85);line-height:1.4; }
+  .rm-conc-table td strong { color:#edf4fb; }
   .rm-conc-table tr:last-child td { border-bottom:none; }
-  /* Simulation */
   .rm-sim-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0; }
   @media(max-width:700px){ .rm-sim-grid { grid-template-columns:1fr 1fr; } }
-  .rm-sim-stat { background:rgba(123,175,212,0.04);border:1px solid rgba(123,175,212,0.1);border-radius:4px;padding:18px 16px;text-align:center; }
+  .rm-sim-stat { background:rgba(158,200,224,0.09);border:1px solid rgba(158,200,224,0.18);border-radius:4px;padding:18px 16px;text-align:center; }
   .rm-sim-stat-val { font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;line-height:1;margin-bottom:6px; }
-  .rm-sim-stat-label { font-size:0.7rem;letter-spacing:0.14em;text-transform:uppercase;color:rgba(123,175,212,0.5); }
-  .rm-streak-row { display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(123,175,212,0.06);font-size:0.88rem; }
+  .rm-sim-stat-label { font-size:0.7rem;letter-spacing:0.14em;text-transform:uppercase;color:rgba(158,200,224,0.65); }
+  .rm-streak-row { display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(158,200,224,0.10);font-size:0.88rem; }
   .rm-streak-row:last-child { border-bottom:none; }
-  .rm-streak-seq { font-family:'Playfair Display',serif;font-size:0.75rem;letter-spacing:0.1em;color:rgba(123,175,212,0.4);min-width:55px; }
-  .rm-streak-detail { color:rgba(200,216,232,0.6);flex:1; }
+  .rm-streak-seq { font-family:'Playfair Display',serif;font-size:0.75rem;letter-spacing:0.1em;color:rgba(158,200,224,0.55);min-width:55px; }
+  .rm-streak-detail { color:rgba(222,234,246,0.75);flex:1; }
   .rm-streak-buf { font-weight:700;min-width:60px;text-align:right; }
 </style>
 
@@ -7547,7 +7632,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRMPage(
         <div class="rm-card-title">Simulation Results — A+ Rule at 50% WR</div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:12px">
           <div style="text-align:center">
-            <div style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;color:#ffd166;line-height:1">~17</div>
+            <div style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;color:#ffd166;line-height:1">~8</div>
             <div style="font-family:'EB Garamond',serif;font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(200,216,232,0.35);margin-top:4px">Triggers per year</div>
           </div>
           <div style="text-align:center">
@@ -7555,7 +7640,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRMPage(
             <div style="font-family:'EB Garamond',serif;font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(200,216,232,0.35);margin-top:4px">EV per trigger</div>
           </div>
           <div style="text-align:center">
-            <div style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;color:#6dbf9e;line-height:1">163%</div>
+            <div style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;color:#6dbf9e;line-height:1">80.9%</div>
             <div style="font-family:'EB Garamond',serif;font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(200,216,232,0.35);margin-top:4px">A+ cashout per year</div>
           </div>
           <div style="text-align:center">
@@ -7585,14 +7670,14 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRMPage(
           Base WR: <strong>40%</strong> + 15% BE &nbsp;·&nbsp; R:R: <strong>1:3</strong> &nbsp;·&nbsp; Start: <strong>8%</strong> &nbsp;·&nbsp; Floor: <strong>5%</strong><br>
           Cashout: <strong>+4% trigger → withdraw to 8%</strong> &nbsp;·&nbsp; A+: <strong>≥14% → 2% trade → cashout to 8%</strong> at 50% WR<br>
           Trade limits active &nbsp;·&nbsp; Defense = 2 × 0.25% only<br>
-          Trials: <strong>100,000</strong> &nbsp;·&nbsp; Duration: <strong>36 months · 432 cycles</strong>
+          Trials: <strong>100,000</strong> &nbsp;·&nbsp; Duration: <strong>36 months · 480 trades (160/yr · 3/week)</strong>
         </div>
       </div>
 
       <!-- Key stats -->
       <div class="rm-sim-grid" style="margin-bottom:28px">
         <div class="rm-sim-stat" style="border-color:rgba(0,229,160,0.3)">
-          <div class="rm-sim-stat-val" style="color:#6dbf9e">99.92%</div>
+          <div class="rm-sim-stat-val" style="color:#6dbf9e">99.96%</div>
           <div class="rm-sim-stat-label">Survived 36 months</div>
         </div>
         <div class="rm-sim-stat" style="border-color:rgba(0,229,160,0.3)">
@@ -7604,16 +7689,16 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRMPage(
           <div class="rm-sim-stat-label">FTMO limit breached (-10%)</div>
         </div>
         <div class="rm-sim-stat">
-          <div class="rm-sim-stat-val" style="color:#ffd166">1.25%</div>
+          <div class="rm-sim-stat-val" style="color:#ffd166">1.50%</div>
           <div class="rm-sim-stat-label">Buffer 1st percentile low</div>
         </div>
         <div class="rm-sim-stat">
-          <div class="rm-sim-stat-val" style="color:#6dbf9e">227.6%</div>
+          <div class="rm-sim-stat-val" style="color:#6dbf9e">113.2%</div>
           <div class="rm-sim-stat-label">Total cashout per year</div>
         </div>
         <div class="rm-sim-stat">
-          <div class="rm-sim-stat-val" style="color:#7bafd4">30.4</div>
-          <div class="rm-sim-stat-label">Avg cashout events/year</div>
+          <div class="rm-sim-stat-val" style="color:#7bafd4">8.4</div>
+          <div class="rm-sim-stat-label">A+ triggers per year</div>
         </div>
       </div>
 
@@ -7627,17 +7712,20 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRMPage(
         <div class="rm-card-title">Annual Cashout Breakdown</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-top:12px">
           <div style="text-align:center;padding:16px;border-right:1px solid rgba(123,175,212,0.08)">
-            <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;color:#7bafd4;line-height:1">64.5%</div>
+            <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;color:#7bafd4;line-height:1">32.3%</div>
             <div style="font-family:'EB Garamond',serif;font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(200,216,232,0.35);margin-top:6px">Standard cashouts</div>
           </div>
           <div style="text-align:center;padding:16px;border-right:1px solid rgba(123,175,212,0.08)">
-            <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;color:#6dbf9e;line-height:1">163.1%</div>
+            <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;color:#6dbf9e;line-height:1">80.9%</div>
             <div style="font-family:'EB Garamond',serif;font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(200,216,232,0.35);margin-top:6px">A+ cashouts</div>
           </div>
           <div style="text-align:center;padding:16px">
-            <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;color:#ffd166;line-height:1">227.6%</div>
+            <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;color:#ffd166;line-height:1">113.2%</div>
             <div style="font-family:'EB Garamond',serif;font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(200,216,232,0.35);margin-top:6px">Total per year</div>
           </div>
+        </div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.82rem;color:rgba(200,216,232,0.35);margin-top:10px;line-height:1.6">
+          At 160 trades/year, the A+ rule fires ~8 times — driven by 3-win cycles (+9% spike to 17%) and 2-win+BE cycles (+6% to exactly 14%). It remains the dominant income driver despite the realistic trade frequency.
         </div>
       </div>
 
@@ -7657,39 +7745,27 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRMPage(
           <tbody>
             <tr style="border-bottom:1px solid rgba(123,175,212,0.06)">
               <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.7)">Total cashed/yr</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.45);text-align:center">119.3%</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#6dbf9e;text-align:center;font-weight:700">227.8%</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#ffd166;text-align:center">+108.5%</td>
+              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.45);text-align:center">86.5%</td>
+              <td style="padding:9px 12px;font-size:0.9rem;color:#6dbf9e;text-align:center;font-weight:700">113.2%</td>
+              <td style="padding:9px 12px;font-size:0.9rem;color:#ffd166;text-align:center">+26.7%</td>
             </tr>
             <tr style="border-bottom:1px solid rgba(123,175,212,0.06)">
               <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.7)">Standard cashouts/yr</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.45);text-align:center">49.7%</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.7);text-align:center;font-weight:700">64.7%</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.35);text-align:center">+15.0%</td>
+              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.45);text-align:center">36.2%</td>
+              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.7);text-align:center;font-weight:700">32.3%</td>
+              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.35);text-align:center">—</td>
             </tr>
             <tr style="border-bottom:1px solid rgba(123,175,212,0.06)">
               <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.7)">A+ cashouts/yr</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.45);text-align:center">69.6%</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#6dbf9e;text-align:center;font-weight:700">163.1%</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#ffd166;text-align:center">+93.5%</td>
+              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.45);text-align:center">50.3%</td>
+              <td style="padding:9px 12px;font-size:0.9rem;color:#6dbf9e;text-align:center;font-weight:700">80.9%</td>
+              <td style="padding:9px 12px;font-size:0.9rem;color:#ffd166;text-align:center">+30.6%</td>
             </tr>
             <tr style="border-bottom:1px solid rgba(123,175,212,0.06)">
               <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.7)">A+ triggers/yr</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.45);text-align:center">6.2</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#6dbf9e;text-align:center;font-weight:700">16.9</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#ffd166;text-align:center">+10.7</td>
-            </tr>
-            <tr style="border-bottom:1px solid rgba(123,175,212,0.06)">
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.7)">EV per cycle</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.45);text-align:center">0.74%</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#6dbf9e;text-align:center;font-weight:700">1.34%</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#ffd166;text-align:center">+81%</td>
-            </tr>
-            <tr style="border-bottom:1px solid rgba(123,175,212,0.06)">
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.7)">Time at Growth 3×1%</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.45);text-align:center">14.1%</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#6dbf9e;text-align:center;font-weight:700">48.1%</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#ffd166;text-align:center">+34%</td>
+              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.45);text-align:center">4.5</td>
+              <td style="padding:9px 12px;font-size:0.9rem;color:#6dbf9e;text-align:center;font-weight:700">8.4</td>
+              <td style="padding:9px 12px;font-size:0.9rem;color:#ffd166;text-align:center">+3.9</td>
             </tr>
             <tr style="border-bottom:1px solid rgba(123,175,212,0.06)">
               <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.7)">FXIFY breached (-5%)</td>
@@ -7706,7 +7782,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRMPage(
           </tbody>
         </table>
         <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:rgba(200,216,232,0.4);margin-top:12px;line-height:1.6">
-          6% keeps you safe. 8% makes it a policy — and nearly doubles the income. The two buffer-building cycles are not delayed gratification. They are the price of operating at full capacity.
+          6% keeps you safe. 8% makes it a policy — and generates 31% more income annually. The two buffer-building cycles are not delayed gratification. They are the price of operating at full capacity.
         </div>
       </div>
 
