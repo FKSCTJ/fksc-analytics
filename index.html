@@ -1447,7 +1447,7 @@ function switchAccount(acct, el) {
 }
 
 // SYNC: fields copied across accounts on review save
-const SYNC_FIELDS = ['entryRating','execRating','followedPlan','beOutcome','sl033','session','mistakes','timeframeReview','setup','trendDir','reviewNotes'];
+const SYNC_FIELDS = ['entryRating','execRating','followedPlan','beOutcome','sl033','session','phase','mistakes','timeframeReview','setup','trendDir','reviewNotes'];
 const SYNC_WINDOW_MINUTES = 30;
 const SYNC_WINDOW_DAYS = 1; // also try matching by closeDate within 1 day
 
@@ -3007,6 +3007,12 @@ function renderReviewList() {
               </div>
             </div>
             <div class="form-group">
+              <label>Phase</label>
+              <div id="rv_phase_${i}" style="display:flex;gap:8px">
+                ${['A','B','C','D'].map(p => `<button class="plan-btn ${t.phase===p?'active-yes':''}" onclick="event.stopPropagation();setPhaseFor(${i},'${p}')">${p}</button>`).join('')}
+              </div>
+            </div>
+            <div class="form-group">
               <label>Base</label>
               <div class="multi-select" id="ms-${i}">
                 <div class="ms-trigger" onclick="toggleMultiSelect(${i})">
@@ -3323,7 +3329,73 @@ function renderStrategy() {
       <div style="font-family:'EB Garamond',serif;font-size:0.95rem;color:var(--muted)">No BE outcomes logged yet. Tag trades in Trade Review → Break Even field.</div>
     </div>`;
 
-  // ── Trend vs Countertrend ──
+  // ── Phase Analysis ──
+  const PHASES = ['A','B','C','D'];
+  const phaseGroups = {};
+  PHASES.forEach(p => { phaseGroups[p] = trades.filter(t => t.phase === p); });
+  const phaseTagged = PHASES.reduce((a,p) => a + phaseGroups[p].length, 0);
+
+  function phaseStats(arr) {
+    if (!arr.length) return null;
+    const wins   = arr.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl));
+    const losses = arr.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl));
+    const be     = arr.filter(t => isBreakEven(t.pnl));
+    const total  = arr.reduce((a,t) => a + (parseFloat(t.pnl)||0), 0);
+    const denom  = wins.length + losses.length;
+    const wr     = denom > 0 ? Math.round((wins.length / denom) * 100) : null;
+    return { n: arr.length, wins: wins.length, losses: losses.length, be: be.length, wr, total };
+  }
+
+  const phaseSection = phaseTagged > 0 ? (() => {
+    const rows = PHASES.map(p => ({ p, s: phaseStats(phaseGroups[p]) })).filter(x => x.s);
+    const maxAbs = Math.max(...rows.map(x => Math.abs(x.s.total)), 1);
+    const rowsHtml = rows.map(({ p, s }) => {
+      const pnlCol = s.total > 0 ? 'var(--green)' : s.total < 0 ? 'var(--red)' : 'var(--muted)';
+      const barW   = Math.round((Math.abs(s.total) / maxAbs) * 100);
+      const barCol = s.total > 0 ? 'var(--green)' : 'var(--red)';
+      const wrStr  = s.wr !== null ? `${s.wr}% WR` : '—';
+      const beTxt  = s.be > 0 ? ` · ${s.be}BE` : '';
+      const dot    = s.total > 0 && s.wr !== null && s.wr >= 50 ? `<span style="color:var(--green)">●</span>`
+                   : s.total < 0 ? `<span style="color:var(--red)">●</span>`
+                   : `<span style="color:#ffd166">◐</span>`;
+      return `<tr>
+        <td style="padding:8px 12px 8px 0;font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--text);width:32px">${p}</td>
+        <td style="padding:8px;color:var(--muted);text-align:center;font-size:0.88rem">${s.n}</td>
+        <td style="padding:8px;text-align:center;font-size:0.88rem;color:var(--muted)">${s.wins}W/${s.losses}L${beTxt}</td>
+        <td style="padding:8px;text-align:center;font-size:0.88rem;color:var(--text)">${wrStr}</td>
+        <td style="padding:8px;text-align:right;font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:${pnlCol}">${s.total>=0?'+':''}$${s.total.toFixed(0)}</td>
+        <td style="padding:8px 0 8px 12px;width:120px">
+          <div style="background:var(--surface2);border-radius:2px;height:6px;overflow:hidden">
+            <div style="height:100%;width:${barW}%;background:${barCol};border-radius:2px;transition:width 0.4s"></div>
+          </div>
+        </td>
+        <td style="padding:8px 0 8px 8px;text-align:center">${dot}</td>
+      </tr>`;
+    }).join('');
+    return `<div style="margin-bottom:20px">
+      <div class="chart-card-title" style="margin-bottom:12px">&#9632; PHASE ANALYSIS <span style="font-size:0.9rem;color:var(--muted);font-weight:400;margin-left:8px">${phaseTagged} trades tagged</span></div>
+      <div class="chart-card" style="padding:16px 20px">
+        <table style="width:100%;border-collapse:collapse;font-family:'EB Garamond',serif">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border)">
+              <th style="padding:4px 12px 8px 0;font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-align:left;font-weight:400">Phase</th>
+              <th style="padding:4px 8px 8px;font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-align:center;font-weight:400">Trades</th>
+              <th style="padding:4px 8px 8px;font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-align:center;font-weight:400">W/L</th>
+              <th style="padding:4px 8px 8px;font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-align:center;font-weight:400">WR</th>
+              <th style="padding:4px 8px 8px;font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-align:right;font-weight:400">P&amp;L</th>
+              <th style="padding:4px 12px 8px;font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);font-weight:400"></th>
+              <th style="padding:4px 0 8px;font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);font-weight:400"></th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        <div style="font-family:'EB Garamond',serif;font-size:0.78rem;color:var(--muted);margin-top:12px;opacity:0.6">● Edge &nbsp; ◐ Neutral &nbsp; ● Drag &nbsp;·&nbsp; Tag trades in Trade Review → Phase field</div>
+      </div>
+    </div>`;
+  })() : `<div class="chart-card" style="margin-bottom:20px;padding:16px 20px">
+    <div class="chart-card-title" style="margin-bottom:8px">&#9632; PHASE ANALYSIS</div>
+    <div style="font-family:'EB Garamond',serif;font-size:0.95rem;color:var(--muted)">No phases tagged yet. Tag trades in Trade Review → Phase field (A / B / C / D).</div>
+  </div>`;
   const trendTypes = ['Continuation', 'Countertrend'];
   const trendGroups = {};
   trendTypes.forEach(type => {
@@ -3591,10 +3663,14 @@ function renderStrategy() {
       <div id="strat-static" style="margin-bottom:20px">
       </div>
       <div id="strat-dynamic"></div>
+      <div id="strat-phase"></div>
       ${beSection}
       ${sl033Section}
       ${mistakesSection}`;
   }
+  // Always update phase section
+  const phaseEl = document.getElementById('strat-phase');
+  if (phaseEl) phaseEl.innerHTML = phaseSection;
 
   // Always update the dynamic drill section only
   const dynEl = document.getElementById('strat-dynamic');
@@ -6391,6 +6467,23 @@ function setSessionFor(idx, val) {
   }
 }
 
+function setPhaseFor(idx, val) {
+  const t = trades[idx];
+  t.phase = t.phase === val ? '' : val;
+  if (currentAccount === 'OVERALL' && t._account) {
+    const src = (allTrades[t._account]||[]).find(x => x.date===t.date && x.pair===t.pair && x.pnl===t.pnl);
+    if (src) { src.phase = t.phase; saveAccount(t._account); }
+  } else {
+    save();
+  }
+  const container = document.getElementById(`rv_phase_${idx}`);
+  if (container) {
+    container.querySelectorAll('.plan-btn').forEach(btn => {
+      btn.className = 'plan-btn' + (t.phase === btn.textContent.trim() ? ' active-yes' : '');
+    });
+  }
+}
+
 function htMoveHabit(id, dir) {
   const habits = htGetHabits();
   const idx = habits.findIndex(h => h.id === id);
@@ -7103,7 +7196,7 @@ const CORR_DATA = [
   { a:'EURCAD', b:'NZDCAD',  corr:0.83,  note:'Shared CAD quote' },
   { a:'GBPCAD', b:'AUDCAD',  corr:0.85,  note:'Shared CAD quote' },
   { a:'GBPCAD', b:'NZDCAD',  corr:0.84,  note:'Shared CAD quote' },
-  { a:'USDCAD', b:'EURCAD',  corr:-0.78, note:'Inverse — USDCAD vs EURCAD' },
+  { a:'USDCAD', b:'EURCAD',  corr:-0.78, note:'Inverse — CAD shared quote but EUR/USD move inversely, partially offsetting' },
   // CHF crosses
   { a:'GBPCHF', b:'EURCHF',  corr:0.86,  note:'Shared CHF quote' },
   // Indices
@@ -7119,6 +7212,18 @@ const CORR_DATA = [
   { a:'XAUUSD', b:'EURUSD', corr:0.75,  note:'Both anti-USD assets' },
   { a:'USOIL',  b:'USDCAD', corr:-0.78, note:'Oil up = CAD up = USDCAD down' },
   { a:'USOIL',  b:'NZDCAD', corr:0.72,  note:'Oil drives CAD' },
+  // EUR crosses vs USD commodity pairs
+  { a:'EURNZD', b:'USDCAD', corr:0.62,  note:'NZD and CAD both commodity currencies — moderate inverse link' },
+  { a:'EURAUD', b:'USDCAD', corr:0.60,  note:'AUD and CAD both commodity currencies' },
+  { a:'EURNZD', b:'USDCHF', corr:0.65,  note:'Both inversely tied to risk-on currencies' },
+  { a:'EURAUD', b:'USDCHF', corr:0.63,  note:'Both inversely tied to risk-on currencies' },
+  { a:'EURCAD', b:'USDNZD', corr:0.58,  note:'Commodity currency cross link' },
+  // GBP crosses vs USD commodity pairs
+  { a:'GBPNZD', b:'USDCAD', corr:0.61,  note:'NZD and CAD commodity link' },
+  { a:'GBPAUD', b:'USDCAD', corr:0.59,  note:'AUD and CAD commodity link' },
+  // NZD vs AUD cross pairs
+  { a:'NZDUSD', b:'AUDUSD', corr:0.94,  note:'Highly correlated — Pacific neighbours' },
+  { a:'NZDCAD', b:'AUDCAD', corr:0.88,  note:'Shared commodity quote currency' },
   // EUR index vs EUR crosses
   { a:'GER40',  b:'EURUSD', corr:0.72,  note:'EUR risk-on correlation' },
   { a:'GER40',  b:'EURGBP', corr:0.68,  note:'EUR risk-on correlation' },
@@ -7441,7 +7546,6 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRMPage(
               <tr><td><strong>≥ 8%</strong></td><td style="color:#6dbf9e">1%</td><td style="text-align:center">3</td><td style="color:#6dbf9e">3%</td></tr>
               <tr><td><strong>≥ 7%</strong></td><td style="color:#6dbf9e">1%</td><td style="text-align:center">2</td><td style="color:#6dbf9e">2%</td></tr>
               <tr><td><strong>≥ 6%</strong></td><td style="color:#6dbf9e">1%</td><td style="text-align:center">1</td><td style="color:#6dbf9e">1%</td></tr>
-              <tr><td><strong>≥ 6%</strong></td><td style="color:#7bafd4">0.5%</td><td style="text-align:center">2</td><td style="color:#7bafd4">1%</td></tr>
               <tr><td><strong>&gt;5% &lt;6%</strong></td><td style="color:#7bafd4">0.5%</td><td style="text-align:center">2</td><td style="color:#7bafd4">1%</td></tr>
               <tr><td><strong>≤ 5%</strong></td><td style="color:#e85555">0.25%</td><td style="text-align:center">2</td><td style="color:#e85555">0.50%</td></tr>
             </tbody>
