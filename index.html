@@ -1497,8 +1497,10 @@ function autoSyncReviews() {
   });
 
   ACCOUNTS.forEach(srcAcct => {
-    (allTrades[srcAcct]||[]).forEach(srcTrade => {
-      if (!hasRealReview(srcTrade)) return;
+    (allTrades[srcAcct]||[]).forEach((srcTrade, srcIdx) => {
+      const srcSS = localStorage.getItem(`fx_ss_${srcAcct}_${srcIdx}`);
+      const hasSS = srcSS && JSON.parse(srcSS).length > 0;
+      if (!hasRealReview(srcTrade) && !hasSS) return;
       ACCOUNTS.filter(a => a !== srcAcct).forEach(destAcct => {
         const matches = findSimilarTrades(srcTrade, destAcct);
         matches.forEach(({t, i}) => {
@@ -1508,6 +1510,13 @@ function autoSyncReviews() {
           t.syncedFrom = srcAcct;
           t.syncedAt = new Date().toISOString();
           allTrades[destAcct][i] = t;
+          // Sync screenshots — both localStorage and in-memory
+          if (srcSS) {
+            try {
+              localStorage.setItem(`fx_ss_${destAcct}_${i}`, srcSS);
+              allTrades[destAcct][i].screenshots = JSON.parse(srcSS); // update in-memory
+            } catch(e) {}
+          }
           syncCount++;
         });
         if (matches.length) saveAccount(destAcct);
@@ -1527,6 +1536,14 @@ function syncReviewToOtherAccounts(idx) {
       t.syncedFrom = currentAccount;
       t.syncedAt = new Date().toISOString();
       allTrades[acct][i] = t;
+      // Sync screenshots — both localStorage and in-memory
+      const srcSS = localStorage.getItem(`fx_ss_${currentAccount}_${idx}`);
+      if (srcSS) {
+        try {
+          localStorage.setItem(`fx_ss_${acct}_${i}`, srcSS);
+          allTrades[acct][i].screenshots = JSON.parse(srcSS); // update in-memory
+        } catch(e) {}
+      }
       syncCount++;
     });
     if (matches.length) saveAccount(acct);
@@ -6622,6 +6639,7 @@ function removeScreenshot(idx, si) {
   if (!trades[idx].screenshots) return;
   trades[idx].screenshots.splice(si, 1);
   save();
+  syncReviewToOtherAccounts(idx);
   refreshGallery(idx);
 }
 
@@ -6693,6 +6711,7 @@ function readScreenshot(file, idx) {
       if (!trades[idx].screenshots) trades[idx].screenshots = [];
       trades[idx].screenshots.push(compressed);
       save();
+      syncReviewToOtherAccounts(idx);
       refreshGallery(idx);
     };
     img.src = e.target.result;
@@ -7367,6 +7386,38 @@ if (currentAccount === '5ERS') {
   switchSystemTab('challenge');
 }
 autoSyncReviews();
+
+// ── Backfill screenshots to all matched trades across accounts ────────────────
+function backfillScreenshots() {
+  let count = 0;
+  ACCOUNTS.forEach(srcAcct => {
+    (allTrades[srcAcct]||[]).forEach((srcTrade, srcIdx) => {
+      const srcSS = localStorage.getItem(`fx_ss_${srcAcct}_${srcIdx}`);
+      if (!srcSS) return;
+      let srcImgs;
+      try { srcImgs = JSON.parse(srcSS); } catch(e) { return; }
+      if (!srcImgs.length) return;
+      ACCOUNTS.filter(a => a !== srcAcct).forEach(destAcct => {
+        const matches = findSimilarTrades(srcTrade, destAcct);
+        matches.forEach(({t, i}) => {
+          const destSS = localStorage.getItem(`fx_ss_${destAcct}_${i}`);
+          let destImgs = [];
+          try { destImgs = destSS ? JSON.parse(destSS) : []; } catch(e) {}
+          if (srcImgs.length > destImgs.length) {
+            try {
+              localStorage.setItem(`fx_ss_${destAcct}_${i}`, srcSS);
+              allTrades[destAcct][i].screenshots = srcImgs;
+              count++;
+            } catch(e) {}
+          }
+        });
+      });
+    });
+  });
+  if (count > 0) console.log(`[backfill] Pushed screenshots to ${count} matched trade(s)`);
+}
+backfillScreenshots();
+
 renderTable();
 document.getElementById('f_date').value = new Date().toISOString().slice(0,10);
 // ── Risk Management Page ──────────────────────────────────────────────────────
@@ -7633,7 +7684,15 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRMPage(
       </div>
       <div class="rm-highlight">Once the 8% buffer is locked, it is no longer profit — it is the <strong>permanent safety margin</strong>. We never trade the floor itself. We trade the distance above it.</div>
 
-      <!-- Cashout Rule -->
+      <!-- Temporary Zero Rule -->
+      <div class="rm-card rm-card-warn" style="margin-top:20px;margin-bottom:0">
+        <div class="rm-card-title gold">Building Phase — Temporary Zero</div>
+        <div class="rm-card-body">
+          Between Cycle A and Cycle B, the account sits at <strong>4% buffer</strong> — halfway to the fortress. During this phase, <strong>4% is treated as the temporary zero</strong>.<br><br>
+          It is not profit. It is not tradeable. It carries the same status as the permanent 5% floor — a working baseline that must not be touched. Apply risk tiers normally above it, but never count the 4% as available capital.<br><br>
+          <strong style="color:#ffd166">4% buffer = temporary floor. Trade the distance above it, not through it.</strong>
+        </div>
+      </div>
       <div style="margin-top:20px">
         <div class="rm-two-col">
           <div style="display:flex;flex-direction:column;gap:0;border:1px solid rgba(0,229,160,0.2);border-radius:4px;overflow:hidden">
@@ -7646,7 +7705,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRMPage(
               <div style="margin-top:16px;width:100%;display:flex;flex-direction:column;gap:10px">
                 <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(255,209,102,0.05);border-radius:3px;border:1px solid rgba(255,209,102,0.12)">
                   <span style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:#ffd166;min-width:36px">All</span>
-                  <span style="font-family:'EB Garamond',serif;font-size:0.88rem;color:rgba(200,216,232,0.55);text-align:left">profit above 4% withdrawn. Counter resets.</span>
+                  <span style="font-family:'EB Garamond',serif;font-size:0.88rem;color:rgba(200,216,232,0.55);text-align:left">All profit above 8% withdrawn. Buffer returns to 8%. The fortress wall is both the floor and the reset point — at 12%, the trigger fires and 4% is cashed out. Always back to 8%. Above 14%, the A+ rule takes over.</span>
                 </div>
               </div>
             </div>
@@ -7686,7 +7745,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRMPage(
             </div>
             <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:rgba(0,229,160,0.04);border:1px solid rgba(0,229,160,0.12);border-radius:3px">
               <span style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:#6dbf9e;min-width:44px">2%</span>
-              <span style="font-family:'EB Garamond',serif;font-size:0.9rem;color:rgba(200,216,232,0.6)">Risk — 1 trade only, no other positions open</span>
+              <span style="font-family:'EB Garamond',serif;font-size:0.9rem;color:rgba(200,216,232,0.6)">Risk — 1 trade only. Before entering, all other positions must be closed or at break-even. The A+ is a standalone event, not an addition to existing exposure.</span>
             </div>
             <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:rgba(123,175,212,0.04);border:1px solid rgba(123,175,212,0.1);border-radius:3px">
               <span style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:#7bafd4;min-width:44px">A+</span>
