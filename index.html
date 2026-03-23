@@ -3672,10 +3672,8 @@ function renderStrategy() {
       </div>`}
     </div>`;
 
-  // Only rebuild full panel on first render or account switch
-  const existingHeading = panel.querySelector('.section-heading');
-  if (!existingHeading) {
-    panel.innerHTML = `
+  // Rebuild full panel — always, to ensure OVERALL merges all accounts
+  panel.innerHTML = `
       <div class="section-heading" style="margin-bottom:16px">&#9632; Strategy Analysis</div>
       <div id="strat-static" style="margin-bottom:20px">
       </div>
@@ -3684,7 +3682,7 @@ function renderStrategy() {
       ${beSection}
       ${sl033Section}
       ${mistakesSection}`;
-  }
+
   // Always update phase section
   const phaseEl = document.getElementById('strat-phase');
   if (phaseEl) phaseEl.innerHTML = phaseSection;
@@ -5775,6 +5773,11 @@ function htToggleGoalCheck(section, idx) {
     cb.style.borderColor = checks[key] ? '#6dbf9e' : 'var(--border)';
     cb.textContent = checks[key] ? '✓' : '';
   }
+  const span = document.getElementById('ht-goal-text-' + key);
+  if (span) {
+    span.style.color = checks[key] ? 'var(--muted)' : 'var(--text)';
+    span.style.opacity = checks[key] ? '0.5' : '1';
+  }
 }
 
 function htShowGoalInput(section) {
@@ -5966,6 +5969,31 @@ function htRemoveGratefulnessEntry(date, id) {
   renderGratefulnessEntries();
 }
 
+function htEditGratefulnessEntry(date, id) {
+  const spanId = `ht-grate-text-${date}-${id}`;
+  const span = document.getElementById(spanId);
+  if (!span || span.querySelector('input')) return;
+  const current = span.textContent;
+  span.innerHTML = `<input id="ht-grate-edit-${date}-${id}" value="${current.replace(/"/g,'&quot;')}"
+    style="font-family:'EB Garamond',serif;background:transparent;border:none;border-bottom:1px solid var(--accent);color:var(--text);font-size:0.95rem;padding:0;width:100%;outline:none"
+    onblur="htSaveGratefulnessEntry('${date}',${id},this.value)"
+    onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){htSaveGratefulnessEntry('${date}',${id},'${current.replace(/'/g,"\\'")}');}">`;
+  const input = document.getElementById(`ht-grate-edit-${date}-${id}`);
+  if (input) { input.focus(); input.select(); }
+}
+
+function htSaveGratefulnessEntry(date, id, newText) {
+  const trimmed = (newText || '').trim();
+  const log = htGetGratefulnessLog();
+  if (!log[date]) return;
+  const entry = log[date].find(e => e.id === id);
+  if (entry) {
+    if (trimmed) entry.text = trimmed;
+    htSaveGratefulnessLog(log);
+  }
+  renderGratefulnessEntries();
+}
+
 function renderGratefulnessEntries() {
   const container = document.getElementById('ht-grate-entries');
   if (!container) return;
@@ -5989,7 +6017,7 @@ function renderGratefulnessEntries() {
         onmouseover="this.querySelector('.ht-grate-del').style.opacity=1"
         onmouseout="this.querySelector('.ht-grate-del').style.opacity=0">
         <span style="color:var(--accent);font-size:0.85rem;margin-top:3px;flex-shrink:0">✦</span>
-        <span style="font-family:'EB Garamond',serif;font-size:0.95rem;color:var(--text);line-height:1.5;flex:1">${e.text}</span>
+        <span id="ht-grate-text-${date}-${e.id}" ondblclick="htEditGratefulnessEntry('${date}',${e.id})" style="font-family:'EB Garamond',serif;font-size:0.95rem;color:var(--text);line-height:1.5;flex:1;cursor:text" title="Double-click to edit">${e.text}</span>
         <button class="ht-grate-del" onclick="htRemoveGratefulnessEntry('${date}',${e.id})"
           style="border:none;background:none;color:var(--red);cursor:pointer;font-size:0.7rem;padding:0;opacity:0;transition:opacity 0.15s;flex-shrink:0" title="Remove">✕</button>
       </div>`).join('');
