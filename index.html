@@ -1884,7 +1884,7 @@ function renderOverview(s, filteredArr) {
     </div>`;
   })() : '';
 
-  const netPnlCard = `<div class="kpi-card"><div class="kpi-card-icon">◉ NET P&L</div><div class="kpi-card-value ${pnl>=0?'pos':'neg'}">$${pnl>=0?'+':''}${s.totalPnl}</div><div class="kpi-card-sub">${s.total} trades${pnlPct}</div><div class="kpi-card-comment">${getComment('pnl',pnl)}</div>${balInputHtml}${totalFundingHtml}</div>`;
+  const netPnlCard = `<div class="kpi-card"><div class="kpi-card-icon">◉ NET P&L</div><div class="kpi-card-value ${pnl>=0?'pos':'neg'}">$${pnl>=0?'+':'−'}${s.totalPnl}</div><div class="kpi-card-sub">${s.total} trades${pnlPct}</div><div class="kpi-card-comment">${getComment('pnl',pnl)}</div>${balInputHtml}${totalFundingHtml}</div>`;
 
   document.getElementById('kpiGrid').innerHTML=
     netPnlCard+
@@ -1892,7 +1892,7 @@ function renderOverview(s, filteredArr) {
     kpiCard('◇','Profit Factor',s.profitFactor,parseFloat(s.profitFactor)>=1.5?'pos':parseFloat(s.profitFactor)>=1?'warn':'neg',`$${s.grossWin} / $${s.grossLoss}`,getComment('profitFactor',s.profitFactor))+
     kpiCard('◈','R:R Ratio',`${s.rr}:1`,parseFloat(s.rr)>=1.5?'hi':'warn',`Avg Win $${s.avgWin} · Avg Loss $${s.avgLoss}`,getComment('rr',s.rr))+
     kpiCard('△','Max Drawdown',`$${s.maxDD}`,'neg','Peak to trough',getComment('maxDD',s.maxDD))+
-    kpiCard('$','Expectancy',`$${s.expectancy}`,parseFloat(s.expectancy)>0?'pos':'neg','Expected $ per trade',getComment('expectancy',s.expectancy))+
+    kpiCard('$','Expectancy',`${parseFloat(s.expectancy)>=0?'+':'−'}$${Math.abs(parseFloat(s.expectancy)).toFixed ? Math.abs(parseFloat(s.expectancy)) : s.expectancy}`,parseFloat(s.expectancy)>0?'pos':'neg','Expected $ per trade',getComment('expectancy',s.expectancy))+
     kpiCard('◌','Avg R-Multiple',`${s.avgR}R`,parseFloat(s.avgR)>=1?'pos':'warn','Risk-adjusted return',getComment('avgR',s.avgR))+
     kpiCard('◈','Recovery Factor',s.maxDD>0?(parseFloat(s.totalPnl)/parseFloat(s.maxDD)).toFixed(2):'—','hi','Net P&L / Max DD','Above 2.0 is excellent resilience');
 
@@ -1941,7 +1941,7 @@ function renderOverview(s, filteredArr) {
   if (volEl) volEl.innerHTML =
     kpiCard('σ','P&L Std Deviation',`$${stdDevOv.toFixed(0)}`,'hi','Total volatility of returns',stdDevOv<avgPnlOv*2?'Low volatility relative to avg — consistent results':'High variance — results unpredictable')+
     kpiCard('↓','Downside Std Dev',`$${downsideStdOv.toFixed(0)}`,'warn','Volatility of losing trades only',downsideStdOv<stdDevOv*0.7?'Losses tighter than wins — great asymmetry':'Downside as volatile as upside')+
-    kpiCard('◉','Avg P&L Per Trade',`$${avgPnlOv.toFixed(0)}`,avgPnlOv>=0?'pos':'neg','Expected value each time you trade',avgPnlOv>0?`Positive expectancy — keep executing`:`Negative expectancy — review your edge`)+
+    kpiCard('◉','Avg P&L Per Trade',`${avgPnlOv>=0?'+':'−'}$${Math.abs(avgPnlOv).toFixed(0)}`,avgPnlOv>=0?'pos':'neg','Expected value each time you trade',avgPnlOv>0?`Positive expectancy — keep executing`:`Negative expectancy — review your edge`)+
     kpiCard('▲','Largest Win',`$${largestWin.toFixed(0)}`,'pos','Single best trade result',`Your best single trade returned $${largestWin.toFixed(0)}`)+
     kpiCard('▼','Largest Loss',`$${Math.abs(largestLoss).toFixed(0)}`,'neg','Single worst trade result',`Your worst single trade lost $${Math.abs(largestLoss).toFixed(0)}`)+
     kpiCard('÷','Win/Loss $ Ratio',winLossRatio==='—'?'—':`${winLossRatio}:1`,winLossRatio!=='—'&&parseFloat(winLossRatio)>=1.5?'pos':winLossRatio!=='—'&&parseFloat(winLossRatio)>=1?'warn':'neg','Avg win $ vs avg loss $ (Payoff Ratio)',winLossRatio!=='—'&&parseFloat(winLossRatio)>=2?'Excellent payoff ratio — wins are much larger than losses':winLossRatio!=='—'&&parseFloat(winLossRatio)>=1?'Positive payoff — wins exceed losses':'Losses outsize wins — needs improvement');
@@ -2094,8 +2094,8 @@ function renderRisk(s){
   document.getElementById('kpiVolatility').innerHTML=
     kpiCard('σ','Std Dev P&L',`$${stdDev.toFixed(0)}`,'hi','Trade-to-trade volatility',stdDev<avgPnl*2?'Low volatility relative to avg win — consistent':'High variance — results unpredictable')+
     kpiCard('↓','Downside Std Dev',`$${downsideStd.toFixed(0)}`,'warn','Volatility of losing trades only',downsideStd<stdDev*0.7?'Losses are tighter than wins — great asymmetry':'Downside as volatile as upside')+
-    kpiCard('5%','5th Percentile P&L',`$${p5.toFixed(0)}`,'neg','Worst-case single trade',`Your worst 5% of trades average around $${p5.toFixed(0)}`)+
-    kpiCard('95%','95th Percentile P&L',`$${p95.toFixed(0)}`,'pos','Best-case single trade',`Your best 5% of trades average around $${p95.toFixed(0)}`);
+    kpiCard('5%','5th Percentile P&L',`−$${Math.abs(p5).toFixed(0)}`,'neg','Worst-case single trade',`Your worst 5% of trades average around $${Math.abs(p5).toFixed(0)}`)+
+    kpiCard('95%','95th Percentile P&L',`+$${p95.toFixed(0)}`,'pos','Best-case single trade',`Your best 5% of trades average around $${p95.toFixed(0)}`);
 
   // Trade P&L Distribution chart
   const distSorted = [...trades].sort((a,b)=>new Date(a.date)-new Date(b.date));
@@ -2227,12 +2227,12 @@ function renderTiming(s){
   document.getElementById('afterWinCard').innerHTML =
     `<div style="font-family:'EB Garamond',serif;font-size:1rem;letter-spacing:0.08em;color:var(--green);margin-bottom:12px;text-transform:uppercase">After Winning Streaks</div>` +
     streakRow('Next trade win rate', awWR==='—'?'—':`${awWR}%`, parseFloat(awWR)>=50?'var(--green)':'var(--red)') +
-    streakRow('Avg P&L next trade', awAvg==='—'?'—':`$${parseInt(awAvg).toLocaleString()}`, parseFloat(awAvg)>=0?'var(--green)':'var(--red)') +
+    streakRow('Avg P&L next trade', awAvg==='—'?'—':`${parseFloat(awAvg)>=0?'+':'−'}$${Math.abs(parseInt(awAvg)).toLocaleString()}`, parseFloat(awAvg)>=0?'var(--green)':'var(--red)') +
     streakRow('Sample size', `${afterWin.length} trades`, 'var(--text)');
   document.getElementById('afterLossCard').innerHTML =
     `<div style="font-family:'EB Garamond',serif;font-size:1rem;letter-spacing:0.08em;color:var(--red);margin-bottom:12px;text-transform:uppercase">After Losing Streaks</div>` +
     streakRow('Next trade win rate', alWR==='—'?'—':`${alWR}%`, parseFloat(alWR)>=50?'var(--green)':'var(--red)') +
-    streakRow('Avg P&L next trade', alAvg==='—'?'—':`$${parseInt(alAvg).toLocaleString()}`, parseFloat(alAvg)>=0?'var(--green)':'var(--red)') +
+    streakRow('Avg P&L next trade', alAvg==='—'?'—':`${parseFloat(alAvg)>=0?'+':'−'}$${Math.abs(parseInt(alAvg)).toLocaleString()}`, parseFloat(alAvg)>=0?'var(--green)':'var(--red)') +
     streakRow('Sample size', `${afterLoss.length} trades`, 'var(--text)');
 
   // Streak chart
@@ -2306,7 +2306,7 @@ function renderQuality(s){
       <div style="font-family:'EB Garamond',serif;font-size:0.78rem;font-weight:700;color:${gradeColors[g]};margin-bottom:12px;letter-spacing:0.05em">${gradeLabels[g]}</div>
       <div style="font-family:'EB Garamond',serif;font-size:2rem;font-weight:700;margin-bottom:4px">${wr==='—'?'—':wr+'%'}</div>
       <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted);margin-bottom:8px">win rate · ${d.trades.length} trades · <span style="color:var(--muted)">${d.be}BE</span></div>
-      <div style="font-family:'EB Garamond',serif;font-size:1rem;font-weight:700;color:${pnlCol}">$${d.pnl.toFixed(0)}</div>
+      <div style="font-family:'EB Garamond',serif;font-size:1rem;font-weight:700;color:${pnlCol}">${d.pnl>=0?'+':'−'}$${Math.abs(d.pnl).toFixed(0)}</div>
       <div style="font-family:'EB Garamond',serif;font-size:0.58rem;color:var(--muted);margin-top:2px">total P&L</div>
     </div>`;
   }).join('');
@@ -2365,15 +2365,15 @@ function renderEquityTab(s, filteredArr){
   const costsPct = pnlEq !== 0 ? (Math.abs(totalCosts) / Math.abs(pnlEq) * 100).toFixed(1) : '—';
   document.getElementById('kpiEquity').innerHTML=
     kpiCard('$','Total Commission',`$${Math.abs(totalComm).toFixed(2)}`,totalComm<=0?'neg':'pos',`${s.total} trades`,totalComm<0?'Costs eating into profits — factor into edge calculation':'No commission recorded')+
-    kpiCard('↺','Total Swap',`$${totalSwap>=0?'+':''}${totalSwap.toFixed(2)}`,totalSwap>=0?'pos':'neg','Overnight financing',totalSwap<0?'Negative swap — avoid holding overnight where possible':'Positive swap — carry trade benefit')+
-    kpiCard('◈','Total Costs',`${totalCosts>=0?'+':''}$${totalCosts.toFixed(2)}`,totalCosts>=0?'pos':'neg',`${costsPct !== '—' ? costsPct+'% of net P&L' : 'No P&L yet'}`,`Comm + Swap · Net P&L ${pnlEq>=0?'+':''}$${pnlEq.toFixed(2)}`);
+    kpiCard('↺','Total Swap',`$${totalSwap>=0?'+':'−'}${totalSwap.toFixed(2)}`,totalSwap>=0?'pos':'neg','Overnight financing',totalSwap<0?'Negative swap — avoid holding overnight where possible':'Positive swap — carry trade benefit')+
+    kpiCard('◈','Total Costs',`${totalCosts>=0?'+':'−'}$${totalCosts.toFixed(2)}`,totalCosts>=0?'pos':'neg',`${costsPct !== '—' ? costsPct+'% of net P&L' : 'No P&L yet'}`,`Comm + Swap · Net P&L ${pnlEq>=0?'+':'−'}$${pnlEq.toFixed(2)}`);
   const sorted=[...arr].sort((a,b)=>new Date(a.date)-new Date(b.date));
   let eq=0;const labels=['Start'],data=[0],eqMeta=[null];
   sorted.forEach(t=>{eq+=parseFloat(t.pnl)||0;labels.push(t.date?t.date.slice(5):'');data.push(parseFloat(eq.toFixed(2)));eqMeta.push(t);});
   const ctx=document.getElementById('equityCanvas').getContext('2d');
   const grad=ctx.createLinearGradient(0,0,0,200);
   grad.addColorStop(0,'rgba(0,229,160,0.25)');grad.addColorStop(1,'rgba(0,229,160,0)');
-  mkChart('equityCanvas',{type:'line',data:{labels,datasets:[{data,borderColor:'#00e5a0',backgroundColor:grad,borderWidth:2,pointRadius:3,pointHoverRadius:6,pointBackgroundColor:data.map((_,i)=>{if(i===0)return'#00e5a0';const t=eqMeta[i];if(!t)return'#00e5a0';const p=parseFloat(t.pnl)||0;return Math.abs(p)<100?'#7bafd4':p>0?'#6dbf9e':'#e85555';}),tension:0.3,fill:true}]},options:{...CD,plugins:{...CD.plugins,tooltip:{...CD.plugins.tooltip,callbacks:{label:c=>{const t=eqMeta[c.dataIndex];if(!t)return`Equity: $${c.raw}`;const p=parseFloat(t.pnl)||0;return[`Equity: $${c.raw}`,`${t.pair||''} ${(t.direction||'').toUpperCase()}`,`P&L: ${p>=0?'+':''}$${p.toFixed(2)}`];}}}},scales:{...CD.scales,y:{...CD.scales.y,ticks:{...CD.scales.y.ticks,callback:v=>`$${v}`}}}}});
+  mkChart('equityCanvas',{type:'line',data:{labels,datasets:[{data,borderColor:'#00e5a0',backgroundColor:grad,borderWidth:2,pointRadius:3,pointHoverRadius:6,pointBackgroundColor:data.map((_,i)=>{if(i===0)return'#00e5a0';const t=eqMeta[i];if(!t)return'#00e5a0';const p=parseFloat(t.pnl)||0;return Math.abs(p)<100?'#7bafd4':p>0?'#6dbf9e':'#e85555';}),tension:0.3,fill:true}]},options:{...CD,plugins:{...CD.plugins,tooltip:{...CD.plugins.tooltip,callbacks:{label:c=>{const t=eqMeta[c.dataIndex];if(!t)return`Equity: $${c.raw}`;const p=parseFloat(t.pnl)||0;return[`Equity: $${c.raw}`,`${t.pair||''} ${(t.direction||'').toUpperCase()}`,`P&L: ${p>=0?'+':'−'}$${p.toFixed(2)}`];}}}},scales:{...CD.scales,y:{...CD.scales.y,ticks:{...CD.scales.y.ticks,callback:v=>`$${v}`}}}}});
 }
 
 function renderSizing(s){
@@ -2924,7 +2924,7 @@ function renderReviewList() {
         <span class="rv-card-pair">${t.pair||'—'}</span>
         <span style="flex-shrink:0;width:46px;display:inline-flex;justify-content:center"><span class="badge badge-${t.direction||'buy'}" style="font-size:0.9rem;min-width:36px;text-align:center">${(t.direction||'').toUpperCase()}</span></span>
         <span style="flex-shrink:0;width:50px;display:inline-flex;justify-content:center">${resBadge}</span>
-        ${showPnlLots ? `<span class="rv-card-pnl" style="color:${pnlCol}">${pnl>=0?'+':''}$${Math.abs(pnl).toFixed(2)}</span>` : ''}
+        ${showPnlLots ? `<span class="rv-card-pnl" style="color:${pnlCol}">${pnl>=0?'+':'−'}$${Math.abs(pnl).toFixed(2)}</span>` : ''}
         ${showPnlLots ? `<span class="rv-card-meta">${t.lots||''} lots</span>` : ''}
         <span style="flex-shrink:0;width:24px;display:inline-flex;justify-content:center" id="rv_gbadge_${i}">${t.entryRating ? `<span class="grade-badge grade-active-${t.entryRating}">${t.entryRating}</span>` : ''}</span>
         <span style="flex-shrink:0;width:28px;display:inline-flex;justify-content:center" id="rv_sbadge_${i}">${(()=>{ const sc=calcTradeScore(t); if(!sc) return ''; const col=sc>=70?'#6dbf9e':sc>=45?'#7bafd4':'#e85555'; return `<span class="grade-badge" style="background:${col};color:#0a1220;font-size:0.9rem;opacity:0.9">${sc}</span>`; })()}</span>
@@ -3273,7 +3273,7 @@ function renderStrategy() {
         </td>
         <td style="padding:10px 14px;font-family:'EB Garamond',serif;font-size:0.95rem;color:var(--green);text-align:center">${saved.length}</td>
         <td style="padding:10px 14px;font-family:'EB Garamond',serif;font-size:0.95rem;color:var(--red);text-align:center">${stopped.length}</td>
-        <td style="padding:10px 14px;font-family:'EB Garamond',serif;font-size:0.95rem;color:${netCol};text-align:center;font-weight:700">${net>=0?'+':''}${net}R</td>
+        <td style="padding:10px 14px;font-family:'EB Garamond',serif;font-size:0.95rem;color:${netCol};text-align:center;font-weight:700">${net>=0?'+':'−'}${net}R</td>
       </tr>`;
     }).filter(Boolean).join('');
   })();
@@ -3337,8 +3337,8 @@ function renderStrategy() {
       <div class="kpi-grid">
         ${kpiCard('🛡', 'Saved from Loss', `${beSaved.length}`, 'pos', `+${savedR}R protected`, `Each saved 1R — would have been a full loss`)}
         ${kpiCard('✕', 'Stopped Before TP', `${beStopped.length}`, 'neg', `-${missedR}R missed`, `Each cost 3R of unrealised profit`)}
-        ${kpiCard('◈', 'Net R Impact', `${netR>=0?'+':''}${netR}R`, netR>=0?'pos':'neg', 'vs not using BE', `BE rule is ${netR>=0?'working in your favour':'costing more than it saves'}`)}
-        ${kpiCard('◉', 'Net $ Impact', `${netUSD>=0?'+':''}$${Math.abs(netUSD).toFixed(0)}`, netUSD>=0?'pos':'neg', 'est. based on avg 1R', `${netUSD>=0?'Positive impact on account':'Negative impact on account'}`)}
+        ${kpiCard('◈', 'Net R Impact', `${netR>=0?'+':'−'}${netR}R`, netR>=0?'pos':'neg', 'vs not using BE', `BE rule is ${netR>=0?'working in your favour':'costing more than it saves'}`)}
+        ${kpiCard('◉', 'Net $ Impact', `${netUSD>=0?'+':'−'}$${Math.abs(netUSD).toFixed(0)}`, netUSD>=0?'pos':'neg', 'est. based on avg 1R', `${netUSD>=0?'Positive impact on account':'Negative impact on account'}`)}
       </div>
       ${beGradeTable}
     </div>` : `<div class="chart-card" style="margin-bottom:20px;padding:16px 20px">
@@ -3380,7 +3380,7 @@ function renderStrategy() {
         <td style="padding:8px;color:var(--muted);text-align:center;font-size:0.88rem">${s.n}</td>
         <td style="padding:8px;text-align:center;font-size:0.88rem;color:var(--muted)">${s.wins}W/${s.losses}L${beTxt}</td>
         <td style="padding:8px;text-align:center;font-size:0.88rem;color:var(--text)">${wrStr}</td>
-        <td style="padding:8px;text-align:right;font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:${pnlCol}">${s.total>=0?'+':''}$${s.total.toFixed(0)}</td>
+        <td style="padding:8px;text-align:right;font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:${pnlCol}">${s.total>=0?'+':'−'}$${s.total.toFixed(0)}</td>
         <td style="padding:8px 0 8px 12px;width:120px">
           <div style="background:var(--surface2);border-radius:2px;height:6px;overflow:hidden">
             <div style="height:100%;width:${barW}%;background:${barCol};border-radius:2px;transition:width 0.4s"></div>
@@ -3440,7 +3440,7 @@ function renderStrategy() {
     const beTxt = s.be > 0 ? ` · ${s.be}BE` : '';
     return kpiCard(icon, type,
       `${s.wr.toFixed(0)}% WR`, s.wr >= 50 ? 'pos' : 'neg',
-      `${s.n} trades · ${s.total>=0?'+':''}$${s.total.toFixed(0)} P&L`,
+      `${s.n} trades · ${s.total>=0?'+':'−'}$${s.total.toFixed(0)} P&L`,
       `${s.wins}W / ${s.losses}L${beTxt} · ${wrTxt}`
     );
   }
@@ -3475,7 +3475,7 @@ function renderStrategy() {
           ${arrowSvg}
         </div>
         <div style="font-family:'EB Garamond',serif;font-size:1rem;font-weight:700;color:${wr>=50?'#6dbf9e':'#e85555'};margin-bottom:4px">${wr.toFixed(0)}% WR</div>
-        <div class="kpi-card-sub">${sub.length} trades · ${pnl>=0?'+':''}$${pnl.toFixed(0)} P&L</div>
+        <div class="kpi-card-sub">${sub.length} trades · ${pnl>=0?'+':'−'}$${pnl.toFixed(0)} P&L</div>
         <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:#7a93ae;border-top:1px solid var(--border);padding-top:8px">${ws}W / ${sub.length-ws}L · ${wrTxt}</div>
       </div></div>`;
     }).join('');
@@ -3535,7 +3535,7 @@ function renderStrategy() {
           <span style="font-family:'EB Garamond',serif;font-size:1.7rem;font-weight:700;color:var(--text);line-height:1">${b}</span>${arrowSvg}
         </div>
         <div style="font-family:'EB Garamond',serif;font-size:1rem;font-weight:700;color:${wr>=50?'#6dbf9e':'#e85555'};margin-bottom:4px">${wr.toFixed(0)}% WR</div>
-        <div class="kpi-card-sub">${sub.length} trades · ${pnl>=0?'+':''}$${pnl.toFixed(0)} P&L</div>
+        <div class="kpi-card-sub">${sub.length} trades · ${pnl>=0?'+':'−'}$${pnl.toFixed(0)} P&L</div>
         <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:#7a93ae;border-top:1px solid var(--border);padding-top:8px">${ws}W / ${wl}L${beTxt} · ${wrTxt}</div>
       </div></div>`;
     }).join('');
@@ -3571,7 +3571,7 @@ function renderStrategy() {
       return stratCard('◈', b,
         `${s.wr.toFixed(0)}% WR`,
         s.wr >= 50 ? 'pos' : 'neg',
-        `${s.n} trades · ${s.total>=0?'+':''}$${s.total.toFixed(0)} P&L`,
+        `${s.n} trades · ${s.total>=0?'+':'−'}$${s.total.toFixed(0)} P&L`,
         `${s.wins}W / ${s.losses}L${beTxt} · ${wrTxt}`
       );
     }).join('');
@@ -3599,7 +3599,7 @@ function renderStrategy() {
       return stratCard('◈', tf,
         `${s.wr.toFixed(0)}% WR`,
         s.wr >= 50 ? 'pos' : 'neg',
-        `${s.n} trades · ${s.total>=0?'+':''}$${s.total.toFixed(0)} P&L`,
+        `${s.n} trades · ${s.total>=0?'+':'−'}$${s.total.toFixed(0)} P&L`,
         `${s.wins}W / ${s.losses}L${beTxt} · ${wrTxt}`
       );
     }).join('');
@@ -3654,7 +3654,7 @@ function renderStrategy() {
           <div class="kpi-card-sub">${(totalMistakeTrades/trades.length*100).toFixed(0)}% of all trades</div>
           <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
             <div style="font-family:'EB Garamond',serif;font-size:0.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">P&L Impact</div>
-            <div style="font-family:'EB Garamond',serif;font-size:1.6rem;font-weight:700;color:${totalMistakePnl>=0?'#6dbf9e':'#e85555'}">${totalMistakePnl>=0?'+':''}$${totalMistakePnl.toFixed(0)}</div>
+            <div style="font-family:'EB Garamond',serif;font-size:1.6rem;font-weight:700;color:${totalMistakePnl>=0?'#6dbf9e':'#e85555'}">${totalMistakePnl>=0?'+':'−'}$${totalMistakePnl.toFixed(0)}</div>
           </div>
         </div>
         ${mistakeStats.map(({m, n, pnl, wins, losses}) => n > 0
@@ -3664,7 +3664,7 @@ function renderStrategy() {
               <div class="kpi-card-sub">${wins}W · ${losses}L</div>
               <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
                 <div style="font-family:'EB Garamond',serif;font-size:0.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">P&L Impact</div>
-                <div style="font-family:'EB Garamond',serif;font-size:1.6rem;font-weight:700;color:${pnl>=0?'#6dbf9e':'#e85555'}">${pnl>=0?'+':''}$${pnl.toFixed(0)}</div>
+                <div style="font-family:'EB Garamond',serif;font-size:1.6rem;font-weight:700;color:${pnl>=0?'#6dbf9e':'#e85555'}">${pnl>=0?'+':'−'}$${pnl.toFixed(0)}</div>
               </div>
             </div>`
           : kpiCard('✕', m, '0', 'hi', 'No occurrences', 'Clean')
@@ -3833,7 +3833,7 @@ function renderMonthlyTab() {
 
     const statsHtml = `
       <div class="kpi-grid" style="margin-bottom:16px">
-        ${kpiCard('◉','Net P&L',`${pnl>=0?'+':''}$${Math.abs(pnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`,pnl>=0?'pos':'neg',`${qt.length} trades`,`${wins}W · ${losses}L${beCount>0?` · ${beCount}BE`:''}`)}
+        ${kpiCard('◉','Net P&L',`${pnl>=0?'+':'−'}$${Math.abs(pnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`,pnl>=0?'pos':'neg',`${qt.length} trades`,`${wins}W · ${losses}L${beCount>0?` · ${beCount}BE`:''}`)}
         ${kpiCard('◎','Win Rate',`${wr}%`,parseInt(wr)>=50?'pos':'neg',`${wins}W / ${losses}L${beCount>0?` · ${beCount}BE`:''}`,parseInt(wr)>=50?'Strong quarter':'Needs review')}
         ${kpiCard('⇄','Risk / Reward',rr!=='—'?`${rr}R`:'—',parseFloat(rr)>=1?'pos':'neg',`Avg win $${avgWin.toFixed(0)} · Avg loss $${avgLoss.toFixed(0)}`,'')}
         ${kpiCard('⚡','Expectancy',exp!=='—'?`$${exp}`:'—',parseFloat(exp)>=0?'pos':'neg','Per trade avg','')}
@@ -3845,7 +3845,7 @@ function renderMonthlyTab() {
         ${kpiCard('★','Avg Score',avgScore!=='—'?avgScore:'—',parseInt(avgScore)>=70?'pos':parseInt(avgScore)>=45?'hi':'neg',`${scores.length} graded trades`,'')}
       </div>
       <div class="kpi-grid" style="margin-bottom:16px">
-        ${kpiCard('⇌','Swap + Comm',`${(swap+comm)>=0?'+':''}$${(swap+comm).toFixed(0)}`,swap+comm>=0?'pos':'neg',`Swap $${swap.toFixed(0)} · Comm $${comm.toFixed(0)}`,'')}
+        ${kpiCard('⇌','Swap + Comm',`${(swap+comm)>=0?'+':'−'}$${(swap+comm).toFixed(0)}`,swap+comm>=0?'pos':'neg',`Swap $${swap.toFixed(0)} · Comm $${comm.toFixed(0)}`,'')}
       </div>
       <div class="chart-card" style="margin-bottom:0">
         <div class="chart-card-title">Equity Curve</div>
@@ -3877,7 +3877,7 @@ function renderMonthlyTab() {
         <span class="rv-card-meta">${qt.length} trades</span>
         <span style="font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700;color:${parseInt(wr)>=50?'var(--green)':'var(--red)'};margin-left:8px">${wr}% WR</span>
         <span class="rv-card-meta" style="margin-left:8px;white-space:nowrap">${wins}W / ${losses}L${beCount>0?` · <span style="color:var(--muted)">${beCount}BE</span>`:''}</span>
-        <span style="font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700;color:${pnlCol};margin-left:auto">${pnl>=0?'+':''}$${Math.abs(pnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+        <span style="font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700;color:${pnlCol};margin-left:auto">${pnl>=0?'+':'−'}$${Math.abs(pnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
         <span class="rv-card-chevron" style="margin-left:12px">▼</span>
       </div>
       <div class="rv-card-body" id="qrb-${qKey}" style="padding:20px">
@@ -4023,7 +4023,7 @@ function buildMonthBody(ym, yr, mo, monthTrades) {
 
   const statsHtml = `
     <div class="kpi-grid" style="margin-bottom:16px">
-      ${kpiCard('◉','Net P&L',`${netPnl>=0?'+':''}$${Math.abs(netPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`,netPnl>=0?'pos':'neg',`${monthTrades.length} trades · ${tradingDays} days`,`${wins}W · ${losses}L${beCount>0?` · ${beCount}BE`:''}`)}
+      ${kpiCard('◉','Net P&L',`${netPnl>=0?'+':'−'}$${Math.abs(netPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`,netPnl>=0?'pos':'neg',`${monthTrades.length} trades · ${tradingDays} days`,`${wins}W · ${losses}L${beCount>0?` · ${beCount}BE`:''}`)}
       ${kpiCard('◎','Win Rate',`${wr}%`,parseInt(wr)>=50?'pos':'neg',`${wins}W / ${losses}L${beCount>0?` · ${beCount}BE`:''}`,parseInt(wr)>=50?'Solid month':'Needs review')}
       ${kpiCard('⇄','Risk / Reward',rr!=='—'?`${rr}R`:'—',parseFloat(rr)>=1?'pos':'neg',`Avg win $${avgWin.toFixed(0)} · Avg loss $${avgLoss.toFixed(0)}`,'')}
       ${kpiCard('⚡','Expectancy',exp!=='—'?`$${exp}`:'—',parseFloat(exp)>=0?'pos':'neg','Per trade avg','')}
@@ -4035,10 +4035,10 @@ function buildMonthBody(ym, yr, mo, monthTrades) {
       ${kpiCard('★','Avg Score',avgScore!=='—'?avgScore:'—',parseInt(avgScore)>=70?'pos':parseInt(avgScore)>=45?'hi':'neg',`${scores.length} graded trades`,'')}
     </div>
     <div class="kpi-grid" style="margin-bottom:16px">
-      ${kpiCard('$','Avg P&L / Day',tradingDays>0?`${(netPnl/tradingDays)>=0?'+':''}$${(netPnl/tradingDays).toFixed(0)}`:'—',netPnl>=0?'pos':'neg','Per trading day','')}
-      ${kpiCard('☀','Best Day',bestDay?`${bestDay.pnl>=0?'+':''}$${Math.abs(bestDay.pnl).toFixed(0)}`:'—','pos',bestDay?`Day ${bestDay.d}`:'','')}
-      ${kpiCard('☁','Worst Day',worstDay?`${worstDay.pnl>=0?'+':''}$${Math.abs(worstDay.pnl).toFixed(0)}`:'—','neg',worstDay?`Day ${worstDay.d}`:'','')}
-      ${kpiCard('⇌','Swap + Comm',`${(swap+comm)>=0?'+':''}$${(swap+comm).toFixed(0)}`,swap+comm>=0?'pos':'neg',`Swap $${swap.toFixed(0)} · Comm $${comm.toFixed(0)}`,'')}
+      ${kpiCard('$','Avg P&L / Day',tradingDays>0?`${(netPnl/tradingDays)>=0?'+':'−'}$${(netPnl/tradingDays).toFixed(0)}`:'—',netPnl>=0?'pos':'neg','Per trading day','')}
+      ${kpiCard('☀','Best Day',bestDay?`${bestDay.pnl>=0?'+':'−'}$${Math.abs(bestDay.pnl).toFixed(0)}`:'—','pos',bestDay?`Day ${bestDay.d}`:'','')}
+      ${kpiCard('☁','Worst Day',worstDay?`${worstDay.pnl>=0?'+':'−'}$${Math.abs(worstDay.pnl).toFixed(0)}`:'—','neg',worstDay?`Day ${worstDay.d}`:'','')}
+      ${kpiCard('⇌','Swap + Comm',`${(swap+comm)>=0?'+':'−'}$${(swap+comm).toFixed(0)}`,swap+comm>=0?'pos':'neg',`Swap $${swap.toFixed(0)} · Comm $${comm.toFixed(0)}`,'')}
     </div>
     <div class="chart-card" style="margin-bottom:0">
       <div class="chart-card-title">Equity Curve</div>
@@ -4110,7 +4110,7 @@ function openCalDayModal(indices) {
         <span class="rv-card-pair">${t.pair||'—'}</span>
         <span class="badge badge-${t.direction||'buy'}">${(t.direction||'').toUpperCase()}</span>
         ${resBadge}
-        <span class="rv-card-pnl" style="color:${pnlCol}">${pnl>=0?'+':''}$${Math.abs(pnl).toFixed(2)}</span>
+        <span class="rv-card-pnl" style="color:${pnlCol}">${pnl>=0?'+':'−'}$${Math.abs(pnl).toFixed(2)}</span>
         <span class="rv-card-meta">${t.lots||''} lots</span>
         ${t.entryRating?`<span class="grade-badge grade-active-${t.entryRating}">${t.entryRating}</span>`:''}
         ${scBadge}
@@ -4321,7 +4321,7 @@ function generateAiReview(type, key) {
   const bySession = dimBreak(t => (t.session && t.session !== '') ? (SESSION_LABELS[t.session]||t.session) : null);
 
   // ── Render helpers ───────────────────────────────────────────────────────────
-  const fmt$ = v => (v>=0?'+':'')+`$${Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
+  const fmt$ = v => (v>=0?'+':'−')+`$${Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
   const pnlCol = v => v > 0 ? 'var(--green)' : v < 0 ? 'var(--red)' : 'var(--muted)';
   const signal = (row, minTrades=2) => {
     if (row.n < minTrades) return { icon:'○', col:'var(--muted)', label:'Too few trades' };
@@ -4576,7 +4576,7 @@ function switchMonthTab(ym, tab) {
       options:{ ...CD, plugins:{ ...CD.plugins, tooltip:{ ...CD.plugins.tooltip, callbacks:{ label: c => {
         const t = mTrades[c.dataIndex]; if (!t) return `$${c.raw}`;
         const p = parseFloat(t.pnl)||0;
-        return [`Equity: $${c.raw}`, `${t.pair||''} ${(t.direction||'').toUpperCase()}`, `P&L: ${p>=0?'+':''}$${p.toFixed(2)}`];
+        return [`Equity: $${c.raw}`, `${t.pair||''} ${(t.direction||'').toUpperCase()}`, `P&L: ${p>=0?'+':'−'}$${p.toFixed(2)}`];
       }}}}, scales:{ ...CD.scales, y:{ ...CD.scales.y, ticks:{ ...CD.scales.y.ticks, callback: v=>`$${v}` }}}}
     });
   }
@@ -4636,7 +4636,7 @@ function drawQuarterEquity(qKey) {
     options:{ ...CD, plugins:{ ...CD.plugins, tooltip:{ ...CD.plugins.tooltip, callbacks:{ label: c => {
       const t = qTrades[c.dataIndex]; if (!t) return `$${c.raw}`;
       const p = parseFloat(t.pnl)||0;
-      return [`Equity: $${c.raw}`, `${t.pair||''} ${(t.direction||'').toUpperCase()}`, `P&L: ${p>=0?'+':''}$${p.toFixed(2)}`];
+      return [`Equity: $${c.raw}`, `${t.pair||''} ${(t.direction||'').toUpperCase()}`, `P&L: ${p>=0?'+':'−'}$${p.toFixed(2)}`];
     }}}}, scales:{ ...CD.scales, y:{ ...CD.scales.y, ticks:{ ...CD.scales.y.ticks, callback: v=>`$${v}` }}}}
   });
 }
@@ -4797,7 +4797,7 @@ function renderChallenge() {
       <div class="section-heading" style="margin-bottom:20px">&#9632; Funded Accounts</div>
       <div class="kpi-grid" style="margin-bottom:24px">
         ${kpiCard('◉','Total Funding',`$${totalFunding.toLocaleString('en-US')}`,'hi',`${accountSummaries.length} accounts`,'')}
-        ${kpiCard('$','Combined P&L',`${totalPnlAll>=0?'+':''}$${totalPnlAll.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}`,totalPnlAll>=0?'pos':'neg','Across all accounts','')}
+        ${kpiCard('$','Combined P&L',`${totalPnlAll>=0?'+':'−'}$${totalPnlAll.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}`,totalPnlAll>=0?'pos':'neg','Across all accounts','')}
       </div>
       <div style="display:grid;grid-template-columns:repeat(${accountSummaries.length},1fr);gap:16px">`;
 
@@ -4824,7 +4824,7 @@ function renderChallenge() {
           </div>
           <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted);margin-bottom:16px">${cfg.name} · $${(bal/1000).toFixed(0)}K</div>
 
-          <div style="font-family:'EB Garamond',serif;font-size:1.8rem;font-weight:700;color:${pnlCol};margin-bottom:2px">${totalPnl>=0?'+':''}$${Math.abs(totalPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+          <div style="font-family:'EB Garamond',serif;font-size:1.8rem;font-weight:700;color:${pnlCol};margin-bottom:2px">${totalPnl>=0?'+':'−'}$${Math.abs(totalPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
           <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted);margin-bottom:16px">${pnlPct ? pnlPct+'% return' : 'No balance set'}</div>
 
           ${type !== 'scaling' && !funded ? `
@@ -4978,7 +4978,7 @@ function renderChallenge() {
               <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
                 <div style="height:100%;width:${profProg}%;background:${pnlPct>=config.targetPct?'#6dbf9e':'#7bafd4'};border-radius:4px;transition:width 0.4s ease"></div>
               </div>
-              <div style="font-family:'EB Garamond',serif;font-size:0.8rem;color:var(--muted);margin-top:3px">${ls.pnl>=0?'+':''}$${ls.pnl.toFixed(2)} · Need $${Math.max(0, ls.target - ls.pnl).toFixed(2)} more → unlocks $${((ls.bal*2)/1000).toFixed(0)}K</div>
+              <div style="font-family:'EB Garamond',serif;font-size:0.8rem;color:var(--muted);margin-top:3px">${ls.pnl>=0?'+':'−'}$${ls.pnl.toFixed(2)} · Need $${Math.max(0, ls.target - ls.pnl).toFixed(2)} more → unlocks $${((ls.bal*2)/1000).toFixed(0)}K</div>
             </div>
             <div style="margin-bottom:14px">
               <div style="display:flex;justify-content:space-between;margin-bottom:5px">
@@ -5002,7 +5002,7 @@ function renderChallenge() {
               levelStats.filter(l=>l.passed).map((l,i)=>`
                 <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
                   <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:#6dbf9e;font-weight:700">✓ $${(l.bal/1000).toFixed(0)}K</div>
-                  <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted)">${l.trades.length} trades · +$${l.pnl.toFixed(2)}</div>
+                  <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted)">${l.trades.length} trades · ${l.pnl>=0?'+':'−'}$${Math.abs(l.pnl).toFixed(2)}</div>
                 </div>`).join('')}
           </div>
         </div>`;
@@ -5144,7 +5144,7 @@ function renderChallenge() {
           <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
             <div style="height:100%;width:${progressToTarget}%;background:${pnlPct>=phase.target?'#6dbf9e':'#7bafd4'};border-radius:3px;transition:width 0.4s ease"></div>
           </div>
-          <div style="font-family:'EB Garamond',serif;font-size:0.8rem;color:var(--muted);margin-top:3px">$${ps.pnl>=0?'+':''}${ps.pnl.toFixed(0)} · Need $${Math.max(0,(accountBal*phase.target/100)-ps.pnl).toFixed(0)} more</div>
+          <div style="font-family:'EB Garamond',serif;font-size:0.8rem;color:var(--muted);margin-top:3px">$${ps.pnl>=0?'+':'−'}${ps.pnl.toFixed(0)} · Need $${Math.max(0,(accountBal*phase.target/100)-ps.pnl).toFixed(0)} more</div>
         </div>
 
         <!-- Drawdown -->
@@ -6909,7 +6909,7 @@ function renderSystemChallenge() {
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
       <div class="chart-card" style="padding:20px;text-align:center">
         <div style="font-family:'EB Garamond',serif;font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Account P&L</div>
-        <div style="font-family:'EB Garamond',serif;font-size:1.8rem;font-weight:700;color:${pnlCol}">${totalPnl>=0?'+':'-'}$${Math.abs(totalPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+        <div style="font-family:'EB Garamond',serif;font-size:1.8rem;font-weight:700;color:${pnlCol}">${totalPnl>=0?'+':'−'}$${Math.abs(totalPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
         <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:${pnlCol}">${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%</div>
       </div>
       <div class="chart-card" style="padding:20px;text-align:center;border-color:${riskColor}">
@@ -7071,7 +7071,7 @@ function renderSystemFunded() {
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">
       <div class="chart-card" style="padding:20px;text-align:center">
         <div style="font-family:'EB Garamond',serif;font-size:0.8rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Account P&L</div>
-        <div style="font-family:'EB Garamond',serif;font-size:1.8rem;font-weight:700;color:${pnlCol}">${totalPnl>=0?'+':'-'}$${Math.abs(totalPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+        <div style="font-family:'EB Garamond',serif;font-size:1.8rem;font-weight:700;color:${pnlCol}">${totalPnl>=0?'+':'−'}$${Math.abs(totalPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
         <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:${pnlCol}">${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%</div>
       </div>
       <div class="chart-card" style="padding:20px;text-align:center;border-color:${riskColor}">
