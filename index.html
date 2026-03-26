@@ -1499,7 +1499,10 @@ function autoSyncReviews() {
   ACCOUNTS.forEach(srcAcct => {
     (allTrades[srcAcct]||[]).forEach((srcTrade, srcIdx) => {
       const srcSS = localStorage.getItem(`fx_ss_${srcAcct}_${srcIdx}`);
-      const hasSS = srcSS && JSON.parse(srcSS).length > 0;
+      const srcImgs = srcTrade.screenshots && srcTrade.screenshots.length
+        ? srcTrade.screenshots
+        : (() => { try { return srcSS ? JSON.parse(srcSS) : []; } catch(e) { return []; } })();
+      const hasSS = srcImgs.length > 0;
       if (!hasRealReview(srcTrade) && !hasSS) return;
       ACCOUNTS.filter(a => a !== srcAcct).forEach(destAcct => {
         const matches = findSimilarTrades(srcTrade, destAcct);
@@ -1510,12 +1513,12 @@ function autoSyncReviews() {
           t.syncedFrom = srcAcct;
           t.syncedAt = new Date().toISOString();
           allTrades[destAcct][i] = t;
-          // Sync screenshots — both localStorage and in-memory
-          if (srcSS) {
+          // Sync screenshots — use in-memory array, persist to localStorage
+          if (hasSS) {
+            allTrades[destAcct][i].screenshots = srcImgs;
             try {
-              localStorage.setItem(`fx_ss_${destAcct}_${i}`, srcSS);
-              allTrades[destAcct][i].screenshots = JSON.parse(srcSS); // update in-memory
-            } catch(e) {}
+              localStorage.setItem(`fx_ss_${destAcct}_${i}`, JSON.stringify(srcImgs));
+            } catch(e) { console.warn('Bulk screenshot sync quota exceeded for', destAcct, i); }
           }
           syncCount++;
         });
@@ -1536,13 +1539,15 @@ function syncReviewToOtherAccounts(idx) {
       t.syncedFrom = currentAccount;
       t.syncedAt = new Date().toISOString();
       allTrades[acct][i] = t;
-      // Sync screenshots — both localStorage and in-memory
-      const srcSS = localStorage.getItem(`fx_ss_${currentAccount}_${idx}`);
-      if (srcSS) {
+      // Sync screenshots — use in-memory array first, fall back to localStorage
+      const srcImgs = source.screenshots && source.screenshots.length
+        ? source.screenshots
+        : (() => { try { const s = localStorage.getItem(`fx_ss_${currentAccount}_${idx}`); return s ? JSON.parse(s) : []; } catch(e) { return []; } })();
+      if (srcImgs && srcImgs.length) {
+        allTrades[acct][i].screenshots = srcImgs;
         try {
-          localStorage.setItem(`fx_ss_${acct}_${i}`, srcSS);
-          allTrades[acct][i].screenshots = JSON.parse(srcSS); // update in-memory
-        } catch(e) {}
+          localStorage.setItem(`fx_ss_${acct}_${i}`, JSON.stringify(srcImgs));
+        } catch(e) { console.warn('Screenshot sync storage quota exceeded for', acct, i); }
       }
       syncCount++;
     });
@@ -2980,7 +2985,7 @@ function renderReviewList() {
             </div>
             <div class="form-group" style="margin-top:12px">
               <label>Review Notes</label>
-              <textarea id="rv_notes_${i}" placeholder="What went well? What would you change? Key lessons..." style="min-height:100px;width:100%;box-sizing:border-box" onchange="saveReviewField(${i})">${t.reviewNotes||''}</textarea>
+              <textarea id="rv_notes_${i}" placeholder="What went well? What would you change? Key lessons..." style="min-height:100px;width:100%;box-sizing:border-box;padding:10px 12px;resize:vertical;line-height:1.6;font-family:'EB Garamond',serif;font-size:0.95rem;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none" onchange="saveReviewField(${i})">${t.reviewNotes||''}</textarea>
             </div>
           </div>
           <!-- RIGHT: Fields -->
@@ -7419,30 +7424,34 @@ autoSyncReviews();
 // ── Backfill screenshots to all matched trades across accounts ────────────────
 function backfillScreenshots() {
   let count = 0;
+  const acctsSaved = new Set();
   ACCOUNTS.forEach(srcAcct => {
     (allTrades[srcAcct]||[]).forEach((srcTrade, srcIdx) => {
-      const srcSS = localStorage.getItem(`fx_ss_${srcAcct}_${srcIdx}`);
-      if (!srcSS) return;
-      let srcImgs;
-      try { srcImgs = JSON.parse(srcSS); } catch(e) { return; }
-      if (!srcImgs.length) return;
+      // Check in-memory first, then localStorage
+      let srcImgs = srcTrade.screenshots && srcTrade.screenshots.length ? srcTrade.screenshots : null;
+      if (!srcImgs) {
+        const srcSS = localStorage.getItem(`fx_ss_${srcAcct}_${srcIdx}`);
+        if (!srcSS) return;
+        try { srcImgs = JSON.parse(srcSS); } catch(e) { return; }
+      }
+      if (!srcImgs || !srcImgs.length) return;
       ACCOUNTS.filter(a => a !== srcAcct).forEach(destAcct => {
         const matches = findSimilarTrades(srcTrade, destAcct);
         matches.forEach(({t, i}) => {
-          const destSS = localStorage.getItem(`fx_ss_${destAcct}_${i}`);
-          let destImgs = [];
-          try { destImgs = destSS ? JSON.parse(destSS) : []; } catch(e) {}
+          const destImgs = allTrades[destAcct][i].screenshots || [];
           if (srcImgs.length > destImgs.length) {
             try {
-              localStorage.setItem(`fx_ss_${destAcct}_${i}`, srcSS);
               allTrades[destAcct][i].screenshots = srcImgs;
+              localStorage.setItem(`fx_ss_${destAcct}_${i}`, JSON.stringify(srcImgs));
+              acctsSaved.add(destAcct);
               count++;
-            } catch(e) {}
+            } catch(e) { console.warn('backfill quota exceeded', destAcct, i); }
           }
         });
       });
     });
   });
+  acctsSaved.forEach(a => saveAccount(a));
   if (count > 0) console.log(`[backfill] Pushed screenshots to ${count} matched trade(s)`);
 }
 backfillScreenshots();
