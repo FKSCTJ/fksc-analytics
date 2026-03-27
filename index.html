@@ -1508,17 +1508,22 @@ function autoSyncReviews() {
         const matches = findSimilarTrades(srcTrade, destAcct);
         matches.forEach(({t, i}) => {
           const destHasReview = hasRealReview(t);
-          if (destHasReview && srcAcct !== 'FTMO') return;
-          SYNC_FIELDS.forEach(f => { if (srcTrade[f] !== undefined) t[f] = srcTrade[f]; });
-          t.syncedFrom = srcAcct;
-          t.syncedAt = new Date().toISOString();
-          allTrades[destAcct][i] = t;
-          // Sync screenshots — use in-memory array, persist to localStorage
+          // Sync review fields only if dest has no review, or src is FTMO (master)
+          if (!destHasReview || srcAcct === 'FTMO') {
+            SYNC_FIELDS.forEach(f => { if (srcTrade[f] !== undefined) t[f] = srcTrade[f]; });
+            t.syncedFrom = srcAcct;
+            t.syncedAt = new Date().toISOString();
+            allTrades[destAcct][i] = t;
+          }
+          // Always sync screenshots regardless — if src has more than dest, push them
           if (hasSS) {
-            allTrades[destAcct][i].screenshots = srcImgs;
-            try {
-              localStorage.setItem(`fx_ss_${destAcct}_${i}`, JSON.stringify(srcImgs));
-            } catch(e) { console.warn('Bulk screenshot sync quota exceeded for', destAcct, i); }
+            const destImgs = allTrades[destAcct][i].screenshots || [];
+            if (srcImgs.length > destImgs.length) {
+              allTrades[destAcct][i].screenshots = srcImgs;
+              try {
+                localStorage.setItem(`fx_ss_${destAcct}_${i}`, JSON.stringify(srcImgs));
+              } catch(e) { console.warn('Bulk screenshot sync quota exceeded for', destAcct, i); }
+            }
           }
           syncCount++;
         });
