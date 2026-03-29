@@ -1698,6 +1698,57 @@ function getFilteredTrades() {
 }
 
 let currentPeriod = 'all';
+let currentStratPeriod = 'all';
+let stratPeriodFrom = '';
+let stratPeriodTo = '';
+
+function getStratFilteredTrades() {
+  const period = currentStratPeriod || 'all';
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  if (period === 'all') return trades;
+  if (period === 'current_month') {
+    const from = `${y}-${String(m+1).padStart(2,'0')}-01`;
+    const to   = `${y}-${String(m+1).padStart(2,'0')}-31`;
+    return trades.filter(t => { const d=t.closeDate||t.date; return d>=from&&d<=to; });
+  }
+  if (period === 'last_month') {
+    const lm = m===0?11:m-1, ly = m===0?y-1:y;
+    const from = `${ly}-${String(lm+1).padStart(2,'0')}-01`;
+    const to   = `${ly}-${String(lm+1).padStart(2,'0')}-31`;
+    return trades.filter(t => { const d=t.closeDate||t.date; return d>=from&&d<=to; });
+  }
+  if (period === 'current_year') {
+    return trades.filter(t => { const d=t.closeDate||t.date; return d&&d.startsWith(String(y)); });
+  }
+  if (period === 'custom') {
+    return trades.filter(t => {
+      const d = t.closeDate||t.date;
+      if (!d) return false;
+      if (stratPeriodFrom && d < stratPeriodFrom) return false;
+      if (stratPeriodTo   && d > stratPeriodTo)   return false;
+      return true;
+    });
+  }
+  return trades;
+}
+
+function toggleStratPeriodDropdown() {
+  const dd = document.getElementById('stratPeriodDropdown');
+  if (!dd) return;
+  const isOpen = dd.classList.contains('open');
+  document.querySelectorAll('.multi-select.open').forEach(el => el.classList.remove('open'));
+  if (!isOpen) dd.classList.add('open');
+}
+
+function setStratPeriod(value, label) {
+  currentStratPeriod = value;
+  document.querySelectorAll('.multi-select.open').forEach(el => el.classList.remove('open'));
+  const custom = value === 'custom';
+  const inp = document.getElementById('stratCustomPeriodInputs');
+  if (inp) inp.style.display = custom ? 'flex' : 'none';
+  renderStrategy();
+}
 
 function togglePeriodDropdown() {
   const dd = document.getElementById('periodDropdown');
@@ -3240,6 +3291,10 @@ function renderStrategy() {
   if (!panel) return;
   if (currentAccount === 'OVERALL') trades = getMergedTrades();
 
+  // Apply period filter
+  const stratTrades = getStratFilteredTrades();
+  const trades = stratTrades; // shadow global for this render
+
   const BASE_LABELS = ['DBD','DBR','RBD','RBR'];
   // ── BE Analysis ──
   const beSaved   = trades.filter(t => t.beOutcome === 'saved');
@@ -3684,7 +3739,27 @@ function renderStrategy() {
 
   // Rebuild full panel — always, to ensure OVERALL merges all accounts
   panel.innerHTML = `
-      <div class="section-heading" style="margin-bottom:16px">&#9632; Strategy Analysis</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div class="section-heading" style="margin:0">&#9632; Strategy Analysis</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div class="multi-select" id="stratPeriodDropdown" style="position:relative;width:fit-content">
+            <div class="ms-trigger" onclick="toggleStratPeriodDropdown()" style="min-width:130px">
+              <span id="stratPeriodLabel" style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--text)">${({'all':'All Time','current_month':'Current Month','last_month':'Last Month','current_year':'Current Year','custom':'Custom'})[currentStratPeriod]||'All Time'}</span>
+              <span style="font-size:0.9rem;color:var(--muted)">▼</span>
+            </div>
+            <div class="ms-dropdown" id="strat-period-drop">
+              ${[['all','All Time'],['current_month','Current Month'],['last_month','Last Month'],['current_year','Current Year'],['custom','Select Period…']].map(([v,l])=>
+                `<div class="ms-option ${v===currentStratPeriod?'ms-selected':''}" onclick="setStratPeriod('${v}','${l}')">${v===currentStratPeriod?'✓ ':'\u00a0\u00a0'}${l}</div>`
+              ).join('')}
+            </div>
+          </div>
+          <div id="stratCustomPeriodInputs" style="display:${currentStratPeriod==='custom'?'flex':'none'};gap:6px;align-items:center">
+            <input type="date" id="stratPeriodFrom" value="${stratPeriodFrom}" onchange="stratPeriodFrom=this.value;renderStrategy()" class="period-select">
+            <span style="color:var(--muted);font-family:'EB Garamond',serif;font-size:0.9rem">→</span>
+            <input type="date" id="stratPeriodTo" value="${stratPeriodTo}" onchange="stratPeriodTo=this.value;renderStrategy()" class="period-select">
+          </div>
+        </div>
+      </div>
       <div id="strat-static" style="margin-bottom:20px">
       </div>
       <div id="strat-dynamic"></div>
@@ -4033,22 +4108,22 @@ function buildMonthBody(ym, yr, mo, monthTrades) {
 
   const statsHtml = `
     <div class="kpi-grid" style="margin-bottom:16px">
-      ${kpiCard('◉','Net P&L',`${netPnl>=0?'+':'−'}$${Math.abs(netPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`,netPnl>=0?'pos':'neg',`${monthTrades.length} trades · ${tradingDays} days`,`${wins}W · ${losses}L${beCount>0?` · ${beCount}BE`:''}`)}
-      ${kpiCard('◎','Win Rate',`${wr}%`,parseInt(wr)>=50?'pos':'neg',`${wins}W / ${losses}L${beCount>0?` · ${beCount}BE`:''}`,parseInt(wr)>=50?'Solid month':'Needs review')}
-      ${kpiCard('⇄','Risk / Reward',rr!=='—'?`${rr}R`:'—',parseFloat(rr)>=1?'pos':'neg',`Avg win $${avgWin.toFixed(0)} · Avg loss $${avgLoss.toFixed(0)}`,'')}
-      ${kpiCard('⚡','Expectancy',exp!=='—'?`$${exp}`:'—',parseFloat(exp)>=0?'pos':'neg','Per trade avg','')}
+      ${kpiCard('◉','Net P&L',`${netPnl>=0?'+':'−'}$${Math.abs(netPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`,netPnl>=0?'pos':'neg',`${monthTrades.length} trades · ${tradingDays} days`,netPnl>=0?`Averaging ${monthTrades.length?`$${(netPnl/monthTrades.length).toFixed(0)} per trade`:''}  — keep executing`:'Net negative — review losing setups')}
+      ${kpiCard('◎','Win Rate',`${wr}%`,parseInt(wr)>=50?'pos':'neg',`${wins}W / ${losses}L${beCount>0?` · ${beCount}BE`:''}`,getComment('winRate',wr))}
+      ${kpiCard('⇄','Risk / Reward',rr!=='—'?`${rr}R`:'—',parseFloat(rr)>=1?'pos':'neg',`Avg win $${avgWin.toFixed(0)} · Avg loss $${avgLoss.toFixed(0)}`,rr!=='—'?getComment('rr',rr):'No decided trades yet')}
+      ${kpiCard('⚡','Expectancy',exp!=='—'?`${parseFloat(exp)>=0?'+':'−'}$${Math.abs(parseFloat(exp)).toFixed(0)}`:'—',parseFloat(exp)>=0?'pos':'neg','Per trade avg',exp!=='—'?getComment('expectancy',exp):'No decided trades yet')}
     </div>
     <div class="kpi-grid" style="margin-bottom:16px">
-      ${kpiCard('▲','Gross Win',`+$${grossWin.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`,'pos',`${wins} winning trades`,'')}
-      ${kpiCard('▼','Gross Loss',`-$${grossLoss.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`,'neg',`${losses} losing trades`,'')}
-      ${kpiCard('◈','Profit Factor',pf!=='—'?pf:'—',parseFloat(pf)>=1?'pos':'neg','Gross win / Gross loss','')}
-      ${kpiCard('★','Avg Score',avgScore!=='—'?avgScore:'—',parseInt(avgScore)>=70?'pos':parseInt(avgScore)>=45?'hi':'neg',`${scores.length} graded trades`,'')}
+      ${kpiCard('▲','Gross Win',`+$${grossWin.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`,'pos',`${wins} winning trades`,wins>0?`Avg $${(grossWin/wins).toFixed(0)} per winner`:'No wins this month')}
+      ${kpiCard('▼','Gross Loss',`−$${grossLoss.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`,'neg',`${losses} losing trades`,losses>0?`Avg $${(grossLoss/losses).toFixed(0)} per loser`:'No losses this month')}
+      ${kpiCard('◈','Profit Factor',pf!=='—'?pf:'—',parseFloat(pf)>=1?'pos':'neg','Gross win / Gross loss',pf!=='—'?getComment('profitFactor',pf):'No decided trades yet')}
+      ${kpiCard('★','Avg Score',avgScore!=='—'?avgScore:'—',parseInt(avgScore)>=70?'pos':parseInt(avgScore)>=45?'hi':'neg',`${scores.length} graded trades`,avgScore!=='—'?parseInt(avgScore)>=70?'Strong execution this month':parseInt(avgScore)>=45?'Average — room to improve':'Poor execution — review your process':'No graded trades')}
     </div>
     <div class="kpi-grid" style="margin-bottom:16px">
-      ${kpiCard('$','Avg P&L / Day',tradingDays>0?`${(netPnl/tradingDays)>=0?'+':'−'}$${(netPnl/tradingDays).toFixed(0)}`:'—',netPnl>=0?'pos':'neg','Per trading day','')}
-      ${kpiCard('☀','Best Day',bestDay?`${bestDay.pnl>=0?'+':'−'}$${Math.abs(bestDay.pnl).toFixed(0)}`:'—','pos',bestDay?`Day ${bestDay.d}`:'','')}
-      ${kpiCard('☁','Worst Day',worstDay?`${worstDay.pnl>=0?'+':'−'}$${Math.abs(worstDay.pnl).toFixed(0)}`:'—','neg',worstDay?`Day ${worstDay.d}`:'','')}
-      ${kpiCard('⇌','Swap + Comm',`${(swap+comm)>=0?'+':'−'}$${(swap+comm).toFixed(0)}`,swap+comm>=0?'pos':'neg',`Swap $${swap.toFixed(0)} · Comm $${comm.toFixed(0)}`,'')}
+      ${kpiCard('$','Avg P&L / Day',tradingDays>0?`${(netPnl/tradingDays)>=0?'+':'−'}$${Math.abs(netPnl/tradingDays).toFixed(0)}`:'—',netPnl>=0?'pos':'neg','Per trading day',tradingDays>0?`Across ${tradingDays} active trading day${tradingDays>1?'s':''}`:'No trading days recorded')}
+      ${kpiCard('☀','Best Day',bestDay?`${bestDay.pnl>=0?'+':'−'}$${Math.abs(bestDay.pnl).toFixed(0)}`:'—','pos',bestDay?`Day ${bestDay.d}`:'',bestDay?bestDay.pnl>0?'Strong day — study what went right':'Best day was still a loss — difficult month':'No data')}
+      ${kpiCard('☁','Worst Day',worstDay?`${worstDay.pnl>=0?'+':'−'}$${Math.abs(worstDay.pnl).toFixed(0)}`:'—','neg',worstDay?`Day ${worstDay.d}`:'',worstDay?worstDay.pnl<0?'Review this day — what happened?':'Worst day was still positive — excellent month':'No data')}
+      ${kpiCard('⇌','Swap + Comm',`${(swap+comm)>=0?'+':'−'}$${Math.abs(swap+comm).toFixed(0)}`,swap+comm>=0?'pos':'neg',`Swap $${swap.toFixed(0)} · Comm $${comm.toFixed(0)}`,swap+comm<0?'Trading costs — factor into your edge':'Positive carry — favourable swap conditions')}
     </div>
     <div class="chart-card" style="margin-bottom:0">
       <div class="chart-card-title">Equity Curve</div>
