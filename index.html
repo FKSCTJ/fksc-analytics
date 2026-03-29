@@ -632,10 +632,14 @@
             <div class="ms-option" onclick="setPeriod('custom','Select Period…')"> &nbsp;Select Period…</div>
           </div>
         </div>
-        <div id="customPeriodInputs" style="display:none;gap:6px;align-items:center">
-          <input type="date" id="periodFrom" onchange="renderOverviewFiltered()" class="period-select">
+        <div id="customPeriodInputs" style="display:none;gap:8px;align-items:center">
+          <div style="position:relative">
+            <button onclick="openOvCal('from')" style="font-family:'EB Garamond',serif;font-size:0.88rem;padding:5px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--muted);cursor:pointer;letter-spacing:0.03em;min-width:110px;text-align:left" id="ovFromBtn">From date</button>
+          </div>
           <span style="color:var(--muted);font-family:'EB Garamond',serif;font-size:0.9rem">→</span>
-          <input type="date" id="periodTo" onchange="renderOverviewFiltered()" class="period-select">
+          <div style="position:relative">
+            <button onclick="openOvCal('to')" style="font-family:'EB Garamond',serif;font-size:0.88rem;padding:5px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--muted);cursor:pointer;letter-spacing:0.03em;min-width:110px;text-align:left" id="ovToBtn">To date</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1061,7 +1065,7 @@
         <!-- Period filter (same style as Overview) -->
         <div class="multi-select" id="rvPeriodDropdown" style="min-width:150px">
           <div class="ms-trigger" onclick="toggleRvPeriodDropdown()" id="rvPeriodTrigger">
-            <span id="rvPeriodLabel">All Time</span>
+            <span id="rvPeriodLabel" style="display:none">All Time</span>
             <span style="font-size:0.9rem;color:var(--muted)">▼</span>
           </div>
           <div class="ms-dropdown" id="rv-period-drop">
@@ -1072,10 +1076,14 @@
             <div class="ms-option" onclick="setRvPeriod('custom','Custom…')">&nbsp;&nbsp;Custom…</div>
           </div>
         </div>
-        <div id="rvCustomPeriod" style="display:none;gap:6px;align-items:center;display:none">
-          <input type="date" id="rvPeriodFrom" onchange="renderReviewList()" class="period-select">
+        <div id="rvCustomPeriod" style="display:none;gap:8px;align-items:center">
+          <div style="position:relative">
+            <button onclick="openRvCal('from')" id="rvFromBtn" style="font-family:'EB Garamond',serif;font-size:0.88rem;padding:5px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--muted);cursor:pointer;letter-spacing:0.03em;min-width:110px;text-align:left">From date</button>
+          </div>
           <span style="color:var(--muted);font-family:'EB Garamond',serif;font-size:0.9rem">→</span>
-          <input type="date" id="rvPeriodTo" onchange="renderReviewList()" class="period-select">
+          <div style="position:relative">
+            <button onclick="openRvCal('to')" id="rvToBtn" style="font-family:'EB Garamond',serif;font-size:0.88rem;padding:5px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--muted);cursor:pointer;letter-spacing:0.03em;min-width:110px;text-align:left">To date</button>
+          </div>
         </div>
 
         <!-- Hidden selects for JS compatibility -->
@@ -1761,8 +1769,8 @@ function getFilteredTrades() {
     return trades.filter(t => { const d = t.closeDate||t.date; return d && d.startsWith(String(y)); });
   }
   if (period === 'custom') {
-    const from = document.getElementById('periodFrom')?.value;
-    const to = document.getElementById('periodTo')?.value;
+    const from = ovPeriodFrom;
+    const to   = ovPeriodTo;
     return trades.filter(t => {
       const d = t.closeDate||t.date;
       if (!d) return false;
@@ -1775,6 +1783,8 @@ function getFilteredTrades() {
 }
 
 let currentPeriod = 'all';
+let ovPeriodFrom = '';
+let ovPeriodTo   = '';
 let currentStratPeriod = 'all';
 let stratPeriodFrom = '';
 let stratPeriodTo = '';
@@ -1816,6 +1826,127 @@ function toggleStratPeriodDropdown() {
   const isOpen = dd.classList.contains('open');
   document.querySelectorAll('.multi-select.open').forEach(el => el.classList.remove('open'));
   if (!isOpen) dd.classList.add('open');
+}
+
+let ovCalTarget = null;
+let ovCalYear   = new Date().getFullYear();
+let ovCalMonth  = new Date().getMonth();
+
+function openOvCal(target) {
+  ovCalTarget = target;
+  const existing = document.getElementById('ovCalPopup');
+  if (existing) {
+    if (existing.dataset.target === target) { existing.remove(); return; }
+    existing.remove();
+  }
+  const current = target === 'from' ? ovPeriodFrom : ovPeriodTo;
+  if (current) {
+    const [y,m] = current.split('-');
+    ovCalYear  = parseInt(y);
+    ovCalMonth = parseInt(m) - 1;
+  } else {
+    ovCalYear  = new Date().getFullYear();
+    ovCalMonth = new Date().getMonth();
+  }
+  const btn = document.getElementById(target === 'from' ? 'ovFromBtn' : 'ovToBtn');
+  const popup = document.createElement('div');
+  popup.id = 'ovCalPopup';
+  popup.dataset.target = target;
+  popup.style.cssText = 'position:fixed;z-index:9999;background:var(--surface2);border:1px solid var(--border);border-radius:6px;box-shadow:0 8px 32px rgba(0,0,0,0.4);padding:12px;min-width:260px;font-family:\'EB Garamond\',serif';
+  const rect = btn.getBoundingClientRect();
+  popup.style.top  = (rect.bottom + 6) + 'px';
+  popup.style.left = rect.left + 'px';
+  document.body.appendChild(popup);
+  renderOvCal();
+  setTimeout(() => { document.addEventListener('click', ovCalOutside); }, 0);
+}
+
+function ovCalOutside(e) {
+  const popup = document.getElementById('ovCalPopup');
+  if (popup && !popup.contains(e.target) &&
+      e.target.id !== 'ovFromBtn' && e.target.id !== 'ovToBtn') {
+    popup.remove();
+    document.removeEventListener('click', ovCalOutside);
+  }
+}
+
+function renderOvCal() {
+  const popup = document.getElementById('ovCalPopup');
+  if (!popup) return;
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const days   = ['Mo','Tu','We','Th','Fr','Sa','Su'];
+  const y = ovCalYear, m = ovCalMonth;
+  const firstDay   = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const startOffset = (firstDay + 6) % 7;
+  const selVal = ovCalTarget === 'from' ? ovPeriodFrom : ovPeriodTo;
+
+  let grid = '';
+  for (let i = 0; i < startOffset; i++) grid += '<div></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso  = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isSel   = iso === selVal;
+    const inRange = ovPeriodFrom && ovPeriodTo && iso >= ovPeriodFrom && iso <= ovPeriodTo;
+    const isFrom  = iso === ovPeriodFrom;
+    const isTo    = iso === ovPeriodTo;
+    const bg  = isSel ? 'var(--accent)' : inRange ? 'rgba(123,175,212,0.15)' : 'transparent';
+    const col = isSel ? '#0a1220' : 'var(--text)';
+    const fw  = isSel ? '700' : '400';
+    const br  = isFrom ? '4px 0 0 4px' : isTo ? '0 4px 4px 0' : inRange ? '0' : '4px';
+    grid += `<div onclick="selectOvCalDay('${iso}')" style="text-align:center;padding:5px 2px;cursor:pointer;border-radius:${br};background:${bg};color:${col};font-weight:${fw};font-size:0.88rem;transition:background 0.1s" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">${d}</div>`;
+  }
+
+  const yearOpts = [];
+  for (let yr = new Date().getFullYear(); yr >= 2020; yr--) {
+    yearOpts.push(`<option value="${yr}" ${yr===y?'selected':''}>${yr}</option>`);
+  }
+
+  popup.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:6px">
+      <button onclick="ovCalNav(-1)" style="background:none;border:1px solid var(--border);color:var(--text);width:28px;height:28px;border-radius:3px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center">‹</button>
+      <div style="display:flex;align-items:center;gap:6px;flex:1;justify-content:center">
+        <select onchange="ovCalMonth=parseInt(this.value);renderOvCal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:3px;font-family:'EB Garamond',serif;font-size:0.88rem;cursor:pointer">
+          ${months.map((mn,i)=>`<option value="${i}" ${i===m?'selected':''}>${mn}</option>`).join('')}
+        </select>
+        <select onchange="ovCalYear=parseInt(this.value);renderOvCal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:3px;font-family:'EB Garamond',serif;font-size:0.88rem;cursor:pointer">
+          ${yearOpts.join('')}
+        </select>
+      </div>
+      <button onclick="ovCalNav(1)" style="background:none;border:1px solid var(--border);color:var(--text);width:28px;height:28px;border-radius:3px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center">›</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px">
+      ${days.map(d=>`<div style="text-align:center;font-size:0.75rem;color:var(--muted);padding:3px 0;font-weight:700;letter-spacing:0.05em">${d}</div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">
+      ${grid}
+    </div>
+    ${ovPeriodFrom||ovPeriodTo?`<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:0.8rem;color:var(--muted);text-align:center">
+      ${ovPeriodFrom?fmtDateStrat(ovPeriodFrom):'—'} → ${ovPeriodTo?fmtDateStrat(ovPeriodTo):'—'}
+    </div>`:''}`;
+}
+
+function ovCalNav(dir) {
+  ovCalMonth += dir;
+  if (ovCalMonth < 0)  { ovCalMonth = 11; ovCalYear--; }
+  if (ovCalMonth > 11) { ovCalMonth = 0;  ovCalYear++; }
+  renderOvCal();
+}
+
+function selectOvCalDay(iso) {
+  if (ovCalTarget === 'from') {
+    ovPeriodFrom = iso;
+    if (ovPeriodTo && iso > ovPeriodTo) ovPeriodTo = '';
+  } else {
+    ovPeriodTo = iso;
+    if (ovPeriodFrom && iso < ovPeriodFrom) ovPeriodFrom = '';
+  }
+  // Update button labels
+  const fromBtn = document.getElementById('ovFromBtn');
+  const toBtn   = document.getElementById('ovToBtn');
+  if (fromBtn) { fromBtn.textContent = ovPeriodFrom ? fmtDateStrat(ovPeriodFrom) : 'From date'; fromBtn.style.color = ovPeriodFrom ? 'var(--text)' : 'var(--muted)'; }
+  if (toBtn)   { toBtn.textContent   = ovPeriodTo   ? fmtDateStrat(ovPeriodTo)   : 'To date';   toBtn.style.color   = ovPeriodTo   ? 'var(--text)' : 'var(--muted)'; }
+  renderOvCal();
+  renderOverviewFiltered();
 }
 
 function fmtDateStrat(d) {
@@ -3376,7 +3507,9 @@ ${isBreakEven(t.pnl) ? `<div class="form-group">
   }).join('');
 }
 
-let rvPeriod = 'all';
+let rvPeriod     = 'all';
+let rvPeriodFrom = '';
+let rvPeriodTo   = '';
 
 function toggleRvPeriodDropdown() {
   const wrapper = document.getElementById('rvPeriodDropdown');
@@ -3399,6 +3532,101 @@ function setRvPeriod(value, label) {
   renderReviewList();
 }
 
+let rvCalTarget = null;
+let rvCalYear   = new Date().getFullYear();
+let rvCalMonth  = new Date().getMonth();
+
+function openRvCal(target) {
+  rvCalTarget = target;
+  const existing = document.getElementById('rvCalPopup');
+  if (existing) { if (existing.dataset.target === target) { existing.remove(); return; } existing.remove(); }
+  const current = target === 'from' ? rvPeriodFrom : rvPeriodTo;
+  if (current) { const [y,m] = current.split('-'); rvCalYear = parseInt(y); rvCalMonth = parseInt(m)-1; }
+  else { rvCalYear = new Date().getFullYear(); rvCalMonth = new Date().getMonth(); }
+  const btn = document.getElementById(target === 'from' ? 'rvFromBtn' : 'rvToBtn');
+  if (!btn) return;
+  const popup = document.createElement('div');
+  popup.id = 'rvCalPopup';
+  popup.dataset.target = target;
+  popup.style.cssText = 'position:fixed;z-index:9999;background:var(--surface2);border:1px solid var(--border);border-radius:6px;box-shadow:0 8px 32px rgba(0,0,0,0.4);padding:12px;min-width:260px;font-family:\'EB Garamond\',serif';
+  const rect = btn.getBoundingClientRect();
+  popup.style.top  = (rect.bottom + 6) + 'px';
+  popup.style.left = rect.left + 'px';
+  document.body.appendChild(popup);
+  renderRvCal();
+  setTimeout(() => { document.addEventListener('click', rvCalOutside); }, 0);
+}
+
+function rvCalOutside(e) {
+  const popup = document.getElementById('rvCalPopup');
+  if (popup && !popup.contains(e.target) && e.target.id !== 'rvFromBtn' && e.target.id !== 'rvToBtn') {
+    popup.remove();
+    document.removeEventListener('click', rvCalOutside);
+  }
+}
+
+function renderRvCal() {
+  const popup = document.getElementById('rvCalPopup');
+  if (!popup) return;
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const days   = ['Mo','Tu','We','Th','Fr','Sa','Su'];
+  const y = rvCalYear, m = rvCalMonth;
+  const firstDay    = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const startOffset = (firstDay + 6) % 7;
+  const selVal = rvCalTarget === 'from' ? rvPeriodFrom : rvPeriodTo;
+  let grid = '';
+  for (let i = 0; i < startOffset; i++) grid += '<div></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso     = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isSel   = iso === selVal;
+    const inRange = rvPeriodFrom && rvPeriodTo && iso >= rvPeriodFrom && iso <= rvPeriodTo;
+    const isFrom  = iso === rvPeriodFrom, isTo = iso === rvPeriodTo;
+    const bg  = isSel ? 'var(--accent)' : inRange ? 'rgba(123,175,212,0.15)' : 'transparent';
+    const col = isSel ? '#0a1220' : 'var(--text)';
+    const fw  = isSel ? '700' : '400';
+    const br  = isFrom ? '4px 0 0 4px' : isTo ? '0 4px 4px 0' : inRange ? '0' : '4px';
+    grid += `<div onclick="selectRvCalDay('${iso}')" style="text-align:center;padding:5px 2px;cursor:pointer;border-radius:${br};background:${bg};color:${col};font-weight:${fw};font-size:0.88rem" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">${d}</div>`;
+  }
+  const yearOpts = [];
+  for (let yr = new Date().getFullYear(); yr >= 2020; yr--) yearOpts.push(`<option value="${yr}" ${yr===y?'selected':''}>${yr}</option>`);
+  popup.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:6px">
+      <button onclick="rvCalNav(-1)" style="background:none;border:1px solid var(--border);color:var(--text);width:28px;height:28px;border-radius:3px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center">‹</button>
+      <div style="display:flex;align-items:center;gap:6px;flex:1;justify-content:center">
+        <select onchange="rvCalMonth=parseInt(this.value);renderRvCal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:3px;font-family:'EB Garamond',serif;font-size:0.88rem;cursor:pointer">
+          ${months.map((mn,i)=>`<option value="${i}" ${i===m?'selected':''}>${mn}</option>`).join('')}
+        </select>
+        <select onchange="rvCalYear=parseInt(this.value);renderRvCal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:3px;font-family:'EB Garamond',serif;font-size:0.88rem;cursor:pointer">
+          ${yearOpts.join('')}
+        </select>
+      </div>
+      <button onclick="rvCalNav(1)" style="background:none;border:1px solid var(--border);color:var(--text);width:28px;height:28px;border-radius:3px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center">›</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px">
+      ${days.map(d=>`<div style="text-align:center;font-size:0.75rem;color:var(--muted);padding:3px 0;font-weight:700;letter-spacing:0.05em">${d}</div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">${grid}</div>
+    ${rvPeriodFrom||rvPeriodTo?`<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:0.8rem;color:var(--muted);text-align:center">${rvPeriodFrom?fmtDateStrat(rvPeriodFrom):'—'} → ${rvPeriodTo?fmtDateStrat(rvPeriodTo):'—'}</div>`:''}`;
+}
+
+function rvCalNav(dir) {
+  rvCalMonth += dir;
+  if (rvCalMonth < 0)  { rvCalMonth = 11; rvCalYear--; }
+  if (rvCalMonth > 11) { rvCalMonth = 0;  rvCalYear++; }
+  renderRvCal();
+}
+
+function selectRvCalDay(iso) {
+  if (rvCalTarget === 'from') { rvPeriodFrom = iso; if (rvPeriodTo && iso > rvPeriodTo) rvPeriodTo = ''; }
+  else { rvPeriodTo = iso; if (rvPeriodFrom && iso < rvPeriodFrom) rvPeriodFrom = ''; }
+  const fb = document.getElementById('rvFromBtn'), tb = document.getElementById('rvToBtn');
+  if (fb) { fb.textContent = rvPeriodFrom ? fmtDateStrat(rvPeriodFrom) : 'From date'; fb.style.color = rvPeriodFrom ? 'var(--text)' : 'var(--muted)'; }
+  if (tb) { tb.textContent = rvPeriodTo   ? fmtDateStrat(rvPeriodTo)   : 'To date';   tb.style.color = rvPeriodTo   ? 'var(--text)' : 'var(--muted)'; }
+  renderRvCal();
+  renderReviewList();
+}
+
 function getRvFilteredTrades() {
   const now = new Date();
   const y = now.getFullYear(), m = now.getMonth();
@@ -3418,8 +3646,8 @@ function getRvFilteredTrades() {
     return trades.map((t,i)=>({t,i})).filter(({t}) => d(t).startsWith(String(y)));
   }
   if (rvPeriod === 'custom') {
-    const from = document.getElementById('rvPeriodFrom')?.value;
-    const to = document.getElementById('rvPeriodTo')?.value;
+    const from = rvPeriodFrom;
+    const to   = rvPeriodTo;
     return trades.map((t,i)=>({t,i})).filter(({t}) => {
       const td = d(t); if (!td) return false;
       if (from && td < from) return false;
@@ -3956,8 +4184,8 @@ function renderStrategy() {
         <div class="section-heading" style="margin:0">&#9632; Strategy Analysis</div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <div class="multi-select" id="stratPeriodDropdown" style="position:relative;width:fit-content">
-            <div class="ms-trigger" onclick="toggleStratPeriodDropdown()" style="min-width:130px">
-              <span id="stratPeriodLabel" style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--text)">${({'all':'All Time','current_month':'Current Month','last_month':'Last Month','current_year':'Current Year','custom':'Custom'})[currentStratPeriod]||'All Time'}</span>
+            <div class="ms-trigger" onclick="toggleStratPeriodDropdown()" style="min-width:unset">
+              <span id="stratPeriodLabel" style="display:none">${({'all':'All Time','current_month':'Current Month','last_month':'Last Month','current_year':'Current Year','custom':'Custom'})[currentStratPeriod]||'All Time'}</span>
               <span style="font-size:0.9rem;color:var(--muted)">▼</span>
             </div>
             <div class="ms-dropdown" id="strat-period-drop">
