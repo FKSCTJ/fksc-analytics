@@ -1165,6 +1165,89 @@
 <div id="tab-habits" style="display:none"></div>
 
 <script>
+// ── IndexedDB Screenshot Storage ──────────────────────────────────────────────
+// Replaces localStorage for screenshots — supports hundreds of MB, no quota issues
+const SSDB = (() => {
+  const DB_NAME = 'fksc_screenshots';
+  const DB_VER  = 1;
+  const STORE   = 'screenshots';
+  let db = null;
+
+  function open() {
+    return new Promise((resolve, reject) => {
+      if (db) return resolve(db);
+      const req = indexedDB.open(DB_NAME, DB_VER);
+      req.onupgradeneeded = e => {
+        e.target.result.createObjectStore(STORE);
+      };
+      req.onsuccess = e => { db = e.target.result; resolve(db); };
+      req.onerror   = e => reject(e);
+    });
+  }
+
+  async function get(key) {
+    const d = await open();
+    return new Promise((resolve, reject) => {
+      const tx = d.transaction(STORE, 'readonly');
+      const req = tx.objectStore(STORE).get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror   = e => reject(e);
+    });
+  }
+
+  async function set(key, value) {
+    const d = await open();
+    return new Promise((resolve, reject) => {
+      const tx = d.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror    = e => reject(e);
+    });
+  }
+
+  async function remove(key) {
+    const d = await open();
+    return new Promise((resolve, reject) => {
+      const tx = d.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror    = e => reject(e);
+    });
+  }
+
+  async function getAllKeys() {
+    const d = await open();
+    return new Promise((resolve, reject) => {
+      const tx = d.transaction(STORE, 'readonly');
+      const req = tx.objectStore(STORE).getAllKeys();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror   = e => reject(e);
+    });
+  }
+
+  // Migrate any existing fx_ss_* keys from localStorage → IndexedDB
+  async function migrateFromLocalStorage() {
+    const keys = Object.keys(localStorage).filter(k => k.startsWith('fx_ss_'));
+    if (!keys.length) return;
+    for (const key of keys) {
+      try {
+        const val = localStorage.getItem(key);
+        if (val) {
+          const imgs = JSON.parse(val);
+          if (imgs && imgs.length) await set(key, imgs);
+        }
+        localStorage.removeItem(key);
+      } catch(e) {}
+    }
+    if (keys.length) console.log(`[SSDB] Migrated ${keys.length} screenshot entries from localStorage`);
+  }
+
+  return { get, set, remove, getAllKeys, migrateFromLocalStorage };
+})();
+
+// Run migration on load
+SSDB.migrateFromLocalStorage().catch(e => console.warn('[SSDB] Migration error:', e));
+
 
 function getBEThreshold(tradesArr) {
   try {
@@ -1211,8 +1294,7 @@ if (!ACCOUNTS.includes(currentAccount) && currentAccount !== 'OVERALL') currentA
 
 function loadAccountTrades(acct, raw) {
   return raw.map((t, i) => {
-    const ss = localStorage.getItem(`fx_ss_${acct}_${i}`);
-    if (ss) { try { t.screenshots = JSON.parse(ss); } catch(e) {} }
+    // Screenshots loaded async after init via loadAllScreenshots()
     ['date','closeDate'].forEach(k => {
       if (t[k]) {
         const m = String(t[k]).match(/^(\d{2})\/(\d{2})\/(\d{4})/);
@@ -1348,64 +1430,67 @@ document.addEventListener('keydown', e => {
   }
 });
 
-function save() {
-  if (currentAccount === 'OVERALL') return; // read-only
-  pushUndo(); // save state before overwriting
+async function save() {
+  if (currentAccount === 'OVERALL') return;
+  pushUndo();
   allTrades[currentAccount] = trades;
-  // Strip screenshots from main payload — save them separately
-  const lean = trades.map((t,i) => {
+  const lean = [];
+  for (let i = 0; i < trades.length; i++) {
+    const t = trades[i];
     const copy = {...t};
     if (copy.screenshots && copy.screenshots.length) {
-      for (let attempt = copy.screenshots.length; attempt >= 0; attempt--) {
+      const imgs = [...copy.screenshots];
+      let saved = false;
+      while (imgs.length > 0 && !saved) {
         try {
-          const subset = copy.screenshots.slice(-attempt || undefined);
-          localStorage.setItem(`fx_ss_${currentAccount}_${i}`, JSON.stringify(attempt > 0 ? subset : []));
-          break;
-        } catch(e) { /* try fewer */ }
+          await SSDB.set(`fx_ss_${currentAccount}_${i}`, imgs);
+          saved = true;
+        } catch(e) {
+          imgs.shift();
+        }
+      }
+      if (!saved) {
+        await SSDB.remove(`fx_ss_${currentAccount}_${i}`);
+        trades[i].screenshots = [];
+        allTrades[currentAccount][i].screenshots = [];
       }
       delete copy.screenshots;
     } else {
-      localStorage.removeItem(`fx_ss_${currentAccount}_${i}`);
+      await SSDB.remove(`fx_ss_${currentAccount}_${i}`);
     }
-    return copy;
-  });
+    lean.push(copy);
+  }
   try {
     localStorage.setItem(`fx_trades_${currentAccount}`, JSON.stringify(lean));
   } catch(e) {
-    alert('Storage quota exceeded. Try clearing screenshots from older trades via the Trade Review tab.');
+    toast('⚠ Storage full — some data may not have saved.', true);
   }
   localStorage.setItem('fx_current_account', currentAccount);
   markUnsaved();
 }
 
-function saveAccount(acct) {
-  const lean = (allTrades[acct] || []).map((t,i) => {
+async function saveAccount(acct) {
+  const lean = [];
+  const arr = allTrades[acct] || [];
+  for (let i = 0; i < arr.length; i++) {
+    const t = arr[i];
     const copy = {...t};
     if (copy.screenshots && copy.screenshots.length) {
-      // Try saving all, then fall back one-by-one dropping oldest if full
-      let saved = false;
-      for (let attempt = copy.screenshots.length; attempt >= 0; attempt--) {
-        try {
-          const subset = copy.screenshots.slice(-attempt || undefined);
-          localStorage.setItem(`fx_ss_${acct}_${i}`, JSON.stringify(attempt > 0 ? subset : []));
-          if (attempt < copy.screenshots.length) {
-            console.warn(`Trade ${i}: kept ${attempt} of ${copy.screenshots.length} screenshots due to storage limit`);
-          }
-          saved = true;
-          break;
-        } catch(e) { /* try fewer */ }
+      try {
+        await SSDB.set(`fx_ss_${acct}_${i}`, copy.screenshots);
+      } catch(e) {
+        console.warn('SSDB save error for', acct, i, e);
       }
-      if (!saved) localStorage.removeItem(`fx_ss_${acct}_${i}`);
       delete copy.screenshots;
     } else {
-      localStorage.removeItem(`fx_ss_${acct}_${i}`);
+      await SSDB.remove(`fx_ss_${acct}_${i}`);
     }
-    return copy;
-  });
+    lean.push(copy);
+  }
   try {
     localStorage.setItem(`fx_trades_${acct}`, JSON.stringify(lean));
   } catch(e) {
-    console.warn('Quota exceeded for account', acct);
+    console.warn('localStorage quota exceeded for account', acct);
   }
 }
 
@@ -1498,10 +1583,8 @@ function autoSyncReviews() {
 
   ACCOUNTS.forEach(srcAcct => {
     (allTrades[srcAcct]||[]).forEach((srcTrade, srcIdx) => {
-      const srcSS = localStorage.getItem(`fx_ss_${srcAcct}_${srcIdx}`);
       const srcImgs = srcTrade.screenshots && srcTrade.screenshots.length
-        ? srcTrade.screenshots
-        : (() => { try { return srcSS ? JSON.parse(srcSS) : []; } catch(e) { return []; } })();
+        ? srcTrade.screenshots : [];
       const hasSS = srcImgs.length > 0;
       if (!hasRealReview(srcTrade) && !hasSS) return;
       ACCOUNTS.filter(a => a !== srcAcct).forEach(destAcct => {
@@ -1520,9 +1603,7 @@ function autoSyncReviews() {
             const destImgs = allTrades[destAcct][i].screenshots || [];
             if (srcImgs.length > destImgs.length) {
               allTrades[destAcct][i].screenshots = srcImgs;
-              try {
-                localStorage.setItem(`fx_ss_${destAcct}_${i}`, JSON.stringify(srcImgs));
-              } catch(e) { console.warn('Bulk screenshot sync quota exceeded for', destAcct, i); }
+              SSDB.set(`fx_ss_${destAcct}_${i}`, srcImgs).catch(e => console.warn('SSDB sync error:', e));
             }
           }
           syncCount++;
@@ -1544,15 +1625,11 @@ function syncReviewToOtherAccounts(idx) {
       t.syncedFrom = currentAccount;
       t.syncedAt = new Date().toISOString();
       allTrades[acct][i] = t;
-      // Sync screenshots — use in-memory array first, fall back to localStorage
-      const srcImgs = source.screenshots && source.screenshots.length
-        ? source.screenshots
-        : (() => { try { const s = localStorage.getItem(`fx_ss_${currentAccount}_${idx}`); return s ? JSON.parse(s) : []; } catch(e) { return []; } })();
-      if (srcImgs && srcImgs.length) {
+      // Sync screenshots — use in-memory array
+      const srcImgs = source.screenshots && source.screenshots.length ? source.screenshots : [];
+      if (srcImgs.length) {
         allTrades[acct][i].screenshots = srcImgs;
-        try {
-          localStorage.setItem(`fx_ss_${acct}_${i}`, JSON.stringify(srcImgs));
-        } catch(e) { console.warn('Screenshot sync storage quota exceeded for', acct, i); }
+        SSDB.set(`fx_ss_${acct}_${i}`, srcImgs).catch(e => console.warn('SSDB sync error:', e));
       }
       syncCount++;
     });
@@ -1739,6 +1816,142 @@ function toggleStratPeriodDropdown() {
   const isOpen = dd.classList.contains('open');
   document.querySelectorAll('.multi-select.open').forEach(el => el.classList.remove('open'));
   if (!isOpen) dd.classList.add('open');
+}
+
+function fmtDateStrat(d) {
+  if (!d) return '';
+  const [y,m,day] = d.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${day} ${months[parseInt(m)-1]} ${y}`;
+}
+
+let stratCalTarget = null; // 'from' or 'to'
+let stratCalYear  = new Date().getFullYear();
+let stratCalMonth = new Date().getMonth();
+
+function openStratCal(target) {
+  stratCalTarget = target;
+  const existing = document.getElementById('stratCalPopup');
+  if (existing) {
+    if (existing.dataset.target === target) { existing.remove(); return; }
+    existing.remove();
+  }
+  const current = target === 'from' ? stratPeriodFrom : stratPeriodTo;
+  if (current) {
+    const [y,m] = current.split('-');
+    stratCalYear  = parseInt(y);
+    stratCalMonth = parseInt(m) - 1;
+  } else {
+    stratCalYear  = new Date().getFullYear();
+    stratCalMonth = new Date().getMonth();
+  }
+  const btn = document.getElementById(target === 'from' ? 'stratFromBtn' : 'stratToBtn');
+  const popup = document.createElement('div');
+  popup.id = 'stratCalPopup';
+  popup.dataset.target = target;
+  popup.style.cssText = 'position:fixed;z-index:9999;background:var(--surface2);border:1px solid var(--border);border-radius:6px;box-shadow:0 8px 32px rgba(0,0,0,0.4);padding:12px;min-width:260px;font-family:\'EB Garamond\',serif';
+  // Position near button
+  const rect = btn.getBoundingClientRect();
+  popup.style.top  = (rect.bottom + 6) + 'px';
+  popup.style.left = rect.left + 'px';
+  document.body.appendChild(popup);
+  renderStratCal();
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('click', stratCalOutside);
+  }, 0);
+}
+
+function stratCalOutside(e) {
+  const popup = document.getElementById('stratCalPopup');
+  if (popup && !popup.contains(e.target) &&
+      e.target.id !== 'stratFromBtn' && e.target.id !== 'stratToBtn') {
+    popup.remove();
+    document.removeEventListener('click', stratCalOutside);
+  }
+}
+
+function renderStratCal() {
+  const popup = document.getElementById('stratCalPopup');
+  if (!popup) return;
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const days   = ['Mo','Tu','We','Th','Fr','Sa','Su'];
+  const y = stratCalYear, m = stratCalMonth;
+  const firstDay = new Date(y, m, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const startOffset = (firstDay + 6) % 7; // Mon=0
+
+  const fromVal = stratPeriodFrom;
+  const toVal   = stratPeriodTo;
+  const selVal  = stratCalTarget === 'from' ? fromVal : toVal;
+
+  let grid = '';
+  let cell = 0;
+  // Empty cells before first day
+  for (let i = 0; i < startOffset; i++) { grid += `<div></div>`; cell++; }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso  = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isSel = iso === selVal;
+    const inRange = fromVal && toVal && iso >= fromVal && iso <= toVal;
+    const isFrom  = iso === fromVal;
+    const isTo    = iso === toVal;
+    const bg = isSel ? 'var(--accent)' : inRange ? 'rgba(123,175,212,0.15)' : 'transparent';
+    const col = isSel ? '#0a1220' : 'var(--text)';
+    const fw = isSel ? '700' : '400';
+    const br = isFrom ? '4px 0 0 4px' : isTo ? '0 4px 4px 0' : inRange ? '0' : '4px';
+    grid += `<div onclick="selectStratCalDay('${iso}')" style="text-align:center;padding:5px 2px;cursor:pointer;border-radius:${br};background:${bg};color:${col};font-weight:${fw};font-size:0.88rem;transition:background 0.1s" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">${d}</div>`;
+    cell++;
+  }
+
+  // Year scroll
+  const yearOpts = [];
+  for (let yr = new Date().getFullYear(); yr >= 2020; yr--) {
+    yearOpts.push(`<option value="${yr}" ${yr===y?'selected':''}>${yr}</option>`);
+  }
+
+  popup.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:6px">
+      <button onclick="stratCalNav(-1)" style="background:none;border:1px solid var(--border);color:var(--text);width:28px;height:28px;border-radius:3px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center">‹</button>
+      <div style="display:flex;align-items:center;gap:6px;flex:1;justify-content:center">
+        <select onchange="stratCalMonth=parseInt(this.value);renderStratCal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:3px;font-family:'EB Garamond',serif;font-size:0.88rem;cursor:pointer">
+          ${months.map((mn,i)=>`<option value="${i}" ${i===m?'selected':''}>${mn}</option>`).join('')}
+        </select>
+        <select onchange="stratCalYear=parseInt(this.value);renderStratCal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:3px;font-family:'EB Garamond',serif;font-size:0.88rem;cursor:pointer">
+          ${yearOpts.join('')}
+        </select>
+      </div>
+      <button onclick="stratCalNav(1)" style="background:none;border:1px solid var(--border);color:var(--text);width:28px;height:28px;border-radius:3px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center">›</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px">
+      ${days.map(d=>`<div style="text-align:center;font-size:0.75rem;color:var(--muted);padding:3px 0;font-weight:700;letter-spacing:0.05em">${d}</div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">
+      ${grid}
+    </div>
+    ${fromVal||toVal?`<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:0.8rem;color:var(--muted);text-align:center">
+      ${fromVal?fmtDateStrat(fromVal):'—'} → ${toVal?fmtDateStrat(toVal):'—'}
+    </div>`:''}`;
+}
+
+function stratCalNav(dir) {
+  stratCalMonth += dir;
+  if (stratCalMonth < 0)  { stratCalMonth = 11; stratCalYear--; }
+  if (stratCalMonth > 11) { stratCalMonth = 0;  stratCalYear++; }
+  renderStratCal();
+}
+
+function selectStratCalDay(iso) {
+  if (stratCalTarget === 'from') {
+    stratPeriodFrom = iso;
+    // If from > to, clear to
+    if (stratPeriodTo && iso > stratPeriodTo) stratPeriodTo = '';
+  } else {
+    stratPeriodTo = iso;
+    // If to < from, clear from
+    if (stratPeriodFrom && iso < stratPeriodFrom) stratPeriodFrom = '';
+  }
+  renderStratCal();
+  renderStrategy();
 }
 
 function setStratPeriod(value, label) {
@@ -3753,10 +3966,15 @@ function renderStrategy() {
               ).join('')}
             </div>
           </div>
-          <div id="stratCustomPeriodInputs" style="display:${currentStratPeriod==='custom'?'flex':'none'};gap:6px;align-items:center">
-            <input type="date" id="stratPeriodFrom" value="${stratPeriodFrom}" onchange="stratPeriodFrom=this.value;renderStrategy()" class="period-select">
+          <div id="stratCustomPeriodInputs" style="display:${currentStratPeriod==='custom'?'flex':'none'};gap:8px;align-items:center;flex-wrap:wrap">
+            <div style="position:relative">
+              <button onclick="openStratCal('from')" style="font-family:'EB Garamond',serif;font-size:0.88rem;padding:5px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:${stratPeriodFrom?'var(--text)':'var(--muted)'};cursor:pointer;letter-spacing:0.03em;min-width:110px;text-align:left" id="stratFromBtn">${stratPeriodFrom?fmtDateStrat(stratPeriodFrom):'From date'}</button>
+            </div>
             <span style="color:var(--muted);font-family:'EB Garamond',serif;font-size:0.9rem">→</span>
-            <input type="date" id="stratPeriodTo" value="${stratPeriodTo}" onchange="stratPeriodTo=this.value;renderStrategy()" class="period-select">
+            <div style="position:relative">
+              <button onclick="openStratCal('to')" style="font-family:'EB Garamond',serif;font-size:0.88rem;padding:5px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:${stratPeriodTo?'var(--text)':'var(--muted)'};cursor:pointer;letter-spacing:0.03em;min-width:110px;text-align:left" id="stratToBtn">${stratPeriodTo?fmtDateStrat(stratPeriodTo):'To date'}</button>
+            </div>
+            ${stratPeriodFrom||stratPeriodTo?`<button onclick="stratPeriodFrom='';stratPeriodTo='';renderStrategy()" style="font-family:'EB Garamond',serif;font-size:0.8rem;padding:4px 8px;background:none;border:1px solid var(--border);border-radius:3px;color:var(--muted);cursor:pointer">✕ Clear</button>`:''}
           </div>
         </div>
       </div>
@@ -6821,7 +7039,7 @@ function readScreenshot(file, idx) {
       const cvs = document.createElement('canvas');
       cvs.width = w; cvs.height = h;
       cvs.getContext('2d').drawImage(img, 0, 0, w, h);
-      const compressed = cvs.toDataURL('image/jpeg', 0.92);
+      const compressed = cvs.toDataURL('image/jpeg', 0.75);
       if (!trades[idx].screenshots) trades[idx].screenshots = [];
       trades[idx].screenshots.push(compressed);
       save();
@@ -7501,6 +7719,26 @@ if (currentAccount === '5ERS') {
 }
 autoSyncReviews();
 
+// ── Load all screenshots from IndexedDB into memory, then sync ────────────────
+async function loadAllScreenshots() {
+  for (const acct of ACCOUNTS) {
+    const arr = allTrades[acct] || [];
+    for (let i = 0; i < arr.length; i++) {
+      try {
+        const imgs = await SSDB.get(`fx_ss_${acct}_${i}`);
+        if (imgs && imgs.length) arr[i].screenshots = imgs;
+      } catch(e) {}
+    }
+  }
+}
+
+loadAllScreenshots().then(() => {
+  backfillScreenshots();
+  if (document.getElementById('tab-review') && document.getElementById('tab-review').classList.contains('active')) {
+    renderReviewList();
+  }
+}).catch(e => console.warn('[SSDB] loadAllScreenshots error:', e));
+
 // ── Backfill screenshots to all matched trades across accounts ────────────────
 function backfillScreenshots() {
   let count = 0;
@@ -7508,12 +7746,7 @@ function backfillScreenshots() {
   ACCOUNTS.forEach(srcAcct => {
     (allTrades[srcAcct]||[]).forEach((srcTrade, srcIdx) => {
       // Check in-memory first, then localStorage
-      let srcImgs = srcTrade.screenshots && srcTrade.screenshots.length ? srcTrade.screenshots : null;
-      if (!srcImgs) {
-        const srcSS = localStorage.getItem(`fx_ss_${srcAcct}_${srcIdx}`);
-        if (!srcSS) return;
-        try { srcImgs = JSON.parse(srcSS); } catch(e) { return; }
-      }
+      const srcImgs = srcTrade.screenshots && srcTrade.screenshots.length ? srcTrade.screenshots : [];
       if (!srcImgs || !srcImgs.length) return;
       ACCOUNTS.filter(a => a !== srcAcct).forEach(destAcct => {
         const matches = findSimilarTrades(srcTrade, destAcct);
@@ -7522,7 +7755,7 @@ function backfillScreenshots() {
           if (srcImgs.length > destImgs.length) {
             try {
               allTrades[destAcct][i].screenshots = srcImgs;
-              localStorage.setItem(`fx_ss_${destAcct}_${i}`, JSON.stringify(srcImgs));
+              SSDB.set(`fx_ss_${destAcct}_${i}`, srcImgs).catch(e => console.warn('SSDB backfill error:', e));
               acctsSaved.add(destAcct);
               count++;
             } catch(e) { console.warn('backfill quota exceeded', destAcct, i); }
@@ -7534,8 +7767,6 @@ function backfillScreenshots() {
   acctsSaved.forEach(a => saveAccount(a));
   if (count > 0) console.log(`[backfill] Pushed screenshots to ${count} matched trade(s)`);
 }
-backfillScreenshots();
-
 renderTable();
 document.getElementById('f_date').value = new Date().toISOString().slice(0,10);
 // ── Risk Management Page ──────────────────────────────────────────────────────
