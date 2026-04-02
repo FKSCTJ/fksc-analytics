@@ -1255,15 +1255,7 @@ const SSDB = (() => {
 
 
 // Run migration then load screenshots, then sync and refresh
-SSDB.migrateFromLocalStorage()
-  .then(() => loadAllScreenshots())
-  .then(() => {
-    backfillScreenshots();
-    if (document.getElementById('tab-review') && document.getElementById('tab-review').classList.contains('active')) {
-      renderReviewList();
-    }
-  })
-  .catch(e => console.warn('[SSDB] Init error:', e));
+// SSDB init runs after page load — see bottom of script
 
 
 function getBEThreshold(tradesArr) {
@@ -7969,6 +7961,16 @@ async function loadAllScreenshots() {
   }
 }
 
+// Init SSDB — runs after all functions defined
+SSDB.migrateFromLocalStorage()
+  .then(() => loadAllScreenshots())
+  .then(() => {
+    backfillScreenshots();
+    if (document.getElementById('tab-review') && document.getElementById('tab-review').classList.contains('active')) {
+      renderReviewList();
+    }
+  })
+  .catch(e => console.warn('[SSDB] Init error:', e));
 
 // ── Backfill screenshots to all matched trades across accounts ────────────────
 function backfillScreenshots() {
