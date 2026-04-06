@@ -1541,7 +1541,7 @@ function switchAccount(acct, el) {
 }
 
 // SYNC: fields copied across accounts on review save
-const SYNC_FIELDS = ['entryRating','execRating','followedPlan','beOutcome','sl033','session','phase','mistakes','timeframeReview','setup','trendDir','reviewNotes'];
+const SYNC_FIELDS = ['entryRating','execRating','followedPlan','beOutcome','sl033','session','phase','mistakes','emotions','emotionNote','timeframeReview','setup','trendDir','reviewNotes'];
 const SYNC_WINDOW_MINUTES = 30;
 const SYNC_WINDOW_DAYS = 1; // also try matching by closeDate within 1 day
 
@@ -3336,6 +3336,7 @@ function renderReviewList() {
         <span style="flex-shrink:0;width:28px;display:inline-flex;justify-content:center" id="rv_sbadge_${i}">${(()=>{ const sc=calcTradeScore(t); if(!sc) return ''; const col=sc>=70?'#6dbf9e':sc>=45?'#7bafd4':'#e85555'; return `<span class="grade-badge" style="background:${col};color:#0a1220;font-size:0.9rem;opacity:0.9">${sc}</span>`; })()}</span>
         <span style="flex-shrink:0;width:16px;text-align:center;color:${planCol};font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700">${planIcon}</span>
         ${acctBadges}
+        ${(t.emotions||[]).length ? '<span style="font-family:\'EB Garamond\',serif;font-size:0.75rem;color:var(--muted);flex-shrink:0">' + (t.emotions||[]).join(' · ') + '</span>' : ''}
         <span class="rv-card-chevron">▼</span>
       </div>
       <div class="rv-card-body" id="rvb-${i}">
@@ -3498,6 +3499,22 @@ ${isBreakEven(t.pnl) ? `<div class="form-group">
                   return `<button class="plan-btn ${active?'active-no':''}" onclick="event.stopPropagation();toggleMistake(${i},'${m}')">${active?'✕ ':''}${m}</button>`;
                 }).join('')}
               </div>
+            </div>
+            <div class="form-group">
+              <label style="display:flex;align-items:center;gap:6px">Emotional State <span style="font-family:'EB Garamond',serif;font-size:0.72rem;color:var(--muted);font-weight:400;letter-spacing:0.04em;text-transform:none">&#8212; not graded</span></label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                ${(()=>{
+                  const emos = ['Grounded','Calm','Focused','Neutral','Anxious','Bored','FOMO','Distracted'];
+                  return emos.map(function(e){
+                    const active = (t.emotions||[]).includes(e);
+                    const pos = ['Grounded','Calm','Focused','Neutral'].includes(e);
+                    const s = active ? (pos ? 'border-color:var(--green);color:var(--green);background:rgba(109,191,158,0.08)' : 'border-color:var(--accent);color:var(--accent);background:rgba(123,175,212,0.08)') : '';
+                    const dot = active ? '&#9685; ' : '&#9675; ';
+                    return '<button class="plan-btn" style="' + s + '" onclick="event.stopPropagation();toggleEmotion(' + i + ',this.dataset.e)" data-e="' + e + '">' + dot + e + '</button>';
+                  }).join('');
+                })()}
+              </div>
+              <input type="text" placeholder="How were you feeling? Any context…" value="${(t.emotionNote||'').replace(/"/g,'&quot;')}" onchange="saveEmotionNote(${i},this.value)" onclick="event.stopPropagation()" style="margin-top:8px;width:100%;box-sizing:border-box;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'EB Garamond',serif;font-size:0.9rem;outline:none">
             </div>
             <button class="btn btn-primary" style="align-self:flex-start" onclick="saveReviewField(${i});syncReviewToOtherAccounts(${i});toast('Review saved for ${t.pair||'trade'}')">Save Review</button>
             ${t.syncedFrom ? `<div class="synced-indicator">↻ Synced from ${t.syncedFrom} · ${t.syncedAt?new Date(t.syncedAt).toLocaleDateString():''}</div>` : ''}
@@ -7010,6 +7027,42 @@ function toggleMistake(idx, mistake) {
   updateScoreBadge(idx);
   renderReviewList();
   setTimeout(()=>{ const c=document.getElementById(`rvc-${idx}`); if(c) c.classList.add('open'); },10);
+}
+
+function saveEmotionNote(idx, val) {
+  const t = trades[idx];
+  t.emotionNote = val;
+  if (currentAccount === 'OVERALL' && t._account) {
+    const src = (allTrades[t._account]||[]).find(x => x.date===t.date && x.pair===t.pair && x.pnl===t.pnl);
+    if (src) { src.emotionNote = val; saveAccount(t._account); }
+  } else { save(); }
+}
+
+function toggleEmotion(idx, emotion) {
+  const t = trades[idx];
+  if (!Array.isArray(t.emotions)) t.emotions = [];
+  const pos = t.emotions.indexOf(emotion);
+  if (pos === -1) t.emotions.push(emotion);
+  else t.emotions.splice(pos, 1);
+  if (currentAccount === 'OVERALL' && t._account) {
+    const src = (allTrades[t._account]||[]).find(x => x.date===t.date && x.pair===t.pair && x.pnl===t.pnl);
+    if (src) { src.emotions = t.emotions; saveAccount(t._account); }
+  } else {
+    save();
+  }
+  renderReviewList();
+  setTimeout(()=>{ const c=document.getElementById(`rvc-${idx}`); if(c) c.classList.add('open'); },10);
+}
+
+function saveEmotionNote(idx, val) {
+  const t = trades[idx];
+  t.emotionNote = val;
+  if (currentAccount === 'OVERALL' && t._account) {
+    const src = (allTrades[t._account]||[]).find(x => x.date===t.date && x.pair===t.pair && x.pnl===t.pnl);
+    if (src) { src.emotionNote = val; saveAccount(t._account); }
+  } else {
+    save();
+  }
 }
 
 function setSl033For(idx, val) {
