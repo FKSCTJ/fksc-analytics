@@ -3336,7 +3336,6 @@ function renderReviewList() {
         <span style="flex-shrink:0;width:28px;display:inline-flex;justify-content:center" id="rv_sbadge_${i}">${(()=>{ const sc=calcTradeScore(t); if(!sc) return ''; const col=sc>=70?'#6dbf9e':sc>=45?'#7bafd4':'#e85555'; return `<span class="grade-badge" style="background:${col};color:#0a1220;font-size:0.9rem;opacity:0.9">${sc}</span>`; })()}</span>
         <span style="flex-shrink:0;width:16px;text-align:center;color:${planCol};font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700">${planIcon}</span>
         ${acctBadges}
-        ${(t.emotions||[]).length ? '<span style="font-family:\'EB Garamond\',serif;font-size:0.75rem;color:var(--muted);flex-shrink:0">' + (t.emotions||[]).join(' · ') + '</span>' : ''}
         <span class="rv-card-chevron">▼</span>
       </div>
       <div class="rv-card-body" id="rvb-${i}">
