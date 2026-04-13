@@ -408,6 +408,9 @@
   #periodDropdown .ms-dropdown {
     left: auto; right: 0; min-width: 160px;
   }
+  #rvPeriodDropdown .ms-dropdown {
+    left: 0; min-width: 160px;
+  }
   .ms-trigger:hover, .multi-select.open .ms-trigger { border-color: var(--accent); }
   .ms-dropdown {
     position: absolute; top: calc(100% + 8px); left: 0; right: 0;
@@ -937,7 +940,12 @@
 
   <!-- IMPORT CSV -->
   <div id="tab-import" class="panel">
-    <div class="chart-card-title" style="margin-bottom:20px;font-size:1rem">&#9632; Import from CSV</div>
+    <div class="chart-card-title" style="margin-bottom:12px;font-size:1rem">&#9632; Import from CSV</div>
+    <div style="margin-bottom:20px;padding:10px 14px;background:rgba(123,175,212,0.08);border:1px solid var(--border);border-radius:4px;font-family:'EB Garamond',serif;font-size:0.9rem;display:flex;align-items:center;gap:8px">
+      <span style="color:var(--muted)">Importing into:</span>
+      <span id="importAccountLabel" style="font-weight:700;color:var(--accent);letter-spacing:0.06em">—</span>
+      <span style="color:var(--muted);font-size:0.8rem">— make sure this is the right account before importing</span>
+    </div>
 
     <!-- Import mode selector -->
     <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
@@ -1063,7 +1071,7 @@
         </div>
 
         <!-- Period filter (same style as Overview) -->
-        <div class="multi-select" id="rvPeriodDropdown" style="position:relative;width:fit-content;min-width:160px">
+        <div class="multi-select" id="rvPeriodDropdown" style="position:relative;width:fit-content">
           <div class="ms-trigger" onclick="toggleRvPeriodDropdown()" id="rvPeriodTrigger">
             <span id="rvPeriodLabel" style="display:none">All Time</span>
             <span style="font-size:0.9rem;color:var(--muted)">▼</span>
@@ -1372,7 +1380,10 @@ function switchTab(name, el) {
   panel.classList.add('active');
   if (el) el.classList.add('active');
   if (ANALYTICS_TABS.includes(name)) renderDashSubTab(name);
-  if (name === 'trades') renderTable();
+  if (name === 'import') {
+    const lbl = document.getElementById('importAccountLabel');
+    if (lbl) lbl.textContent = currentAccount;
+  }
   if (name === 'review') { renderReviewList(); }
   if (name === 'monthly') { renderMonthlyTab(); }
   if (name === 'challenge') { renderChallenge(); }
@@ -1554,37 +1565,22 @@ function findSimilarTrades(sourceTrade, acct) {
     if (t.pair.replace(/\.R$/i,'').trim() !== sourceTrade.pair.replace(/\.R$/i,'').trim()) return false;
     if (t.direction !== sourceTrade.direction) return false;
 
-    // Match on entry price with small tolerance (0.0005 = ~5 pips, covers broker spread differences)
+    const daysDiff = (a, b) => {
+      if (!a || !b) return 999;
+      return Math.abs(new Date(a) - new Date(b)) / (1000*60*60*24);
+    };
+
+    // Primary: entry price + open date within 3 days
     if (t.entry && sourceTrade.entry) {
-      const diff = Math.abs(parseFloat(t.entry) - parseFloat(sourceTrade.entry));
-      const tolerance = Math.abs(parseFloat(sourceTrade.entry)) * 0.0005;
-      if (diff <= tolerance) return true;
+      const priceDiff = Math.abs(parseFloat(t.entry) - parseFloat(sourceTrade.entry));
+      const priceTol  = Math.abs(parseFloat(sourceTrade.entry)) * 0.0005;
+      if (priceDiff <= priceTol && daysDiff(t.date, sourceTrade.date) <= 3) return true;
     }
 
-    // Try matching on open date within 30 min
+    // Fallback: open date same day (within 30 min = same calendar day)
     if (t.date && sourceTrade.date) {
-      const tTime  = new Date(t.date + 'T12:00');
-      const srcTime = new Date(sourceTrade.date + 'T12:00');
-      const diffMin = Math.abs(tTime - srcTime) / 60000;
+      const diffMin = Math.abs(new Date(t.date + 'T12:00') - new Date(sourceTrade.date + 'T12:00')) / 60000;
       if (diffMin <= SYNC_WINDOW_MINUTES) return true;
-    }
-
-    // Fallback: match on closeDate within 1 day
-    if (t.closeDate && sourceTrade.closeDate) {
-      const tClose   = new Date(t.closeDate);
-      const srcClose = new Date(sourceTrade.closeDate);
-      const diffDays = Math.abs(tClose - srcClose) / (1000*60*60*24);
-      if (diffDays <= SYNC_WINDOW_DAYS) return true;
-    }
-
-    // Fallback: match open date against closeDate across accounts
-    if (t.date && sourceTrade.closeDate) {
-      const diffDays = Math.abs(new Date(t.date) - new Date(sourceTrade.closeDate)) / (1000*60*60*24);
-      if (diffDays <= SYNC_WINDOW_DAYS) return true;
-    }
-    if (t.closeDate && sourceTrade.date) {
-      const diffDays = Math.abs(new Date(t.closeDate) - new Date(sourceTrade.date)) / (1000*60*60*24);
-      if (diffDays <= SYNC_WINDOW_DAYS) return true;
     }
 
     return false;
@@ -2836,6 +2832,28 @@ function renderTable() {
   const tbody = document.getElementById('tradeBody');
   if (!filtered.length) { tbody.innerHTML=''; document.getElementById('emptyTrades').style.display='block'; return; }
   document.getElementById('emptyTrades').style.display = 'none';
+
+  // Build balance coherence map — sorted by close date
+  const balanceWarnings = new Set();
+  if (!isOverall) {
+    const sortedAll = [...trades].filter(t => t.balance && t.pnl)
+      .sort((a,b) => new Date(a.closeDate||a.date) - new Date(b.closeDate||b.date));
+    for (let i = 1; i < sortedAll.length; i++) {
+      const prev = sortedAll[i-1];
+      const curr = sortedAll[i];
+      const prevBal = parseFloat(prev.balance);
+      const currBal = parseFloat(curr.balance);
+      const currPnl = parseFloat(curr.pnl)||0;
+      if (!isNaN(prevBal) && !isNaN(currBal)) {
+        const expected = prevBal + currPnl;
+        // Allow 5% tolerance for swaps/commissions not captured
+        if (Math.abs(currBal - expected) > Math.abs(currBal) * 0.05 + 50) {
+          balanceWarnings.add(trades.indexOf(curr));
+        }
+      }
+    }
+  }
+
   tbody.innerHTML = filtered.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(t => {
     const pnl = parseFloat(t.pnl)||0;
     const isBe = isBreakEven(pnl);
@@ -2853,7 +2871,8 @@ function renderTable() {
     const deleteCell = isOverall
       ? '<td></td>'
       : `<td style="display:flex;gap:4px"><button class="del-btn" onclick="editTrade(${idx})" title="Edit" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:3px;padding:2px 6px;cursor:pointer;font-size:0.8rem">✏</button><button class="del-btn" onclick="deleteTrade(${idx})" title="Delete">&#10005;</button></td>`;
-    return `<tr>
+    const balWarn = balanceWarnings.has(idx);
+    return `<tr style="${balWarn ? 'outline:1px solid rgba(232,85,85,0.4);outline-offset:-1px' : ''}">
       <td>${fmtDate(t.date)}</td>
       <td><strong>${t.pair||'—'}</strong></td>
       <td><span class="badge badge-${t.direction||'buy'}">${t.direction||'—'}</span></td>
@@ -2862,7 +2881,7 @@ function renderTable() {
       <td>${t.exit||'—'}</td>
       <td class="${pc}">${ps}$${Math.abs(pnl).toFixed(2)}</td>
       <td>${resultBadge}</td>
-      <td style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted)">${t.balance?'$'+parseFloat(t.balance).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</td>
+      <td style="font-family:'EB Garamond',serif;font-size:0.9rem;color:${balWarn?'var(--red)':'var(--muted)'}" title="${balWarn?'⚠ Balance does not follow from previous trade — may belong to another account':''}">${t.balance?'$'+parseFloat(t.balance).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}${balWarn?' ⚠':''}</td>
       <td style="font-family:'EB Garamond',serif;font-size:0.9rem;color:${swap!=='—'&&parseFloat(swap)<0?'var(--red)':'var(--muted)'}">${swap}</td>
       <td style="font-family:'EB Garamond',serif;font-size:0.9rem;color:${comm!=='—'&&parseFloat(comm)<0?'var(--red)':'var(--muted)'}">${comm}</td>
       ${acctCell}
@@ -2976,6 +2995,7 @@ function isDuplicate(t) {
 }
 
 function applyImport(newTrades) {
+  if (currentAccount === 'OVERALL') { toast('Cannot import to OVERALL view', true); return 0; }
   if (importMode === 'replace') {
     trades.length = 0;
     newTrades.forEach(t => trades.push(t));
