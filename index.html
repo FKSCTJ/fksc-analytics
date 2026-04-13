@@ -2888,8 +2888,12 @@ function editTrade(idx) {
   if (document.getElementById('f_rating'))  document.getElementById('f_rating').value  = t.rating || '';
   const btn = document.getElementById('addTradeBtn');
   if (btn) { btn.textContent = '✓ Save Changes'; btn.style.background = 'var(--accent)'; btn.style.color = '#0a1220'; }
-  // Scroll to form
-  document.getElementById('f_date').scrollIntoView({behavior:'smooth', block:'center'});
+  // Switch to the Add Trade tab, then scroll to form
+  switchTab('add', null);
+  setTimeout(() => {
+    const el = document.getElementById('f_date');
+    if (el) el.scrollIntoView({behavior:'smooth', block:'center'});
+  }, 150);
   toast('Editing ' + (t.pair||'trade') + ' — modify fields and click Save Changes');
 }
 
