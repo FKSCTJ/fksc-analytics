@@ -1260,6 +1260,9 @@ const SSDB = (() => {
 
 function getBEThreshold(tradesArr) {
   try {
+    // Account-specific BE thresholds to account for swap fees
+    if (currentAccount === '5ERS') return 40;
+    if (currentAccount === 'FTMO') return 250;
     let bal = getStartingBalance(currentAccount, tradesArr || trades);
     // For scaling accounts (5ERS), use the current level baseline if set
     if (currentAccount) {
@@ -7049,8 +7052,18 @@ function toggleEmotion(idx, emotion) {
   } else {
     save();
   }
-  renderReviewList();
-  setTimeout(()=>{ const c=document.getElementById(`rvc-${idx}`); if(c) c.classList.add('open'); },10);
+  // Update buttons in place — no full re-render
+  const card = document.getElementById('rvc-' + idx);
+  if (card) {
+    card.querySelectorAll('[data-e]').forEach(function(btn) {
+      const e = btn.dataset.e;
+      const active = t.emotions.includes(e);
+      const isPos = ['Grounded','Calm','Focused','Neutral'].includes(e);
+      const s = active ? (isPos ? 'border-color:var(--green);color:var(--green);background:rgba(109,191,158,0.08)' : 'border-color:var(--accent);color:var(--accent);background:rgba(123,175,212,0.08)') : '';
+      btn.setAttribute('style', s);
+      btn.innerHTML = (active ? '&#9685; ' : '&#9675; ') + e;
+    });
+  }
 }
 
 function saveEmotionNote(idx, val) {
@@ -7348,16 +7361,30 @@ function getBackupData() {
   return data;
 }
 
-function exportBackup() {
+async function exportBackupWithScreenshots() {
   const data = getBackupData();
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'fksc-backup.json';
-  a.click();
-  URL.revokeObjectURL(a.href);
-  markSaved();
-  toast('Backup saved!');
+  // Include screenshots from IndexedDB
+  try {
+    const keys = await SSDB.getAllKeys();
+    for (const key of keys) {
+      const imgs = await SSDB.get(key);
+      if (imgs && imgs.length) data[key] = JSON.stringify(imgs);
+    }
+  } catch(e) { console.warn('Could not include screenshots in backup:', e); }
+  return data;
+}
+
+function exportBackup() {
+  exportBackupWithScreenshots().then(function(data) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'fksc-backup.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    markSaved();
+    toast('Backup saved!');
+  });
 }
 
 function importBackup(input) {
@@ -7367,9 +7394,16 @@ function importBackup(input) {
   reader.onload = e => {
     try {
       const data = JSON.parse(e.target.result);
-      Object.keys(data).forEach(k => localStorage.setItem(k, data[k]));
-      toast('Backup restored! Reloading…');
-      setTimeout(() => location.reload(), 1200);
+      // Restore screenshots to IndexedDB, everything else to localStorage
+      const ssKeys = Object.keys(data).filter(k => k.startsWith('fx_ss_'));
+      const restoreScreenshots = ssKeys.map(k => {
+        try { return SSDB.set(k, JSON.parse(data[k])); } catch(e) { return Promise.resolve(); }
+      });
+      Object.keys(data).filter(k => !k.startsWith('fx_ss_')).forEach(k => localStorage.setItem(k, data[k]));
+      Promise.all(restoreScreenshots).then(() => {
+        toast('Backup restored! Reloading…');
+        setTimeout(() => location.reload(), 1200);
+      });
     } catch(err) { toast('Failed to read backup file', true); }
   };
   reader.readAsText(file);
@@ -7998,7 +8032,7 @@ if (currentAccount === '5ERS') {
 } else if (currentAccount === 'FTMO' || currentAccount === 'FXIFY') {
   switchSystemTab('challenge');
 }
-autoSyncReviews();
+// autoSyncReviews runs after screenshots load — see SSDB init chain below
 
 // ── Load all screenshots from IndexedDB into memory, then sync ────────────────
 async function loadAllScreenshots() {
@@ -8017,7 +8051,13 @@ async function loadAllScreenshots() {
 SSDB.migrateFromLocalStorage()
   .then(() => loadAllScreenshots())
   .then(() => {
+    autoSyncReviews();
     backfillScreenshots();
+    // Refresh galleries for all loaded cards regardless of active tab
+    document.querySelectorAll('[id^="ssgallery-"]').forEach(function(el) {
+      const idx = parseInt(el.id.replace('ssgallery-',''));
+      if (!isNaN(idx)) refreshGallery(idx);
+    });
     if (document.getElementById('tab-review') && document.getElementById('tab-review').classList.contains('active')) {
       renderReviewList();
     }
