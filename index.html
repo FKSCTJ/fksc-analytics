@@ -1038,7 +1038,7 @@
       </div>
       <div class="form-group form-full"><label>Notes</label><textarea id="f_notes" placeholder="Trade setup, reasoning, lessons learned..."></textarea></div>
     </div>
-    <button class="btn btn-primary" onclick="addTrade()">+ Add Trade</button>
+    <button class="btn btn-primary" id="addTradeBtn" onclick="addTrade()">+ Add Trade</button>
   </div>
 
   <!-- TRADE REVIEW -->
@@ -2845,7 +2845,7 @@ function renderTable() {
       : '';
     const deleteCell = isOverall
       ? '<td></td>'
-      : `<td><button class="del-btn" onclick="deleteTrade(${idx})" title="Delete">&#10005;</button></td>`;
+      : `<td style="display:flex;gap:4px"><button class="del-btn" onclick="editTrade(${idx})" title="Edit" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:3px;padding:2px 6px;cursor:pointer;font-size:0.8rem">✏</button><button class="del-btn" onclick="deleteTrade(${idx})" title="Delete">&#10005;</button></td>`;
     return `<tr>
       <td>${fmtDate(t.date)}</td>
       <td><strong>${t.pair||'—'}</strong></td>
@@ -2867,13 +2867,39 @@ function renderTable() {
 function deleteTrade(idx) { trades.splice(idx,1); save(); renderTable(); toast('Trade deleted'); }
 function clearAll() { if(!confirm('Delete all trades?')) return; trades=[]; save(); renderTable(); toast('Cleared'); }
 
+let _editingIdx = -1;
+
+function editTrade(idx) {
+  const t = trades[idx];
+  if (!t) return;
+  _editingIdx = idx;
+  document.getElementById('f_date').value      = t.date || '';
+  document.getElementById('f_closeDate').value = t.closeDate || '';
+  document.getElementById('f_pair').value      = t.pair || '';
+  document.getElementById('f_dir').value       = t.direction || 'buy';
+  document.getElementById('f_lots').value      = t.lots || '';
+  document.getElementById('f_entry').value     = t.entry || '';
+  document.getElementById('f_exit').value      = t.exit || '';
+  document.getElementById('f_pips').value      = t.pips || '';
+  document.getElementById('f_pnl').value       = t.pnl || '';
+  document.getElementById('f_notes').value     = t.notes || '';
+  if (document.getElementById('f_trend'))   document.getElementById('f_trend').value   = t.trend || '';
+  if (document.getElementById('f_tf'))      document.getElementById('f_tf').value      = t.timeframe || '';
+  if (document.getElementById('f_rating'))  document.getElementById('f_rating').value  = t.rating || '';
+  const btn = document.getElementById('addTradeBtn');
+  if (btn) { btn.textContent = '✓ Save Changes'; btn.style.background = 'var(--accent)'; btn.style.color = '#0a1220'; }
+  // Scroll to form
+  document.getElementById('f_date').scrollIntoView({behavior:'smooth', block:'center'});
+  toast('Editing ' + (t.pair||'trade') + ' — modify fields and click Save Changes');
+}
+
 function addTrade() {
   const date = document.getElementById('f_date').value;
   const pair = document.getElementById('f_pair').value.trim().toUpperCase();
   if (!date || !pair) { toast('Date and Pair are required', true); return; }
   const mistakes = [...document.querySelectorAll('#mistakeCheckboxes input:checked')].map(c=>c.value);
   const closeDate = document.getElementById('f_closeDate').value;
-  trades.push({
+  const tradeData = {
     date, closeDate: closeDate || date, pair,
     direction: document.getElementById('f_dir').value,
     lots: document.getElementById('f_lots').value,
@@ -2886,14 +2912,25 @@ function addTrade() {
     rating: document.getElementById('f_rating').value,
     mistakes: mistakes.join(', '),
     notes: document.getElementById('f_notes').value
-  });
+  };
+  if (_editingIdx >= 0) {
+    // Preserve existing review fields when editing
+    const existing = trades[_editingIdx];
+    trades[_editingIdx] = Object.assign({}, existing, tradeData);
+    _editingIdx = -1;
+    const btn = document.getElementById('addTradeBtn');
+    if (btn) { btn.textContent = '+ Add Trade'; btn.style.background = ''; btn.style.color = ''; }
+    toast('Trade updated: ' + pair);
+  } else {
+    trades.push(tradeData);
+    toast('Trade added: ' + pair);
+  }
   save();
   ['f_pair','f_lots','f_entry','f_exit','f_pips','f_pnl','f_notes','f_closeDate'].forEach(id => document.getElementById(id).value='');
   document.getElementById('f_trend').value='';
   document.getElementById('f_tf').value='';
   document.getElementById('f_rating').value='';
   document.querySelectorAll('#mistakeCheckboxes input').forEach(c=>c.checked=false);
-  toast('Trade added: ' + pair);
   switchTab('trades', document.querySelectorAll('.nav-tab')[1]);
 }
 
@@ -2983,10 +3020,19 @@ const BROKER_PROFILES = [
         // Symbol — strip .R suffix
         const symbol = (exit['Symbol'] || entry?.['Symbol'] || '').replace(/\.R$/i, '').trim();
 
-        // Dates
+        // Dates — for limit orders the entry Update Time is when placed not filled
+        // Use the entry row's Update Time, but if it's more than 1 day before the exit
+        // and the entry type is Limit, trust the exit date context more
         const parseDate = str => str ? ((str.match(/(\d{4}-\d{2}-\d{2})/) || [])[1] || '') : '';
-        const entryDate = parseDate(entry?.['Update Time'] || '');
-        const closeDate = parseDate(exit['Update Time'] || '');
+        const rawEntryDate = parseDate(entry?.['Update Time'] || '');
+        const closeDate    = parseDate(exit['Update Time'] || '');
+        // If entry date is suspiciously far from close (>7 days) and entry type is Limit,
+        // it means the order sat pending — use the same date as close for open date
+        const entryIsLimit = (entry?.['Type'] || '').toLowerCase().includes('limit');
+        const daysDiff = rawEntryDate && closeDate
+          ? (new Date(closeDate) - new Date(rawEntryDate)) / (1000*60*60*24)
+          : 0;
+        const entryDate = (entryIsLimit && daysDiff > 7) ? closeDate : rawEntryDate;
 
         // Prices
         const entryPrice = entry?.['Avg Fill Price'] || '';
