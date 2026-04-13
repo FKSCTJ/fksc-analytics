@@ -1063,7 +1063,7 @@
         </div>
 
         <!-- Period filter (same style as Overview) -->
-        <div class="multi-select" id="rvPeriodDropdown" style="position:relative;width:fit-content">
+        <div class="multi-select" id="rvPeriodDropdown" style="position:relative;width:fit-content;min-width:160px">
           <div class="ms-trigger" onclick="toggleRvPeriodDropdown()" id="rvPeriodTrigger">
             <span id="rvPeriodLabel" style="display:none">All Time</span>
             <span style="font-size:0.9rem;color:var(--muted)">▼</span>
@@ -1553,6 +1553,13 @@ function findSimilarTrades(sourceTrade, acct) {
     if (!t.pair || !sourceTrade.pair) return false;
     if (t.pair.replace(/\.R$/i,'').trim() !== sourceTrade.pair.replace(/\.R$/i,'').trim()) return false;
     if (t.direction !== sourceTrade.direction) return false;
+
+    // Match on entry price with small tolerance (0.0005 = ~5 pips, covers broker spread differences)
+    if (t.entry && sourceTrade.entry) {
+      const diff = Math.abs(parseFloat(t.entry) - parseFloat(sourceTrade.entry));
+      const tolerance = Math.abs(parseFloat(sourceTrade.entry)) * 0.0005;
+      if (diff <= tolerance) return true;
+    }
 
     // Try matching on open date within 30 min
     if (t.date && sourceTrade.date) {
