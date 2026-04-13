@@ -1587,6 +1587,22 @@ function findSimilarTrades(sourceTrade, acct) {
   });
 }
 
+function cleanStaleSyncTags() {
+  // Remove syncedFrom tags where the source account no longer has a matching trade
+  ACCOUNTS.forEach(acct => {
+    (allTrades[acct]||[]).forEach(t => {
+      if (!t.syncedFrom) return;
+      const srcAcct = t.syncedFrom;
+      if (!ACCOUNTS.includes(srcAcct)) { delete t.syncedFrom; delete t.syncedAt; return; }
+      const matches = findSimilarTrades(t, srcAcct);
+      if (matches.length === 0) {
+        delete t.syncedFrom;
+        delete t.syncedAt;
+      }
+    });
+  });
+}
+
 function autoSyncReviews() {
   let syncCount = 0;
   const hasRealReview = t => SYNC_FIELDS.some(f => {
@@ -2996,6 +3012,8 @@ function isDuplicate(t) {
 
 function applyImport(newTrades) {
   if (currentAccount === 'OVERALL') { toast('Cannot import to OVERALL view', true); return 0; }
+  // CSV imports are direct from broker — clear any stale sync tags
+  newTrades.forEach(t => { delete t.syncedFrom; delete t.syncedAt; });
   if (importMode === 'replace') {
     trades.length = 0;
     newTrades.forEach(t => trades.push(t));
@@ -8128,6 +8146,7 @@ async function loadAllScreenshots() {
 SSDB.migrateFromLocalStorage()
   .then(() => loadAllScreenshots())
   .then(() => {
+    cleanStaleSyncTags();
     autoSyncReviews();
     backfillScreenshots();
     // Refresh galleries for all loaded cards regardless of active tab
