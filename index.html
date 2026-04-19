@@ -2801,7 +2801,7 @@ function renderEquityTab(s, filteredArr){
   const ctx=document.getElementById('equityCanvas').getContext('2d');
   const grad=ctx.createLinearGradient(0,0,0,200);
   grad.addColorStop(0,'rgba(0,229,160,0.25)');grad.addColorStop(1,'rgba(0,229,160,0)');
-  mkChart('equityCanvas',{type:'line',data:{labels,datasets:[{data,borderColor:'#00e5a0',backgroundColor:grad,borderWidth:2,pointRadius:3,pointHoverRadius:6,pointBackgroundColor:data.map((_,i)=>{if(i===0)return'#00e5a0';const t=eqMeta[i];if(!t)return'#00e5a0';const p=parseFloat(t.pnl)||0;return Math.abs(p)<100?'#7bafd4':p>0?'#6dbf9e':'#e85555';}),tension:0.3,fill:true}]},options:{...CD,plugins:{...CD.plugins,tooltip:{...CD.plugins.tooltip,callbacks:{label:c=>{const t=eqMeta[c.dataIndex];if(!t)return`Equity: $${c.raw}`;const p=parseFloat(t.pnl)||0;return[`Equity: $${c.raw}`,`${t.pair||''} ${(t.direction||'').toUpperCase()}`,`P&L: ${p>=0?'+':'−'}$${p.toFixed(2)}`];}}}},scales:{...CD.scales,y:{...CD.scales.y,ticks:{...CD.scales.y.ticks,callback:v=>`$${v}`}}}}});
+  mkChart('equityCanvas',{type:'line',data:{labels,datasets:[{data,borderColor:'#00e5a0',backgroundColor:grad,borderWidth:2,pointRadius:3,pointHoverRadius:6,pointBackgroundColor:data.map((_,i)=>{if(i===0)return'#00e5a0';const t=eqMeta[i];if(!t)return'#00e5a0';const p=parseFloat(t.pnl)||0;return isBreakEven(p)?'#7bafd4':p>0?'#6dbf9e':'#e85555';}),tension:0.3,fill:true}]},options:{...CD,plugins:{...CD.plugins,tooltip:{...CD.plugins.tooltip,callbacks:{label:c=>{const t=eqMeta[c.dataIndex];if(!t)return`Equity: $${c.raw}`;const p=parseFloat(t.pnl)||0;return[`Equity: $${c.raw}`,`${t.pair||''} ${(t.direction||'').toUpperCase()}`,`P&L: ${p>=0?'+':'−'}$${p.toFixed(2)}`];}}}},scales:{...CD.scales,y:{...CD.scales.y,ticks:{...CD.scales.y.ticks,callback:v=>`$${v}`}}}}});
 }
 
 function renderSizing(s){
@@ -4458,7 +4458,7 @@ function renderMonthlyTab() {
     const pnl    = qt.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
     const wins   = qt.filter(t=>(parseFloat(t.pnl)||0)>0 && !isBreakEven(t.pnl)).length;
     const losses = qt.filter(t=>(parseFloat(t.pnl)||0)<0 && !isBreakEven(t.pnl)).length;
-    const beCount= qt.filter(t=>Math.abs(parseFloat(t.pnl)||0)<100).length;
+    const beCount= qt.filter(t=>isBreakEven(parseFloat(t.pnl)||0)).length;
     const denom  = wins + losses;
     const wr     = denom > 0 ? ((wins/denom)*100).toFixed(0) : 0;
     const pnlCol = pnl >= 0 ? 'var(--green)' : 'var(--red)';
@@ -4645,7 +4645,7 @@ function buildMonthBody(ym, yr, mo, monthTrades) {
   const netPnl = monthTrades.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
   const wins = monthTrades.filter(t=>(parseFloat(t.pnl)||0)>0 && !isBreakEven(t.pnl)).length;
   const losses = monthTrades.filter(t=>(parseFloat(t.pnl)||0)<0 && !isBreakEven(t.pnl)).length;
-  const beCount = monthTrades.filter(t=>Math.abs(parseFloat(t.pnl)||0)<100).length;
+  const beCount = monthTrades.filter(t=>isBreakEven(parseFloat(t.pnl)||0)).length;
   const wr = (wins+losses)>0 ? ((wins/(wins+losses))*100).toFixed(0) : 0;
   const tradingDays = Object.keys(dayMap).length;
 
@@ -5217,7 +5217,7 @@ function switchMonthTab(ym, tab) {
       type:'line',
       data:{ labels, datasets:[{ data, borderColor:lineCol, backgroundColor:grad, borderWidth:2,
         pointRadius:3, pointHoverRadius:6,
-        pointBackgroundColor: mTrades.map(t => { const p=parseFloat(t.pnl)||0; return Math.abs(p)<100?'#7bafd4':p>0?'#6dbf9e':'#e85555'; }),
+        pointBackgroundColor: mTrades.map(t => { const p=parseFloat(t.pnl)||0; return isBreakEven(p)?'#7bafd4':p>0?'#6dbf9e':'#e85555'; }),
         tension:0.3, fill:true }] },
       options:{ ...CD, plugins:{ ...CD.plugins, tooltip:{ ...CD.plugins.tooltip, callbacks:{ label: c => {
         const t = mTrades[c.dataIndex]; if (!t) return `$${c.raw}`;
@@ -5277,7 +5277,7 @@ function drawQuarterEquity(qKey) {
     type:'line',
     data:{ labels, datasets:[{ data, borderColor:lineCol, backgroundColor:grad, borderWidth:2,
       pointRadius:3, pointHoverRadius:6,
-      pointBackgroundColor: qTrades.map(t => { const p=parseFloat(t.pnl)||0; return Math.abs(p)<100?'#7bafd4':p>0?'#6dbf9e':'#e85555'; }),
+      pointBackgroundColor: qTrades.map(t => { const p=parseFloat(t.pnl)||0; return isBreakEven(p)?'#7bafd4':p>0?'#6dbf9e':'#e85555'; }),
       tension:0.3, fill:true }] },
     options:{ ...CD, plugins:{ ...CD.plugins, tooltip:{ ...CD.plugins.tooltip, callbacks:{ label: c => {
       const t = qTrades[c.dataIndex]; if (!t) return `$${c.raw}`;
