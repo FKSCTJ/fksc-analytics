@@ -2870,7 +2870,7 @@ function renderTable() {
     }
   }
 
-  tbody.innerHTML = filtered.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(t => {
+  tbody.innerHTML = filtered.sort((a,b)=>new Date(b.closeDate||b.date)-new Date(a.closeDate||a.date)).map(t => {
     const pnl = parseFloat(t.pnl)||0;
     const isBe = isBreakEven(pnl);
     const pc = isBe ? '' : pnl>=0?'pnl-pos':'pnl-neg';
