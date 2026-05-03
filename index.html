@@ -1570,18 +1570,19 @@ function findSimilarTrades(sourceTrade, acct) {
       return Math.abs(new Date(a) - new Date(b)) / (1000*60*60*24);
     };
 
-    // Primary: entry price + open date within 3 days
+    // Primary: entry price within tolerance + open date within window
+    // Tolerance: 0.05% forex, 0.5% stocks. Date window: 14 days if price exact, 3 days otherwise
+    // (limit orders can sit pending for days before filling on different brokers)
     if (t.entry && sourceTrade.entry) {
-      const priceDiff = Math.abs(parseFloat(t.entry) - parseFloat(sourceTrade.entry));
-      const priceTol  = Math.abs(parseFloat(sourceTrade.entry)) * 0.0005;
+      const srcPrice  = Math.abs(parseFloat(sourceTrade.entry));
+      const priceDiff = Math.abs(parseFloat(t.entry) - srcPrice);
+      const isStock   = srcPrice > 10;
+      const priceTol  = srcPrice * (isStock ? 0.005 : 0.0005);
       if (priceDiff <= priceTol && daysDiff(t.date, sourceTrade.date) <= 3) return true;
     }
 
-    // Fallback: open date same day (within 30 min = same calendar day)
-    if (t.date && sourceTrade.date) {
-      const diffMin = Math.abs(new Date(t.date + 'T12:00') - new Date(sourceTrade.date + 'T12:00')) / 60000;
-      if (diffMin <= SYNC_WINDOW_MINUTES) return true;
-    }
+    // Fallback: open date within 1 day (covers timezone/overnight differences)
+    if (daysDiff(t.date, sourceTrade.date) <= 1) return true;
 
     return false;
   });
@@ -3069,19 +3070,10 @@ const BROKER_PROFILES = [
         // Symbol — strip .R suffix
         const symbol = (exit['Symbol'] || entry?.['Symbol'] || '').replace(/\.R$/i, '').trim();
 
-        // Dates — for limit orders the entry Update Time is when placed not filled
-        // Use the entry row's Update Time, but if it's more than 1 day before the exit
-        // and the entry type is Limit, trust the exit date context more
+        // Dates
         const parseDate = str => str ? ((str.match(/(\d{4}-\d{2}-\d{2})/) || [])[1] || '') : '';
-        const rawEntryDate = parseDate(entry?.['Update Time'] || '');
-        const closeDate    = parseDate(exit['Update Time'] || '');
-        // If entry date is suspiciously far from close (>7 days) and entry type is Limit,
-        // it means the order sat pending — use the same date as close for open date
-        const entryIsLimit = (entry?.['Type'] || '').toLowerCase().includes('limit');
-        const daysDiff = rawEntryDate && closeDate
-          ? (new Date(closeDate) - new Date(rawEntryDate)) / (1000*60*60*24)
-          : 0;
-        const entryDate = (entryIsLimit && daysDiff > 7) ? closeDate : rawEntryDate;
+        const entryDate = parseDate(entry?.['Update Time'] || '');
+        const closeDate = parseDate(exit['Update Time'] || '');
 
         // Prices
         const entryPrice = entry?.['Avg Fill Price'] || '';
