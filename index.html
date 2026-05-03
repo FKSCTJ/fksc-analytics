@@ -1694,7 +1694,10 @@ function calcStats() {
   const wr = decidedTrades ? wins.length/decidedTrades : 0;
   const expectancy = (wr * avgWin) - ((1-wr) * avgLoss);
   let peak=0,equity=0,maxDD=0;
-  [...trades].sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(t=>{equity+=parseFloat(t.pnl)||0;if(equity>peak)peak=equity;const dd=peak-equity;if(dd>maxDD)maxDD=dd;});
+  [...trades].sort((a,b)=>new Date(a.closeDate||a.date)-new Date(b.closeDate||b.date)).forEach(t=>{
+    equity+=(parseFloat(t.pnl)||0)+(parseFloat(t.swap)||0)+(parseFloat(t.commission)||0);
+    if(equity>peak)peak=equity;const dd=peak-equity;if(dd>maxDD)maxDD=dd;
+  });
   const avgR = avgLoss > 0 ? expectancy/avgLoss : 0;
   const avgLots = trades.length ? trades.reduce((a,x)=>a+(parseFloat(x.lots)||0),0)/trades.length : 0;
   const avgLotsWin = wins.length ? wins.reduce((a,x)=>a+(parseFloat(x.lots)||0),0)/wins.length : 0;
@@ -2186,7 +2189,7 @@ function calcStatsFor(arr) {
   const wr = decidedTrades ? wins.length/decidedTrades : 0;
   const expectancy = (wr * avgWin) - ((1-wr) * avgLoss);
   let peak=0,equity=0,maxDD=0;
-  [...arr].sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(t=>{equity+=parseFloat(t.pnl)||0;if(equity>peak)peak=equity;const dd=peak-equity;if(dd>maxDD)maxDD=dd;});
+  [...arr].sort((a,b)=>new Date(a.closeDate||a.date)-new Date(b.closeDate||b.date)).forEach(t=>{equity+=(parseFloat(t.pnl)||0)+(parseFloat(t.swap)||0)+(parseFloat(t.commission)||0);if(equity>peak)peak=equity;const dd=peak-equity;if(dd>maxDD)maxDD=dd;});
   const avgR = avgLoss > 0 ? expectancy/avgLoss : 0;
   const avgLots = arr.length ? arr.reduce((a,x)=>a+(parseFloat(x.lots)||0),0)/arr.length : 0;
   const avgLotsWin = wins.length ? wins.reduce((a,x)=>a+(parseFloat(x.lots)||0),0)/wins.length : 0;
@@ -2796,9 +2799,15 @@ function renderEquityTab(s, filteredArr){
     kpiCard('$','Total Commission',`$${Math.abs(totalComm).toFixed(2)}`,totalComm<=0?'neg':'pos',`${s.total} trades`,totalComm<0?'Costs eating into profits — factor into edge calculation':'No commission recorded')+
     kpiCard('↺','Total Swap',`$${totalSwap>=0?'+':'−'}${totalSwap.toFixed(2)}`,totalSwap>=0?'pos':'neg','Overnight financing',totalSwap<0?'Negative swap — avoid holding overnight where possible':'Positive swap — carry trade benefit')+
     kpiCard('◈','Total Costs',`${totalCosts>=0?'+':'−'}$${totalCosts.toFixed(2)}`,totalCosts>=0?'pos':'neg',`${costsPct !== '—' ? costsPct+'% of net P&L' : 'No P&L yet'}`,`Comm + Swap · Net P&L ${pnlEq>=0?'+':'−'}$${pnlEq.toFixed(2)}`);
-  const sorted=[...arr].sort((a,b)=>new Date(a.date)-new Date(b.date));
-  let eq=0;const labels=['Start'],data=[0],eqMeta=[null];
-  sorted.forEach(t=>{eq+=parseFloat(t.pnl)||0;labels.push(t.date?t.date.slice(5):'');data.push(parseFloat(eq.toFixed(2)));eqMeta.push(t);});
+  const sorted=[...arr].sort((a,b)=>new Date(a.closeDate||a.date)-new Date(b.closeDate||b.date));
+  let eq=0;
+  const labels=['Start'], data=[0], eqMeta=[null];
+  sorted.forEach(t=>{
+    eq += (parseFloat(t.pnl)||0) + (parseFloat(t.swap)||0) + (parseFloat(t.commission)||0);
+    labels.push((t.closeDate||t.date||'').slice(5));
+    data.push(parseFloat(eq.toFixed(2)));
+    eqMeta.push(t);
+  });
   const ctx=document.getElementById('equityCanvas').getContext('2d');
   const grad=ctx.createLinearGradient(0,0,0,200);
   grad.addColorStop(0,'rgba(0,229,160,0.25)');grad.addColorStop(1,'rgba(0,229,160,0)');
