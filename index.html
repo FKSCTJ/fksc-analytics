@@ -1813,6 +1813,7 @@ let currentPeriod = 'all';
 let ovPeriodFrom = '';
 let ovPeriodTo   = '';
 let currentStratPeriod = 'all';
+let currentStratAsset  = 'forex'; // 'forex' or 'other'
 let stratPeriodFrom = '';
 let stratPeriodTo = '';
 
@@ -3509,11 +3510,12 @@ function renderReviewList() {
               })()}
             </div>
             <div class="form-group">
-              <label>Session</label>
-              <div id="rv_session_${i}" style="display:flex;gap:8px">
-                <button class="plan-btn ${t.session==='LDN'?'active-yes':''}" onclick="event.stopPropagation();setSessionFor(${i},'LDN')">🇬🇧 LDN</button>
-                <button class="plan-btn ${t.session==='NY'?'active-yes':''}" onclick="event.stopPropagation();setSessionFor(${i},'NY')">🗽 NY</button>
-                <button class="plan-btn ${t.session==='OOS'?'active-no':''}" onclick="event.stopPropagation();setSessionFor(${i},'OOS')">Out of Session</button>
+              <label>Asset Type</label>
+              <div id="rv_session_${i}" style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="plan-btn ${t.session==='Forex'?'active-yes':''}" onclick="event.stopPropagation();setSessionFor(${i},'Forex')">Forex</button>
+                <button class="plan-btn ${t.session==='Indices'?'active-yes':''}" onclick="event.stopPropagation();setSessionFor(${i},'Indices')">Indices</button>
+                <button class="plan-btn ${t.session==='Stocks'?'active-yes':''}" onclick="event.stopPropagation();setSessionFor(${i},'Stocks')">Stocks</button>
+                <button class="plan-btn ${t.session==='Commodity'?'active-yes':''}" onclick="event.stopPropagation();setSessionFor(${i},'Commodity')">Commodity</button>
               </div>
             </div>
                         <div class="form-group">
@@ -3848,8 +3850,13 @@ function renderStrategy() {
   if (!panel) return;
   if (currentAccount === 'OVERALL') trades = getMergedTrades();
 
-  // Apply period filter
-  const stratTrades = getStratFilteredTrades();
+  // Apply period filter then asset filter
+  const allStratTrades = getStratFilteredTrades();
+  const FOREX_TYPES  = ['Forex'];
+  const OTHER_TYPES  = ['Indices','Stocks','Commodity'];
+  const stratTrades = currentStratAsset === 'forex'
+    ? allStratTrades.filter(t => !t.session || t.session === '' || FOREX_TYPES.includes(t.session))
+    : allStratTrades.filter(t => OTHER_TYPES.includes(t.session));
   const trades = stratTrades; // shadow global for this render
 
   const BASE_LABELS = ['DBD','DBR','RBD','RBR'];
@@ -4297,8 +4304,14 @@ function renderStrategy() {
   // Rebuild full panel — always, to ensure OVERALL merges all accounts
   panel.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-        <div class="section-heading" style="margin:0">&#9632; Strategy Analysis</div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <div class="section-heading" style="margin:0">&#9632; Strategy Analysis</div>
+        </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div style="display:flex;gap:2px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px">
+            <button onclick="currentStratAsset='forex';renderStrategy()" style="font-family:'EB Garamond',serif;font-size:0.85rem;padding:4px 14px;border:none;border-radius:3px;cursor:pointer;letter-spacing:0.04em;background:${currentStratAsset==='forex'?'var(--accent)':'transparent'};color:${currentStratAsset==='forex'?'#0a1220':'var(--muted)'}">💱 Forex</button>
+            <button onclick="currentStratAsset='other';renderStrategy()" style="font-family:'EB Garamond',serif;font-size:0.85rem;padding:4px 14px;border:none;border-radius:3px;cursor:pointer;letter-spacing:0.04em;background:${currentStratAsset==='other'?'var(--accent)':'transparent'};color:${currentStratAsset==='other'?'#0a1220':'var(--muted)'}">📈 Other Assets</button>
+          </div>
           <div class="multi-select" id="stratPeriodDropdown" style="position:relative;width:fit-content">
             <div class="ms-trigger" onclick="toggleStratPeriodDropdown()" style="min-width:unset">
               <span id="stratPeriodLabel" style="display:none">${({'all':'All Time','current_month':'Current Month','last_month':'Last Month','current_year':'Current Year','custom':'Custom'})[currentStratPeriod]||'All Time'}</span>
@@ -4924,7 +4937,7 @@ function generateAiReview(type, key) {
   const closedEarly  = periodTrades.filter(t => getMistakes(t).includes('Closed Early'));
   const movedSL      = periodTrades.filter(t => getMistakes(t).includes('Moved SL'));
   const forcedSetups   = periodTrades.filter(t => getMistakes(t).includes('Forced Setup'));
-  const oosSessionTrades = periodTrades.filter(t => t.session === 'OOS');
+
   const emotional    = periodTrades.filter(t => getMistakes(t).includes('Emotional'));
   const impatient    = periodTrades.filter(t => getMistakes(t).includes('Impatience'));
   const brokeplan    = periodTrades.filter(t => t.followedPlan === 'no');
@@ -4964,7 +4977,7 @@ function generateAiReview(type, key) {
   const DOW      = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const byDow    = dimBreak(t => { const d=t.closeDate||t.date; return d ? DOW[new Date(d).getDay()] : '?'; });
   const byPlan    = dimBreak(t => t.followedPlan==='yes'?'Followed Plan':t.followedPlan==='no'?'Broke Plan':t.followedPlan==='partial'?'Partial':'?');
-  const SESSION_LABELS = { LDN:'🇬🇧 LDN', NY:'🗽 NY', OOS:'Out of Session' };
+  const SESSION_LABELS = { Forex:'Forex', Indices:'Indices', Stocks:'Stocks', Commodity:'Commodity' };
   const bySession = dimBreak(t => (t.session && t.session !== '') ? (SESSION_LABELS[t.session]||t.session) : null);
 
   // ── Render helpers ───────────────────────────────────────────────────────────
@@ -5052,11 +5065,7 @@ function generateAiReview(type, key) {
     findings.actions.push(`If you have to force the analysis to justify an entry, the setup doesn't exist. Walk away.`);
   }
 
-  if (oosSessionTrades.length > 0) {
-    const oosPnl = oosSessionTrades.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
-    findings.weaknesses.push(`<strong>${oosSessionTrades.length} Out of Session trade(s)</strong> (${oosSessionTrades.map(t=>t.pair).join(', ')}) — P&L: <strong style="color:${pnlCol(oosPnl)}">${fmt$(oosPnl)}</strong>. Trading outside LDN/NY is outside the plan and carries wider spreads and lower liquidity.`);
-    findings.actions.push(`Only trade during LDN and NY sessions. Out of session entries are plan violations — each one costs 10 score points.`);
-  }
+
 
   // Emotional / impatience
   if (emotional.length + impatient.length > 0) {
@@ -7028,7 +7037,7 @@ function calcTradeScore(t) {
   // Scale to available criteria
   const maxPossible = (entry!==null?50:0) + (plan!==null?30:0) + (exec!==null?20:0);
   const raw = (entry??0) + (plan??0) + (exec??0);
-  const mistakePenalty = ((t.mistakes||[]).length) * 5 + (t.session === 'OOS' ? 10 : 0);
+  const mistakePenalty = ((t.mistakes||[]).length) * 5;
   return Math.max(0, Math.round((raw / maxPossible) * 100) - mistakePenalty);
 }
 
