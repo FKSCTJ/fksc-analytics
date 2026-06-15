@@ -7204,14 +7204,8 @@ function setSessionFor(idx, val) {
   } else {
     save();
   }
-  // Update buttons in place
-  const container = document.getElementById(`rv_session_${idx}`);
-  if (container) {
-    container.querySelectorAll('.plan-btn').forEach(btn => {
-      const s = btn.textContent.trim();
-      btn.className = 'plan-btn' + (t.session === s ? ' active-yes' : '');
-    });
-  }
+  renderReviewList();
+  setTimeout(() => { const c = document.getElementById(`rvc-${idx}`); if (c) c.classList.add('open'); }, 10);
 }
 
 function setPhaseFor(idx, val) {
