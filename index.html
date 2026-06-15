@@ -7208,8 +7208,8 @@ function setSessionFor(idx, val) {
   const container = document.getElementById(`rv_session_${idx}`);
   if (container) {
     container.querySelectorAll('.plan-btn').forEach(btn => {
-      const s = btn.textContent.includes('LDN') ? 'LDN' : btn.textContent.includes('NY') ? 'NY' : 'OOS';
-      btn.className = 'plan-btn' + (t.session === s ? (s === 'OOS' ? ' active-no' : ' active-yes') : '');
+      const s = btn.textContent.trim();
+      btn.className = 'plan-btn' + (t.session === s ? ' active-yes' : '');
     });
   }
 }
