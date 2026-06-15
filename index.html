@@ -3512,10 +3512,10 @@ function renderReviewList() {
             <div class="form-group">
               <label>Asset Type</label>
               <div id="rv_session_${i}" style="display:flex;gap:8px;flex-wrap:wrap">
-                <button class="plan-btn ${t.session==='Forex'?'active-yes':''}" onclick="event.stopPropagation();setSessionFor(${i},'Forex')">Forex</button>
-                <button class="plan-btn ${t.session==='Indices'?'active-yes':''}" onclick="event.stopPropagation();setSessionFor(${i},'Indices')">Indices</button>
-                <button class="plan-btn ${t.session==='Stocks'?'active-yes':''}" onclick="event.stopPropagation();setSessionFor(${i},'Stocks')">Stocks</button>
-                <button class="plan-btn ${t.session==='Commodity'?'active-yes':''}" onclick="event.stopPropagation();setSessionFor(${i},'Commodity')">Commodity</button>
+                ${['Forex','Indices','Stocks','Commodity'].map(function(a){
+                  const active = t.session === a;
+                  return '<button class="plan-btn' + (active ? ' active-yes' : '') + '" data-asset="' + a + '" onclick="event.stopPropagation();setSessionFor(' + i + ',this.dataset.asset)">' + a + '</button>';
+                }).join('')}
               </div>
             </div>
                         <div class="form-group">
@@ -7195,17 +7195,16 @@ function setSl033For(idx, val) {
   setTimeout(()=>{ const c=document.getElementById(`rvc-${idx}`); if(c) c.classList.add('open'); },10);
 }
 
-function setSessionFor(idx, val) {
+async function setSessionFor(idx, val) {
   const t = trades[idx];
   t.session = t.session === val ? '' : val;
   if (currentAccount === 'OVERALL' && t._account) {
     const src = (allTrades[t._account]||[]).find(x => x.date===t.date && x.pair===t.pair && x.pnl===t.pnl);
-    if (src) { src.session = t.session; saveAccount(t._account); }
+    if (src) { src.session = t.session; await saveAccount(t._account); }
   } else {
-    save();
+    await save();
   }
-  renderReviewList();
-  setTimeout(() => { const c = document.getElementById(`rvc-${idx}`); if (c) c.classList.add('open'); }, 10);
+  setTimeout(() => { const c = document.getElementById('rvc-' + idx); if (c) c.classList.add('open'); }, 10);
 }
 
 function setPhaseFor(idx, val) {
