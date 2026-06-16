@@ -4347,6 +4347,80 @@ function renderStrategy() {
   const phaseEl = document.getElementById('strat-phase');
   if (phaseEl) phaseEl.innerHTML = phaseSection;
 
+  // ── Top KPI summary (strat-static) ──
+  const staticEl = document.getElementById('strat-static');
+  if (staticEl) {
+    const st = stratTrades; // same filtered array used throughout
+    const stWins   = st.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl));
+    const stLosses = st.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl));
+    const stBe     = st.filter(t => isBreakEven(t.pnl));
+    const stNet    = st.reduce((a,t) => a + (parseFloat(t.pnl)||0), 0);
+    const stDenom  = stWins.length + stLosses.length;
+    const stWR     = stDenom > 0 ? (stWins.length / stDenom) * 100 : 0;
+    const stAvgWin = stWins.length ? stWins.reduce((a,t) => a + (parseFloat(t.pnl)||0), 0) / stWins.length : 0;
+    const stAvgLoss= stLosses.length ? Math.abs(stLosses.reduce((a,t) => a + (parseFloat(t.pnl)||0), 0) / stLosses.length) : 0;
+    const stRR     = stAvgLoss > 0 ? stAvgWin / stAvgLoss : null;
+    const stExp    = stAvgLoss > 0 ? (stWR/100)*stAvgWin - (1-stWR/100)*stAvgLoss : (st.length ? stNet/st.length : 0);
+    const stPF     = stLosses.length ? (stWins.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0) / Math.abs(stLosses.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0))) : null;
+
+    const wrCls    = stWR >= 55 ? 'pos' : stWR >= 45 ? 'warn' : 'neg';
+    const wrCmt    = stWR >= 60 ? 'Elite win rate' : stWR >= 50 ? 'Solid — sustainable' : 'Needs higher R:R to compensate';
+    const rrCls    = stRR === null ? '' : stRR >= 2 ? 'pos' : stRR >= 1.5 ? 'warn' : stRR >= 1 ? 'hi' : 'neg';
+    const rrCmt    = stRR === null ? 'Not enough data' : stRR >= 2 ? 'Excellent — low WR still profitable' : stRR >= 1.5 ? 'Good — aim for 2.0+' : stRR >= 1 ? 'Decent — needs higher WR' : 'Below 1:1 — unfavourable';
+    const expCls   = stExp >= 0 ? 'pos' : 'neg';
+    const expCmt   = stExp >= 0 ? `+$${stExp.toFixed(0)} expected per trade` : `Negative edge — fix criteria`;
+    const pfCls    = stPF === null ? '' : stPF >= 2 ? 'pos' : stPF >= 1.5 ? 'warn' : stPF >= 1 ? 'hi' : 'neg';
+    const pfCmt    = stPF === null ? 'Not enough data' : stPF >= 2 ? 'Elite — above 2.0' : stPF >= 1.5 ? 'Good — aim for 2.0+' : stPF >= 1 ? 'Marginal edge' : 'Losing system';
+    const netCls   = stNet >= 0 ? 'pos' : 'neg';
+
+    staticEl.innerHTML = `
+      <div class="chart-card-title" style="margin-bottom:12px">&#9632; OVERVIEW <span style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted);font-weight:400;margin-left:8px;letter-spacing:0.03em">${st.length} trade${st.length!==1?'s':''} · ${stWins.length}W / ${stLosses.length}L${stBe.length?` / ${stBe.length}BE`:''}</span></div>
+      <div class="kpi-grid">
+        ${kpiCard('◉', 'Net P&L',
+          `${stNet>=0?'+':'−'}$${Math.abs(stNet).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`,
+          netCls,
+          `${st.length} trades logged`,
+          stNet >= 0 ? `Avg $${st.length?(stNet/st.length).toFixed(0):0} per trade` : 'Net negative — review losing setups'
+        )}
+        ${kpiCard('◈', 'Win Rate',
+          stDenom > 0 ? `${stWR.toFixed(0)}%` : '—',
+          wrCls,
+          `${stWins.length}W / ${stLosses.length}L${stBe.length?` · ${stBe.length}BE`:''}`,
+          wrCmt
+        )}
+        ${kpiCard('↗', 'Avg Win',
+          stWins.length ? `+$${stAvgWin.toFixed(0)}` : '—',
+          stWins.length ? 'pos' : '',
+          `${stWins.length} winning trade${stWins.length!==1?'s':''}`,
+          stWins.length ? `Best: +$${Math.max(...stWins.map(t=>parseFloat(t.pnl)||0)).toFixed(0)}` : 'No wins yet'
+        )}
+        ${kpiCard('↘', 'Avg Loss',
+          stLosses.length ? `−$${stAvgLoss.toFixed(0)}` : '—',
+          stLosses.length ? 'neg' : '',
+          `${stLosses.length} losing trade${stLosses.length!==1?'s':''}`,
+          stLosses.length ? `Worst: −$${Math.max(...stLosses.map(t=>Math.abs(parseFloat(t.pnl)||0))).toFixed(0)}` : 'No losses'
+        )}
+        ${kpiCard('⇌', 'Risk:Reward',
+          stRR !== null ? `${stRR.toFixed(2)}R` : '—',
+          rrCls,
+          stAvgLoss > 0 ? `$${stAvgWin.toFixed(0)} vs $${stAvgLoss.toFixed(0)}` : 'Insufficient data',
+          rrCmt
+        )}
+        ${kpiCard('∑', 'Expectancy',
+          stExp !== null ? `${stExp>=0?'+':'−'}$${Math.abs(stExp).toFixed(0)}` : '—',
+          expCls,
+          'Per trade, risk-adjusted',
+          expCmt
+        )}
+        ${kpiCard('Σ', 'Profit Factor',
+          stPF !== null ? stPF.toFixed(2) : '—',
+          pfCls,
+          'Gross wins ÷ Gross losses',
+          pfCmt
+        )}
+      </div>`;
+  }
+
   // Always update the dynamic drill section only
   const dynEl = document.getElementById('strat-dynamic');
   if (dynEl) dynEl.innerHTML = `${trendSection}${tfCardHtml}${baseCardHtml}`;
