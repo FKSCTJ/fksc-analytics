@@ -1839,7 +1839,7 @@ let currentPeriod = 'all';
 let ovPeriodFrom = '';
 let ovPeriodTo   = '';
 let currentStratPeriod = 'all';
-let currentStratAsset  = 'forex'; // 'forex' or 'other'
+let currentStratAsset  = 'Forex'; // 'Forex' | 'Indices' | 'Stocks' | 'Commodity'
 let stratPeriodFrom = '';
 let stratPeriodTo = '';
 
@@ -3878,11 +3878,9 @@ function renderStrategy() {
 
   // Apply period filter then asset filter
   const allStratTrades = getStratFilteredTrades();
-  const FOREX_TYPES  = ['Forex'];
-  const OTHER_TYPES  = ['Indices','Stocks','Commodity'];
-  const stratTrades = currentStratAsset === 'forex'
-    ? allStratTrades.filter(t => !t.session || t.session === '' || FOREX_TYPES.includes(t.session))
-    : allStratTrades.filter(t => OTHER_TYPES.includes(t.session));
+  const stratTrades = currentStratAsset === 'Forex'
+    ? allStratTrades.filter(t => !t.session || t.session === '' || t.session === 'Forex')
+    : allStratTrades.filter(t => t.session === currentStratAsset);
   const trades = stratTrades; // shadow global for this render
 
   const BASE_LABELS = ['DBD','DBR','RBD','RBR'];
@@ -4335,8 +4333,9 @@ function renderStrategy() {
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <div style="display:flex;gap:2px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px">
-            <button onclick="currentStratAsset='forex';renderStrategy()" style="font-family:'EB Garamond',serif;font-size:0.85rem;padding:4px 14px;border:none;border-radius:3px;cursor:pointer;letter-spacing:0.04em;background:${currentStratAsset==='forex'?'var(--accent)':'transparent'};color:${currentStratAsset==='forex'?'#0a1220':'var(--muted)'}">💱 Forex</button>
-            <button onclick="currentStratAsset='other';renderStrategy()" style="font-family:'EB Garamond',serif;font-size:0.85rem;padding:4px 14px;border:none;border-radius:3px;cursor:pointer;letter-spacing:0.04em;background:${currentStratAsset==='other'?'var(--accent)':'transparent'};color:${currentStratAsset==='other'?'#0a1220':'var(--muted)'}">📈 Other Assets</button>
+            ${[['Forex','💱'],['Indices','📊'],['Stocks','📈'],['Commodity','🛢️']].map(([a,icon]) =>
+              `<button onclick="currentStratAsset='${a}';renderStrategy()" style="font-family:'EB Garamond',serif;font-size:0.85rem;padding:4px 14px;border:none;border-radius:3px;cursor:pointer;letter-spacing:0.04em;background:${currentStratAsset===a?'var(--accent)':'transparent'};color:${currentStratAsset===a?'#0a1220':'var(--muted)'}">${icon} ${a}</button>`
+            ).join('')}
           </div>
           <div class="multi-select" id="stratPeriodDropdown" style="position:relative;width:fit-content">
             <div class="ms-trigger" onclick="toggleStratPeriodDropdown()" style="min-width:unset">
