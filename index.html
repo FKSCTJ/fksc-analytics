@@ -1052,7 +1052,7 @@
   <!-- TRADE REVIEW -->
   <div id="tab-review" class="panel">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
-      <div class="section-heading" style="margin-bottom:0;flex:1">&#9632; Trade Review <span id="rvTradeCount" style="font-size:0.9rem;color:var(--muted);font-weight:400;letter-spacing:0.04em;margin-left:6px"></span></div>
+      <div class="section-heading" style="margin-bottom:0;flex:1">&#9632; Trade Review <span id="rvTradeCount" style="font-size:0.9rem;color:var(--muted);font-weight:400;letter-spacing:0.04em;margin-left:6px"></span><span id="rvAssetBadge" style="display:none"></span></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <input type="text" id="rvSearch" placeholder="Filter pair..." oninput="renderReviewList()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:3px;font-family:'EB Garamond',serif;font-size:0.9rem;outline:none;width:130px;letter-spacing:0.04em">
 
@@ -3393,6 +3393,26 @@ function renderReviewList() {
 
   const list = document.getElementById('reviewList');
   const empty = document.getElementById('reviewEmptyMsg');
+  const badge = document.getElementById('rvAssetBadge');
+  if (badge) {
+    if (rvAssetFilter) {
+      const ICONS = {Forex:'💱',Indices:'📊',Stocks:'📈',Commodity:'🛢️'};
+      badge.style.display = 'inline-flex';
+      badge.style.alignItems = 'center';
+      badge.style.gap = '6px';
+      badge.style.marginLeft = '10px';
+      badge.style.padding = '3px 10px';
+      badge.style.borderRadius = '3px';
+      badge.style.background = 'var(--accent)';
+      badge.style.color = '#0a1220';
+      badge.style.fontSize = '0.8rem';
+      badge.style.fontFamily = "'EB Garamond',serif";
+      badge.style.letterSpacing = '0.04em';
+      badge.innerHTML = `${ICONS[rvAssetFilter]||''} ${rvAssetFilter} only <span onclick="clearRvAssetFilter()" style="cursor:pointer;font-weight:700;margin-left:4px">✕</span>`;
+    } else {
+      badge.style.display = 'none';
+    }
+  }
   if (!filtered.length) { list.innerHTML=''; empty.style.display='block'; const c=document.getElementById('rvTradeCount'); if(c) c.textContent=''; return; }
   empty.style.display='none';
 
@@ -3654,6 +3674,7 @@ ${isBreakEven(t.pnl) ? `<div class="form-group">
 let rvPeriod     = 'all';
 let rvPeriodFrom = '';
 let rvPeriodTo   = '';
+let rvAssetFilter = ''; // '' = no filter, else 'Forex' | 'Indices' | 'Stocks' | 'Commodity'
 
 function toggleRvPeriodDropdown() {
   const wrapper = document.getElementById('rvPeriodDropdown');
@@ -3776,30 +3797,45 @@ function getRvFilteredTrades() {
   const y = now.getFullYear(), m = now.getMonth();
   const pad = n => String(n).padStart(2,'0');
   const d = t => t.closeDate || t.date || '';
-  if (rvPeriod === 'all') return trades.map((t,i)=>({t,i}));
+  const applyAsset = arr => rvAssetFilter
+    ? arr.filter(({t}) => rvAssetFilter === 'Forex'
+        ? (!t.session || t.session === '' || t.session === 'Forex')
+        : t.session === rvAssetFilter)
+    : arr;
+  if (rvPeriod === 'all') return applyAsset(trades.map((t,i)=>({t,i})));
   if (rvPeriod === 'current_month') {
     const prefix = `${y}-${pad(m+1)}`;
-    return trades.map((t,i)=>({t,i})).filter(({t}) => d(t).startsWith(prefix));
+    return applyAsset(trades.map((t,i)=>({t,i})).filter(({t}) => d(t).startsWith(prefix)));
   }
   if (rvPeriod === 'last_month') {
     const lm = m === 0 ? 11 : m-1, ly = m === 0 ? y-1 : y;
     const prefix = `${ly}-${pad(lm+1)}`;
-    return trades.map((t,i)=>({t,i})).filter(({t}) => d(t).startsWith(prefix));
+    return applyAsset(trades.map((t,i)=>({t,i})).filter(({t}) => d(t).startsWith(prefix)));
   }
   if (rvPeriod === 'current_year') {
-    return trades.map((t,i)=>({t,i})).filter(({t}) => d(t).startsWith(String(y)));
+    return applyAsset(trades.map((t,i)=>({t,i})).filter(({t}) => d(t).startsWith(String(y))));
   }
   if (rvPeriod === 'custom') {
     const from = rvPeriodFrom;
     const to   = rvPeriodTo;
-    return trades.map((t,i)=>({t,i})).filter(({t}) => {
+    return applyAsset(trades.map((t,i)=>({t,i})).filter(({t}) => {
       const td = d(t); if (!td) return false;
       if (from && td < from) return false;
       if (to && td > to) return false;
       return true;
-    });
+    }));
   }
-  return trades.map((t,i)=>({t,i}));
+  return applyAsset(trades.map((t,i)=>({t,i})));
+}
+
+function openReviewForAsset(asset) {
+  rvAssetFilter = asset;
+  switchTab('review', document.querySelectorAll('.nav-tab')[1]);
+}
+
+function clearRvAssetFilter() {
+  rvAssetFilter = '';
+  renderReviewList();
 }
 
 function toggleRvResultDropdown() {
@@ -4401,12 +4437,12 @@ function renderStrategy() {
     staticEl.innerHTML = `
       <div class="chart-card-title" style="margin-bottom:12px">&#9632; OVERVIEW <span style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted);font-weight:400;margin-left:8px;letter-spacing:0.03em">${st.length} trade${st.length!==1?'s':''} · ${stWins.length}W / ${stLosses.length}L${stBe.length?` / ${stBe.length}BE`:''}</span></div>
       <div class="kpi-grid">
-        ${kpiCard('◉', 'Net P&L',
-          `${stNet>=0?'+':'−'}$${Math.abs(stNet).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`,
-          netCls,
-          `${st.length} trades logged`,
-          stNet >= 0 ? `Avg $${st.length?(stNet/st.length).toFixed(0):0} per trade` : 'Net negative — review losing setups'
-        )}
+        <div class="kpi-card" onclick="openReviewForAsset('${currentStratAsset}')" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'" style="cursor:pointer;transition:border-color 0.15s" title="View ${currentStratAsset} trade reviews">
+          <div class="kpi-card-icon">◉&nbsp;NET P&amp;L</div>
+          <div class="kpi-card-value ${netCls}">${stNet>=0?'+':'−'}$${Math.abs(stNet).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+          <div class="kpi-card-sub">${st.length} trades logged</div>
+          <div class="kpi-card-comment">${stNet >= 0 ? `Avg $${st.length?(stNet/st.length).toFixed(0):0} per trade` : 'Net negative — review losing setups'} · <span style="text-decoration:underline">view reviews →</span></div>
+        </div>
         ${kpiCard('◈', 'Win Rate',
           stDenom > 0 ? `${stWR.toFixed(0)}%` : '—',
           wrCls,
