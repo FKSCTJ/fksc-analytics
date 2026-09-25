@@ -3046,7 +3046,10 @@ function setImportMode(mode) {
 function isDuplicate(t) {
   const norm = p => String(p||'').toUpperCase().replace(/\.R+$/,'').replace(/[^A-Z0-9]/g,'');
   const pnl = parseFloat(t.pnl) || 0, lots = parseFloat(t.lots) || 0;
-  return trades.some(x => {
+  const candidates = trades.flatMap(x => Array.isArray(x.partials) && x.partials.length
+    ? x.partials.map(p => ({ ...p, pair:x.pair, direction:x.direction, brokerPositionId: p.brokerPositionId || x.brokerPositionId }))
+    : [x]);
+  return candidates.some(x => {
     // Same broker position + same size = same close (dates from TradingView can't be trusted)
     if (t.brokerPositionId && x.brokerPositionId === t.brokerPositionId && Math.abs((parseFloat(x.lots)||0) - lots) < 0.001) return true;
     if (norm(x.pair) !== norm(t.pair) || x.direction !== t.direction) return false;
@@ -3497,7 +3500,7 @@ function renderReviewList() {
         <span style="flex-shrink:0;width:46px;display:inline-flex;justify-content:center"><span class="badge badge-${t.direction||'buy'}" style="font-size:0.9rem;min-width:36px;text-align:center">${(t.direction||'').toUpperCase()}</span></span>
         <span style="flex-shrink:0;width:50px;display:inline-flex;justify-content:center">${resBadge}</span>
         ${showPnlLots ? `<span class="rv-card-pnl" style="color:${pnlCol}">${pnl>=0?'+':'−'}$${Math.abs(pnl).toFixed(2)}</span>` : ''}
-        ${showPnlLots ? `<span class="rv-card-meta">${t.lots||''} lots</span>` : ''}
+        ${showPnlLots ? `<span class="rv-card-meta">${t.lots||''} lots${Array.isArray(t.partials)&&t.partials.length>1?` · ${t.partials.length} closes`:''}</span>` : ''}
         <span style="flex-shrink:0;width:24px;display:inline-flex;justify-content:center" id="rv_gbadge_${i}">${t.entryRating ? `<span class="grade-badge grade-active-${t.entryRating}">${t.entryRating}</span>` : ''}</span>
         <span style="flex-shrink:0;width:28px;display:inline-flex;justify-content:center" id="rv_sbadge_${i}">${(()=>{ const sc=calcTradeScore(t); if(!sc) return ''; const col=sc>=70?'#6dbf9e':sc>=45?'#7bafd4':'#e85555'; return `<span class="grade-badge" style="background:${col};color:#0a1220;font-size:0.9rem;opacity:0.9">${sc}</span>`; })()}</span>
         <span style="flex-shrink:0;width:16px;text-align:center;color:${planCol};font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700">${planIcon}</span>
@@ -3576,6 +3579,7 @@ function renderReviewList() {
                 return '';
               })()}
             </div>
+            ${partialsNoticeHtml(t, i)}
             <div class="form-group">
               <label>Strategy</label>
               <div class="multi-select" id="st-${i}">
@@ -7370,6 +7374,92 @@ function setSl033For(idx, val) {
   setTimeout(()=>{ const c=document.getElementById(`rvc-${idx}`); if(c) c.classList.add('open'); },10);
 }
 
+
+
+// ═══════════════ PARTIAL CLOSES → ONE TRADE ═══════════════
+function findPartialSiblings(idx) {
+  if (currentAccount === 'OVERALL') return [];
+  const t = trades[idx]; if (!t) return [];
+  const same = (x) => {
+    if (x === t) return false;
+    if (t.brokerPositionId && x.brokerPositionId) return x.brokerPositionId === t.brokerPositionId;
+    return x.pair === t.pair && x.direction === t.direction && x.date === t.date && !!t.entry && Math.abs((parseFloat(x.entry)||0) - (parseFloat(t.entry)||0)) < 1e-9;
+  };
+  return trades.map((x,i)=>({x,i})).filter(({x}) => same(x)).map(({i}) => i);
+}
+function _partialRecord(x) {
+  if (Array.isArray(x.partials) && x.partials.length) return x.partials.map(p => ({...p}));
+  return [{ lots:x.lots, exit:x.exit, closeDate:x.closeDate||x.date, pnl:x.pnl, commission:x.commission, swap:x.swap, brokerPositionId:x.brokerPositionId||'' }];
+}
+function mergePartials(idx) {
+  const sib = findPartialSiblings(idx);
+  if (!sib.length) return;
+  const group = [idx, ...sib].map(i => trades[i]);
+  const baseIdx = [idx, ...sib].find(i => Array.isArray(trades[i].partials) && trades[i].partials.length) ?? idx;
+  const main = trades[baseIdx];
+  group.sort((a,b) => (a === main ? -1 : b === main ? 1 : 0));
+  const num = v => parseFloat(v) || 0;
+  const partials = group.flatMap(_partialRecord).sort((a,b) => (a.closeDate||'').localeCompare(b.closeDate||''));
+  const lots = partials.reduce((s,p) => s + num(p.lots), 0);
+  const wExit = lots ? partials.reduce((s,p) => s + num(p.exit)*num(p.lots), 0) / lots : num(main.exit);
+  const dec = Math.max(...partials.map(p => ((String(p.exit).split('.')[1])||'').length), 2);
+  const merged = { ...main };
+  // review: keep this trade's answers, fill any gaps from the other closes
+  SYNC_FIELDS.forEach(f => {
+    const empty = v => v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length);
+    if (empty(merged[f])) { const src = group.find(g => !empty(g[f])); if (src) merged[f] = Array.isArray(src[f]) ? [...src[f]] : src[f]; }
+  });
+  merged.partials = partials;
+  merged.lots = String(+lots.toFixed(2));
+  merged.exit = wExit.toFixed(dec);
+  merged.pnl = partials.reduce((s,p) => s + num(p.pnl), 0).toFixed(2);
+  merged.commission = partials.reduce((s,p) => s + num(p.commission), 0).toFixed(2);
+  merged.swap = partials.reduce((s,p) => s + num(p.swap), 0).toFixed(2);
+  merged.date = group.map(g => g.date).filter(Boolean).sort()[0] || main.date;
+  merged.closeDate = partials[partials.length-1].closeDate || main.closeDate;
+  const shots = []; group.forEach(g => (g.screenshots||[]).forEach(s => { if (!shots.includes(s)) shots.push(s); }));
+  merged.screenshots = shots;
+  merged.notes = (merged.notes||'').split('\n').filter(l => !/^Partial close|^⚠ Dates not verified/.test(l)).join('\n');
+  trades[baseIdx] = merged;
+  [idx, ...sib].filter(i => i !== baseIdx).sort((a,b) => b-a).forEach(i => trades.splice(i, 1));
+  const newIdx = trades.indexOf(merged);
+  save();
+  renderReviewList();
+  setTimeout(() => { const c = document.getElementById('rvc-' + newIdx); if (c) { c.classList.add('open'); c.scrollIntoView({block:'nearest'}); } }, 10);
+  toast(`Merged ${partials.length} partial closes into one ${merged.pair} trade`);
+}
+function splitPartials(idx) {
+  const t = trades[idx];
+  if (!Array.isArray(t.partials) || t.partials.length < 2) return;
+  if (!confirm(`Split this ${t.pair} trade back into ${t.partials.length} separate closes?`)) return;
+  const parts = t.partials.map((p, k) => {
+    const x = { ...t, lots:p.lots, exit:p.exit, closeDate:p.closeDate, pnl:p.pnl, commission:p.commission, swap:p.swap, brokerPositionId:p.brokerPositionId||t.brokerPositionId };
+    delete x.partials;
+    if (k > 0) x.screenshots = [];
+    return x;
+  });
+  trades.splice(idx, 1, ...parts);
+  save();
+  renderReviewList();
+  toast(`Split into ${parts.length} trades`);
+}
+function partialsNoticeHtml(t, i) {
+  if (Array.isArray(t.partials) && t.partials.length > 1) {
+    return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:10px 14px;font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted)">
+      <div style="color:var(--text);margin-bottom:4px">One trade · ${t.partials.length} partial closes</div>
+      ${t.partials.map(p => `<div>${fmtDate(p.closeDate)} · ${p.lots} lots · <span style="color:${(parseFloat(p.pnl)||0)>=0?'var(--green)':'var(--red)'}">${(parseFloat(p.pnl)||0)>=0?'+':'−'}$${Math.abs(parseFloat(p.pnl)||0).toFixed(2)}</span></div>`).join('')}
+      ${findPartialSiblings(i).length ? `<div style="margin-top:8px;color:var(--text)">${findPartialSiblings(i).length} more close${findPartialSiblings(i).length>1?'s':''} of this position ${findPartialSiblings(i).length>1?'are':'is'} logged separately.</div><button class="plan-btn active-yes" style="margin-top:6px" onclick="event.stopPropagation();mergePartials(${i})">Add to this trade</button> ` : ''}
+      <button class="plan-btn" style="margin-top:8px;font-size:0.8rem" onclick="event.stopPropagation();splitPartials(${i})">Split back into separate closes</button>
+    </div>`;
+  }
+  const sib = findPartialSiblings(i);
+  if (!sib.length) return '';
+  const all = [i, ...sib].map(k => trades[k]);
+  return `<div style="border:1px solid var(--accent);border-radius:3px;padding:10px 14px;background:rgba(123,175,212,0.08);font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--text)">
+      This position was closed in ${all.length} parts (${all.map(x => x.lots).join(' + ')} lots), logged as ${all.length} separate trades.
+      <div style="margin-top:8px"><button class="plan-btn active-yes" onclick="event.stopPropagation();mergePartials(${i})">Merge into one trade</button></div>
+    </div>`;
+}
 
 // ═══════════════ FOREX VALUATION STRATEGY ═══════════════
 const FV_STRATEGY = 'Forex Valuation';
