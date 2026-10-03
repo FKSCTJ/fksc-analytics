@@ -1598,6 +1598,8 @@ const SYNC_FIELDS = ['entryRating','execRating','followedPlan','beOutcome','sl03
   'strategy','fvDirection','fvDirTags','fvValuation','fvLeftSweep','fvCleanBase','fvIndecision','fvTradeMgmt','fvProfitEmotion','fvFollowUp',
   // Index Strength review fields
   'isDirTags','isImbalance','isFlipATH','isPullback','isIndecision',
+  // Stock Momentum review fields
+  'smMomentum','smEntryType','smConf',
   // all strategies
   'outcome'];
 const SYNC_WINDOW_MINUTES = 30;
@@ -3611,7 +3613,7 @@ function renderReviewList() {
               </div>
             </div>
             ${outcomeHtml(t, i)}
-${t.strategy === FV_STRATEGY ? fvFieldsHtml(t, i, gradeBtns, execBtns) : t.strategy === IS_STRATEGY ? isFieldsHtml(t, i, gradeBtns, execBtns) : `
+${t.strategy === FV_STRATEGY ? fvFieldsHtml(t, i, gradeBtns, execBtns) : t.strategy === IS_STRATEGY ? isFieldsHtml(t, i, gradeBtns, execBtns) : t.strategy === SM_STRATEGY ? smFieldsHtml(t, i, gradeBtns, execBtns) : `
             <div class="form-group">
               <label>Asset Type</label>
               <div id="rv_session_${i}" style="display:flex;gap:8px;flex-wrap:wrap">
@@ -7789,6 +7791,58 @@ function isFieldsHtml(t, i, gradeBtns, execBtns) {
               ${fvYesNo(i,'isFlipATH','Flip to ATH',t)}
               ${fvYesNo(i,'isPullback','Pullback to Base',t)}
               ${fvYesNo(i,'isIndecision','Indecision Candle',t)}
+            </div>
+            <div class="form-group">
+              <label>Overall Quality Setup</label>
+              <div style="display:flex;gap:6px">${gradeBtns}</div>
+              <div id="rv_elabel_${i}" style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted);margin-top:4px">${ENTRY_GRADES[t.entryRating]||'Not rated'}</div>
+            </div>
+            <div class="form-group">
+              <label>Execution Quality 1–3</label>
+              <div style="display:flex;gap:6px">${execBtns}</div>
+              <div id="rv_xlabel_${i}" style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted);margin-top:4px">${EXEC_LABELS[parseInt(t.execRating)||0]||'Not rated'}</div>
+            </div>
+            <div class="form-group">
+              <label>Trade Management</label>
+              <div data-fvgrp="fvTradeMgmt-${i}" style="display:flex;gap:8px;flex-wrap:wrap">${IS_TM_OPTIONS.map(o => fvMultiBtn(i,'fvTradeMgmt',o,o,tm.includes(o))).join('')}</div>
+            </div>
+            <div class="form-group">
+              <label>Emotions when taking profit</label>
+              <textarea placeholder="Was your profit-taking decision influenced by emotions?" onclick="event.stopPropagation()" onchange="setFvText(${i},'fvProfitEmotion',this.value)" style="width:100%;box-sizing:border-box;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'EB Garamond',serif;font-size:0.9rem;outline:none;min-height:70px;resize:vertical">${(t.fvProfitEmotion||'').replace(/</g,'&lt;')}</textarea>
+            </div>`;
+}
+
+
+const SM_MOMENTUM_OPTIONS = ['RS>90','Weekly bullish','Gap up','Consolidation'];
+const SM_CONF_OPTIONS = ['Imbalance','Clean Base','Flip to ATH'];
+function smFieldsHtml(t, i, gradeBtns, execBtns) {
+  const tfSel = (t.timeframeReview||'').split(',').map(x=>x.trim());
+  const mom = Array.isArray(t.smMomentum) ? t.smMomentum : [];
+  const conf = Array.isArray(t.smConf) ? t.smConf : [];
+  const tm = Array.isArray(t.fvTradeMgmt) ? t.fvTradeMgmt : [];
+  const esc = s => s.replace(/>/g,'&gt;');
+  return `
+            <div class="form-group">
+              <label>Asset Type</label>
+              <div id="rv_session_${i}" style="display:flex;gap:8px;flex-wrap:wrap">
+                ${['Forex','Indices','Stocks','Commodity'].map(a => '<button class="plan-btn' + (t.session===a?' active-yes':'') + '" data-asset="' + a + '" onclick="event.stopPropagation();setSessionFor(' + i + ',this.dataset.asset)">' + a + '</button>').join('')}
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Momentum</label>
+              <div data-fvgrp="smMomentum-${i}" style="display:flex;gap:8px;flex-wrap:wrap">${SM_MOMENTUM_OPTIONS.map(o => fvMultiBtn(i,'smMomentum',esc(o),esc(o),mom.includes(o))).join('')}</div>
+            </div>
+            <div class="form-group">
+              <label>Entry Type</label>
+              <div data-fvgrp="smEntryType-${i}" style="display:flex;gap:8px;flex-wrap:wrap">${fvBtn(i,'smEntryType','Breakout','Breakout',t.smEntryType==='Breakout')}${fvBtn(i,'smEntryType','Pullback','Pullback',t.smEntryType==='Pullback')}</div>
+            </div>
+            <div class="form-group">
+              <label>Timeframe</label>
+              <div data-fvgrp="timeframeReview-${i}" style="display:flex;gap:8px;flex-wrap:wrap">${['Daily','Weekly'].map(tf => fvMultiBtn(i,'timeframeReview',tf,tf,tfSel.includes(tf))).join('')}</div>
+            </div>
+            <div class="form-group">
+              <label>Confluences</label>
+              <div data-fvgrp="smConf-${i}" style="display:flex;gap:8px;flex-wrap:wrap">${SM_CONF_OPTIONS.map(o => fvMultiBtn(i,'smConf',o,o,conf.includes(o))).join('')}</div>
             </div>
             <div class="form-group">
               <label>Overall Quality Setup</label>
