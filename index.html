@@ -3446,7 +3446,7 @@ function renderReviewList() {
       badge.style.fontSize = '0.8rem';
       badge.style.fontFamily = "'EB Garamond',serif";
       badge.style.letterSpacing = '0.04em';
-      badge.innerHTML = `${ICONS[rvAssetFilter]||''} ${rvAssetFilter==='FV'?FV_STRATEGY:rvAssetFilter} only <span onclick="clearRvAssetFilter()" style="cursor:pointer;font-weight:700;margin-left:4px">✕</span>`;
+      badge.innerHTML = `${ICONS[rvAssetFilter]||''} ${(STRATEGY_CARDS.find(s => s.key === rvAssetFilter)||{}).name||rvAssetFilter} only <span onclick="clearRvAssetFilter()" style="cursor:pointer;font-weight:700;margin-left:4px">✕</span>`;
     } else {
       badge.style.display = 'none';
     }
@@ -3858,8 +3858,8 @@ function getRvFilteredTrades() {
   const pad = n => String(n).padStart(2,'0');
   const d = t => t.closeDate || t.date || '';
   const applyAsset = arr => rvAssetFilter
-    ? arr.filter(({t}) => rvAssetFilter === 'FV'
-        ? t.strategy === FV_STRATEGY
+    ? arr.filter(({t}) => STRATEGY_CARDS.some(s => s.key === rvAssetFilter)
+        ? t.strategy === STRATEGY_CARDS.find(s => s.key === rvAssetFilter).name
         : rvAssetFilter === 'Forex'
         ? (!t.session || t.session === '' || t.session === 'Forex')
         : t.session === rvAssetFilter)
@@ -4471,13 +4471,13 @@ function renderStrategy() {
       ${renderOutcomeChart(stratTrades)}
       <div id="strat-dynamic"></div>
       <div id="strat-phase"></div>
-      ${isFvView ? '' : beSection}
+      ${(isFvView || currentStratAsset === 'IS') ? '' : beSection}
       ${sl033Section}
       ${mistakesSection}`}`;
 
   // Always update phase section
   const phaseEl = document.getElementById('strat-phase');
-  if (phaseEl) phaseEl.innerHTML = isFvView ? '' : phaseSection;
+  if (phaseEl) phaseEl.innerHTML = (isFvView || currentStratAsset === 'IS') ? '' : phaseSection;
 
   // ── Top KPI summary (strat-static) ──
   const staticEl = document.getElementById('strat-static');
@@ -4555,7 +4555,7 @@ function renderStrategy() {
 
   // Always update the dynamic drill section only
   const dynEl = document.getElementById('strat-dynamic');
-  if (dynEl) dynEl.innerHTML = isFvView ? renderFvStrategySections(stratTrades) : `${trendSection}${tfCardHtml}${baseCardHtml}`;
+  if (dynEl) dynEl.innerHTML = isFvView ? renderFvStrategySections(stratTrades) : currentStratAsset === 'IS' ? `${trendSection}${tfCardHtml}${renderIsStrategySections(stratTrades)}` : `${trendSection}${tfCardHtml}${baseCardHtml}`;
 
 }
 
@@ -7813,7 +7813,7 @@ function isFieldsHtml(t, i, gradeBtns, execBtns) {
 }
 
 
-const SM_MOMENTUM_OPTIONS = ['RS>90','Weekly bullish','Gap up','Consolidation'];
+const SM_MOMENTUM_OPTIONS = ['RS>90','Weekly bullish','Gap up','Consolidation','High volume'];
 const SM_CONF_OPTIONS = ['Imbalance','Clean Base','Flip to ATH'];
 function smFieldsHtml(t, i, gradeBtns, execBtns) {
   const tfSel = (t.timeframeReview||'').split(',').map(x=>x.trim());
@@ -7862,6 +7862,45 @@ function smFieldsHtml(t, i, gradeBtns, execBtns) {
               <label>Emotions when taking profit</label>
               <textarea placeholder="Was your profit-taking decision influenced by emotions?" onclick="event.stopPropagation()" onchange="setFvText(${i},'fvProfitEmotion',this.value)" style="width:100%;box-sizing:border-box;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'EB Garamond',serif;font-size:0.9rem;outline:none;min-height:70px;resize:vertical">${(t.fvProfitEmotion||'').replace(/</g,'&lt;')}</textarea>
             </div>`;
+}
+
+
+// Confluences + Trade Management sections for Index Strength (same look as Forex Valuation)
+function renderIsStrategySections(tr) {
+  const F = "font-family:'EB Garamond',serif";
+  const pnl = t => parseFloat(t.pnl)||0;
+  const st = arr => { const w=arr.filter(t=>pnl(t)>0&&!isBreakEven(t.pnl)).length, l=arr.filter(t=>pnl(t)<0&&!isBreakEven(t.pnl)).length; return { n:arr.length, wr:(w+l)?Math.round(100*w/(w+l)):null }; };
+  const wrCol = wr => wr===null?'var(--muted)':wr>=50?'var(--green)':'var(--red)';
+  const LBL = t => `<span style="${F};font-size:0.8rem;color:var(--muted);letter-spacing:0.08em">${t}</span>`;
+  const money = v => `${v>=0?'+':'−'}$${Math.abs(v).toLocaleString('en-US',{maximumFractionDigits:0})}`;
+  const card = (name, arr, style='') => { const s=st(arr); return `<div class="kpi-card" style="display:flex;flex-direction:column;gap:0;padding:18px 20px${style}">
+      <div style="${F};font-size:1.3rem;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div>
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px"><span style="${F};font-size:2.6rem;font-weight:700;color:${wrCol(s.wr)};line-height:1">${s.wr===null?'—':s.wr+'%'}</span>${LBL('WIN RATE')}</div>
+      <div class="kpi-card-sub">${s.n} trade${s.n!==1?'s':''}</div></div>`; };
+  const section = (title, cols, cards) => `<div style="margin-bottom:20px">
+      <div class="chart-card-title" style="margin-bottom:12px">&#9632; ${title}</div>
+      <div style="display:grid;grid-template-columns:repeat(${cols},minmax(0,1fr));gap:12px;align-items:start">${cards.join('')}</div></div>`;
+  const CONF = [['Imbalance','isImbalance'],['Clean Base','fvCleanBase'],['Flip to ATH','isFlipATH'],['Pullback to Base','isPullback'],['Indecision Candle','isIndecision']];
+  const confCards = CONF.map(([n,f]) => card(n, tr.filter(t => t[f]==='Yes')));
+  confCards.push(card('All five', tr.filter(t => CONF.every(([,f]) => t[f]==='Yes')), ';border-color:var(--accent)'));
+  const conf = section('CONFLUENCES', 3, confCards);
+  const tmCards = IS_TM_OPTIONS.map(o => {
+    const a = tr.filter(t => Array.isArray(t.fvTradeMgmt) && t.fvTradeMgmt.includes(o));
+    const pct = tr.length ? Math.round(100*a.length/tr.length) : 0;
+    const vals = a.map(pnl), net = vals.reduce((x,y)=>x+y,0);
+    const tile = (lab, v) => `<div style="background:rgba(10,18,32,0.35);border:1px solid var(--border);border-radius:4px;padding:10px 12px"><div style="${F};font-size:0.72rem;letter-spacing:0.08em;color:var(--muted);margin-bottom:2px">${lab}</div><div style="${F};font-size:1.35rem;font-weight:700;color:${v===null?'var(--muted)':v>=0?'var(--green)':'var(--red)'}">${v===null?'—':money(v)}</div></div>`;
+    return `<div class="kpi-card" style="display:flex;flex-direction:column;gap:0;padding:18px 20px;cursor:pointer" onclick="toggleFvBreak(this)">
+      <div style="${F};font-size:1.3rem;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:8px">${o}</div>
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px"><span style="${F};font-size:2.6rem;font-weight:700;color:var(--accent);line-height:1">${pct}%</span>${LBL('OF TRADES')}</div>
+      <div style="height:8px;border-radius:4px;background:rgba(123,175,212,0.15);overflow:hidden;margin-bottom:10px"><div style="height:100%;width:${pct}%;background:var(--accent);border-radius:4px"></div></div>
+      <div class="kpi-card-sub">${a.length} trade${a.length!==1?'s':''}</div>
+      <div class="fv-break" style="display:none;margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">${tile('NET P&amp;L', a.length?net:null)}${tile('AVG / TRADE', a.length?net/a.length:null)}${tile('BEST', a.length?Math.max(...vals):null)}${tile('WORST', a.length?Math.min(...vals):null)}</div>
+      </div>
+      <div class="fv-hint" data-closed="▾ Full stats" style="${F};font-size:0.75rem;color:var(--muted);margin-top:8px">▾ Full stats</div>
+    </div>`;
+  });
+  return conf + section('TRADE MANAGEMENT', 2, tmCards);
 }
 
 function toggleFvBreak(el) {
