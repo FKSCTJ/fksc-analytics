@@ -551,6 +551,8 @@
   @keyframes stratEqIn  { from { clip-path: inset(0 100% 0 0); transform: translateX(-24px); opacity:0.2; } to { clip-path: inset(0 0 0 0); transform:none; opacity:1; } }
   @keyframes stratEqOut { from { clip-path: inset(0 0 0 0); transform:none; opacity:1; } to { clip-path: inset(0 100% 0 0); transform: translateX(-24px); opacity:0.2; } }
   .is-conf label { white-space:nowrap; }
+  .oc-col.oc-click { cursor:pointer; }
+  .oc-col.oc-click:hover .oc-bar { filter:brightness(1.25); }
   .oc-col { display:flex; flex-direction:column; align-items:center; text-align:center; min-width:0; cursor:default; }
   .oc-bar { width:min(56%,90px); border-radius:4px 4px 0 0; transition:filter 0.15s; }
   .oc-col:hover .oc-bar { filter:brightness(1.18); }
@@ -3418,6 +3420,7 @@ function renderReviewList() {
   if (!fuDueCount) rvFollowUpOnly = false;
   const filtered = sorted.filter(({t}) => {
     if (rvFollowUpOnly && !isFollowUpDue(t)) return false;
+    if (rvOutcomeFilter && t.outcome !== rvOutcomeFilter) return false;
     const pnl = parseFloat(t.pnl)||0; const isbe = isBreakEven(pnl);
     if (search && !(t.pair||'').toLowerCase().includes(search)) return false;
     if (fResult==='win' && (pnl<=0||isbe)) return false;
@@ -3433,7 +3436,7 @@ function renderReviewList() {
   const empty = document.getElementById('reviewEmptyMsg');
   const badge = document.getElementById('rvAssetBadge');
   if (badge) {
-    if (rvAssetFilter) {
+    if (rvAssetFilter || rvOutcomeFilter) {
       const ICONS = {Forex:'💱',Indices:'📊',Stocks:'📈',Commodity:'🛢️'};
       badge.style.display = 'inline-flex';
       badge.style.alignItems = 'center';
@@ -3446,7 +3449,7 @@ function renderReviewList() {
       badge.style.fontSize = '0.8rem';
       badge.style.fontFamily = "'EB Garamond',serif";
       badge.style.letterSpacing = '0.04em';
-      badge.innerHTML = `${ICONS[rvAssetFilter]||''} ${(STRATEGY_CARDS.find(s => s.key === rvAssetFilter)||{}).name||rvAssetFilter} only <span onclick="clearRvAssetFilter()" style="cursor:pointer;font-weight:700;margin-left:4px">✕</span>`;
+      badge.innerHTML = `${rvAssetFilter ? `${ICONS[rvAssetFilter]||''} ${(STRATEGY_CARDS.find(s => s.key === rvAssetFilter)||{}).name||rvAssetFilter}` : ''}${rvAssetFilter && rvOutcomeFilter ? ' · ' : ''}${rvOutcomeFilter || ''} only <span onclick="clearRvAssetFilter()" style="cursor:pointer;font-weight:700;margin-left:4px">✕</span>`;
     } else {
       badge.style.display = 'none';
     }
@@ -3734,6 +3737,7 @@ ${isBreakEven(t.pnl) ? `<div class="form-group">
 let rvPeriod     = 'all';
 let rvPeriodFrom = '';
 let rvPeriodTo   = '';
+let rvOutcomeFilter = ''; // set when opened from an Outcome bar
 let rvAssetFilter = ''; // '' = no filter, else 'Forex' | 'Indices' | 'Stocks' | 'Commodity'
 
 function toggleRvPeriodDropdown() {
@@ -3890,13 +3894,20 @@ function getRvFilteredTrades() {
   return applyAsset(trades.map((t,i)=>({t,i})));
 }
 
+function openReviewForOutcome(outcome) {
+  rvOutcomeFilter = outcome;
+  rvAssetFilter = currentStratAsset || '';
+  switchTab('review', document.querySelectorAll('.nav-tab')[2]);
+}
 function openReviewForAsset(asset) {
+  rvOutcomeFilter = '';
   rvAssetFilter = asset;
   switchTab('review', document.querySelectorAll('.nav-tab')[2]);
 }
 
 function clearRvAssetFilter() {
   rvAssetFilter = '';
+  rvOutcomeFilter = '';
   renderReviewList();
 }
 
@@ -7275,7 +7286,7 @@ function renderOutcomeChart(arr) {
     const h = r.n ? Math.max(4, Math.round(H * r.n / max)) : 0;
     const money = `${r.pnl>=0?'+':'−'}$${Math.abs(r.pnl).toLocaleString('en-US',{maximumFractionDigits:0})}`;
     const tip = `${r.o}: ${r.n} trade${r.n!==1?'s':''} · ${r.pct}% of tagged · net ${money}${OUTCOME_PENALTY[r.o]?' · −10 pts each':''}`;
-    return `<div class="oc-col" title="${tip}">
+    return `<div class="oc-col${r.n?' oc-click':''}" title="${tip}${r.n?' · click to see these trades':''}" ${r.n?`onclick="openReviewForOutcome('${r.o}')"`:''}>
         <div style="height:${H+44}px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;width:100%;border-bottom:1px solid var(--border)">
           <div style="${F};font-size:1.5rem;font-weight:700;color:var(--text);line-height:1">${r.pct}%</div>
           <div style="${F};font-size:0.8rem;color:var(--muted);margin-bottom:6px">${r.n} trade${r.n!==1?'s':''}</div>
@@ -8003,8 +8014,8 @@ function renderFvStrategySections(tr) {
       <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px"><span style="${F};font-size:2.6rem;font-weight:700;color:${col};line-height:1">${big}</span>${LBL(lbl)}</div>
       <div class="kpi-card-sub">${sub}</div></div>`;
   const follow = section('FOLLOW-UP — EXTREME VALUATION', 3, [
-    fuCard('Gave full reversal', answered.length?Math.round(100*yes/answered.length)+'%':'—', answered.length?'var(--green)':'var(--muted)', 'OF CHECKED TRADES', `${yes} of ${answered.length} trade${answered.length!==1?'s':''}`),
-    fuCard('No full reversal', answered.length?Math.round(100*no/answered.length)+'%':'—', answered.length?'var(--red)':'var(--muted)', 'OF CHECKED TRADES', `${no} of ${answered.length} trade${answered.length!==1?'s':''}`),
+    fuCard('Extreme to extreme', answered.length?Math.round(100*yes/answered.length)+'%':'—', answered.length?'var(--green)':'var(--muted)', 'OF CHECKED TRADES', `${yes} of ${answered.length} trade${answered.length!==1?'s':''}`),
+    fuCard('Stop before extreme', answered.length?Math.round(100*no/answered.length)+'%':'—', answered.length?'var(--red)':'var(--muted)', 'OF CHECKED TRADES', `${no} of ${answered.length} trade${answered.length!==1?'s':''}`),
     fuCard('⏰ Awaiting follow-up', String(due), '#e0b85a', 'TRADES', 'Closed over a month ago, not answered yet', ';border-color:#e0b85a'),
   ], 'checked one month after close');
   return direction + valuation + timeframe + conf + tmSec + follow;
