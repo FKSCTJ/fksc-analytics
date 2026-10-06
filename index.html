@@ -8009,13 +8009,26 @@ function renderFvStrategySections(tr) {
   const answered = ext.filter(t => t.fvFollowUp === 'Yes' || t.fvFollowUp === 'No');
   const yes = answered.filter(t => t.fvFollowUp === 'Yes').length, no = answered.length - yes;
   const due = tr.filter(isFollowUpDue).length;
-  const fuCard = (name, big, col, lbl, sub, style='') => `<div class="kpi-card" style="display:flex;flex-direction:column;gap:0;padding:18px 20px${style}">
+  const fuCard = (name, big, col, lbl, sub, style='', after='') => `<div class="kpi-card" style="display:flex;flex-direction:column;gap:0;padding:18px 20px${style}${after?';cursor:pointer':''}"${after?' onclick="toggleFvBreak(this)"':''}>
       <div style="${F};font-size:1.3rem;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:8px">${name}</div>
       <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px"><span style="${F};font-size:2.6rem;font-weight:700;color:${col};line-height:1">${big}</span>${LBL(lbl)}</div>
-      <div class="kpi-card-sub">${sub}</div></div>`;
+      <div class="kpi-card-sub">${sub}</div>${after}</div>`;
+  // Per-pair breakdown: each pair's count in this group, and its share of that pair's checked trades
+  const byPair = (answer) => {
+    const pairs = {};
+    answered.forEach(t => { const p = (t.pair||'—').replace(/\.R+$/i,''); if (!pairs[p]) pairs[p] = { hit:0, all:0 }; pairs[p].all++; if (t.fvFollowUp === answer) pairs[p].hit++; });
+    const rows = Object.entries(pairs).filter(([,v]) => v.hit).sort((a,b) => b[1].hit - a[1].hit || a[0].localeCompare(b[0]));
+    const body = rows.length ? rows.map(([p,v]) => `<div style="display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:baseline;padding:6px 2px;border-bottom:1px solid var(--border)">
+        <span style="${F};font-size:1rem;color:var(--text)">${p}</span>
+        <span class="kpi-card-sub">${v.hit} of ${v.all}</span>
+        <span style="${F};font-size:1.05rem;font-weight:700;color:var(--text);min-width:44px;text-align:right">${Math.round(100*v.hit/v.all)}%</span></div>`).join('')
+      : `<div class="kpi-card-sub" style="padding:6px 2px">No trades yet</div>`;
+    return `<div class="fv-break" style="display:none;margin-top:12px;padding-top:6px;border-top:1px solid var(--border);max-height:240px;overflow-y:auto" onclick="event.stopPropagation()">
+        <div style="display:grid;grid-template-columns:1fr auto auto;gap:14px;padding:4px 2px;${F};font-size:0.72rem;letter-spacing:0.08em;color:var(--muted)"><span>PAIR</span><span>TRADES</span><span style="min-width:44px;text-align:right">OF PAIR</span></div>${body}</div>`;
+  };
   const follow = section('FOLLOW-UP — EXTREME VALUATION', 3, [
-    fuCard('Extreme to extreme', answered.length?Math.round(100*yes/answered.length)+'%':'—', answered.length?'var(--green)':'var(--muted)', 'OF CHECKED TRADES', `${yes} of ${answered.length} trade${answered.length!==1?'s':''}`),
-    fuCard('Stop before extreme', answered.length?Math.round(100*no/answered.length)+'%':'—', answered.length?'var(--red)':'var(--muted)', 'OF CHECKED TRADES', `${no} of ${answered.length} trade${answered.length!==1?'s':''}`),
+    fuCard('Extreme to extreme', answered.length?Math.round(100*yes/answered.length)+'%':'—', answered.length?'var(--green)':'var(--muted)', 'OF CHECKED TRADES', `${yes} of ${answered.length} trade${answered.length!==1?'s':''}`, '', byPair('Yes')),
+    fuCard('Stop before extreme', answered.length?Math.round(100*no/answered.length)+'%':'—', answered.length?'var(--red)':'var(--muted)', 'OF CHECKED TRADES', `${no} of ${answered.length} trade${answered.length!==1?'s':''}`, '', byPair('No')),
     fuCard('⏰ Awaiting follow-up', String(due), '#e0b85a', 'TRADES', 'Closed over a month ago, not answered yet', ';border-color:#e0b85a'),
   ], 'checked one month after close');
   return direction + valuation + timeframe + conf + tmSec + follow;
