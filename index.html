@@ -4555,7 +4555,7 @@ function renderStrategy() {
 
   // Always update the dynamic drill section only
   const dynEl = document.getElementById('strat-dynamic');
-  if (dynEl) dynEl.innerHTML = isFvView ? renderFvStrategySections(stratTrades) : currentStratAsset === 'IS' ? `${trendSection}${tfCardHtml}${renderIsStrategySections(stratTrades)}` : `${trendSection}${tfCardHtml}${baseCardHtml}`;
+  if (dynEl) dynEl.innerHTML = isFvView ? renderFvStrategySections(stratTrades) : currentStratAsset === 'IS' ? `${renderIsDirectionSection(stratTrades)}${tfCardHtml}${renderIsStrategySections(stratTrades)}` : `${trendSection}${tfCardHtml}${baseCardHtml}`;
 
 }
 
@@ -4648,10 +4648,18 @@ const REVIEW_QUESTIONS = [
 
 function getMonthlyReviewKey(y, m) { return `fx_monthly_review_${y}_${String(m+1).padStart(2,'0')}`; }
 
+
+function splitTradesByClose(arr) {
+  return (arr||[]).flatMap(t => Array.isArray(t.partials) && t.partials.length > 1
+    ? t.partials.map(p => ({ ...t, lots:p.lots, exit:p.exit, closeDate:p.closeDate, pnl:p.pnl, commission:p.commission, swap:p.swap, _src:t, _partial:true }))
+    : [t]);
+}
 function renderMonthlyTab() {
+  // Partial closes count in the month each part was closed, not the month of the final close
+  const mTrades = splitTradesByClose(trades);
   // Collect all months that have trades, plus current month — strictly by closeDate
   const monthSet = new Set();
-  trades.forEach(t => {
+  mTrades.forEach(t => {
     const d = t.closeDate || t.date;
     if (d) monthSet.add(d.slice(0,7));
   });
@@ -4661,7 +4669,7 @@ function renderMonthlyTab() {
 
   // Build quarterly summaries — strictly by closeDate
   const quarterMap = {};
-  trades.forEach(t => {
+  mTrades.forEach(t => {
     const d = t.closeDate || t.date;
     if (!d) return;
     const [yr, mo] = d.slice(0,7).split('-').map(Number);
@@ -4781,7 +4789,7 @@ function renderMonthlyTab() {
       lastQuarter = qKey;
     }
 
-    const monthTrades = trades.filter(t => {
+    const monthTrades = mTrades.filter(t => {
       const d = t.closeDate || t.date;
       return d && d.startsWith(ym);
     });
@@ -4791,7 +4799,7 @@ function renderMonthlyTab() {
     const beCount= monthTrades.filter(t=>isBreakEven(t.pnl)).length;
     const wr = (wins+losses) > 0 ? ((wins/(wins+losses))*100).toFixed(0) : 0;
     const pnlCol = netPnl>=0?'var(--green)':'var(--red)';
-    const pnlSign = netPnl>=0?'+':'';
+    const pnlSign = netPnl>=0?'+':'−';
     const saved = JSON.parse(localStorage.getItem(getMonthlyReviewKey(yr, mo-1)) || '{}');
     const hasReview = REVIEW_QUESTIONS.some(q => saved[q.key] && saved[q.key].trim());
     const isCurrentMonth = yr===now.getFullYear() && mo-1===now.getMonth();
@@ -4830,7 +4838,7 @@ function buildMonthBody(ym, yr, mo, monthTrades) {
     if (!dayMap[day]) dayMap[day] = { pnl:0, n:0, trades:[], tradeRefs:[] };
     dayMap[day].pnl += parseFloat(t.pnl)||0;
     dayMap[day].n++;
-    dayMap[day].tradeRefs.push(trades.indexOf(t));
+    { const ref = trades.indexOf(t._src || t); if (!dayMap[day].tradeRefs.includes(ref)) dayMap[day].tradeRefs.push(ref); }
     if (t.date && t.closeDate && t.closeDate !== t.date) {
       const daysOpen = Math.round((new Date(t.closeDate)-new Date(t.date))/(1000*60*60*24));
       dayMap[day].trades.push(daysOpen);
@@ -7901,6 +7909,25 @@ function renderIsStrategySections(tr) {
     </div>`;
   });
   return conf + section('TRADE MANAGEMENT', 2, tmCards);
+}
+
+
+// Long vs Short section for Index Strength (replaces Trend vs Countertrend)
+function renderIsDirectionSection(tr) {
+  const F = "font-family:'EB Garamond',serif";
+  const pnl = t => parseFloat(t.pnl)||0;
+  const st = arr => { const w=arr.filter(t=>pnl(t)>0&&!isBreakEven(t.pnl)).length, l=arr.filter(t=>pnl(t)<0&&!isBreakEven(t.pnl)).length; return { n:arr.length, wr:(w+l)?Math.round(100*w/(w+l)):null }; };
+  const wrCol = wr => wr===null?'var(--muted)':wr>=50?'var(--green)':'var(--red)';
+  const card = (name, arr) => { const s=st(arr); return `<div class="kpi-card" style="display:flex;flex-direction:column;gap:0;padding:18px 20px">
+      <div style="${F};font-size:1.3rem;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:8px">${name}</div>
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px"><span style="${F};font-size:2.6rem;font-weight:700;color:${wrCol(s.wr)};line-height:1">${s.wr===null?'—':s.wr+'%'}</span><span style="${F};font-size:0.8rem;color:var(--muted);letter-spacing:0.08em">WIN RATE</span></div>
+      <div class="kpi-card-sub">${s.n} trade${s.n!==1?'s':''}</div></div>`; };
+  return `<div style="margin-bottom:20px">
+      <div class="chart-card-title" style="margin-bottom:12px">&#9632; LONG vs SHORT</div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+        ${card('↗ Long', tr.filter(t => isAutoDirection(t) === 'Long'))}
+        ${card('↘ Short', tr.filter(t => isAutoDirection(t) === 'Short'))}
+      </div></div>`;
 }
 
 function toggleFvBreak(el) {
