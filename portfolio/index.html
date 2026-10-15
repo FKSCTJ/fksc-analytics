@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
 
@@ -38,7 +38,7 @@
     <div class="titles"><a class="back" href="../">← FKSC Analytics</a><h1>Portfolio</h1></div>
     <div class="tools">
       <button class="btn ghost" id="btn-settings">Settings</button>
-      <button class="btn ghost" id="btn-import">Import CSV</button>
+      <button class="btn ghost" id="btn-import">Import CSV / PDF</button>
       <button class="btn" id="btn-add">+ Add position</button>
     </div>
   </div>
@@ -83,8 +83,8 @@
     <div class="cards" id="cards"></div>
     <div class="empty" id="empty" hidden>
       <strong>No positions yet</strong>
-      <span>Import a CSV export from CMC, IBKR or Coinbase, or add a position by hand.</span>
-      <div class="tools"><button class="btn ghost" data-act="import">Import CSV</button><button class="btn" data-act="add">+ Add position</button></div>
+      <span>Import a CSV or Coinbase PDF report, or add a position by hand.</span>
+      <div class="tools"><button class="btn ghost" data-act="import">Import CSV / PDF</button><button class="btn" data-act="add">+ Add position</button></div>
     </div>
   </section>
 
@@ -105,7 +105,9 @@
       <label>Account<select id="p-broker"></select></label>
       <label>Asset type<select id="p-type"></select></label>
       <label>Units<input id="p-units" inputmode="decimal"></label>
-      <label>Avg price<input id="p-avg" inputmode="decimal"></label>
+      <label>Avg price (per unit)<input id="p-avg" inputmode="decimal" placeholder="e.g. 119315"></label>
+      <label>or Total cost<input id="p-total" inputmode="decimal" placeholder="e.g. 20859.43"><span class="hint">Fill one of the two</span></label>
+      <p class="hint full" id="p-read" aria-live="polite"></p>
       <label>Avg price currency<select id="p-costcur"></select></label>
       <label>Quote currency<select id="p-quotecur"></select><span class="hint">Currency the price trades in</span></label>
       <label>Manual price<input id="p-mprice" inputmode="decimal"><span class="hint">Used only when no live price</span></label>
@@ -171,7 +173,7 @@
 
 </div>
 
-<script src="csv.js"></script>
-<script src="app.js"></script>
+<script src="csv.js?v=3"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>

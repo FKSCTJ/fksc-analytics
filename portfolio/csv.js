@@ -36,7 +36,10 @@
     if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }
     s = s.replace(/[A-Za-z$€£¥\s]/g, '').replace(/[−–]/g, '-');
     // European "1.234,56" -> 1234.56 ; "1,234.56" -> 1234.56 ; "12,5" -> 12.5
-    if (/,\d{1,8}$/.test(s) && (s.match(/,/g) || []).length === 1 && (!s.includes('.') || s.lastIndexOf('.') < s.indexOf(','))) {
+    const oneComma = (s.match(/,/g) || []).length === 1;
+    // "119,315" (comma + exactly 3 digits, no dot) is a thousands separator, not a decimal
+    if (oneComma && !s.includes('.') && /^-?\d{1,3},\d{3}$/.test(s)) s = s.replace(',', '');
+    else if (/,\d{1,8}$/.test(s) && oneComma && (!s.includes('.') || s.lastIndexOf('.') < s.indexOf(','))) {
       s = s.replace(/\./g, '').replace(',', '.');
     } else s = s.replace(/,/g, '');
     const n = Number(s);

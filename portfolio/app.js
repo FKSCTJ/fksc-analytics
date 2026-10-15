@@ -399,7 +399,7 @@
     $('p-broker').innerHTML = opts(BROKERS, b);
     $('p-type').innerHTML = Object.keys(TYPES).filter(k => k !== 'cash').map(k => `<option value="${k}" ${h && h.type === k ? 'selected' : (!h && k === (b === 'Coinbase' ? 'crypto' : 'stock') ? 'selected' : '')}>${TYPES[k]}</option>`).join('');
     $('p-units').value = h ? h.units : '';
-    $('p-avg').value = h && Number.isFinite(h.avgCost) ? h.avgCost : '';
+    $('p-avg').value = h && Number.isFinite(h.avgCost) ? h.avgCost : ''; $('p-total').value = ''; readBack();
     $('p-costcur').innerHTML = opts(CURS, h ? h.costCurrency : (b === 'CMC' ? 'AUD' : 'USD'));
     $('p-quotecur').innerHTML = opts(CURS, h ? h.quoteCurrency : 'USD');
     $('p-mprice').value = h && Number.isFinite(h.manualPrice) ? h.manualPrice : '';
@@ -408,6 +408,14 @@
     open('m-pos');
   }
   $('p-quotecur').addEventListener('change', () => { quoteTouched = true; });
+  function readBack() {
+    const u = num($('p-units').value), a = num($('p-avg').value), t = num($('p-total').value), cur = $('p-costcur').value || '';
+    let avg = a, total = Number.isFinite(a) && Number.isFinite(u) ? a * u : NaN;
+    if (!Number.isFinite(a) && Number.isFinite(t)) { total = Math.abs(t); avg = Number.isFinite(u) && u ? total / Math.abs(u) : NaN; }
+    $('p-read').textContent = Number.isFinite(avg) ? `Saved as ${nf(2, 8).format(avg)} ${cur} per unit` + (Number.isFinite(total) ? ` · total cost ${fmt(total)} ${cur}` : '') : '';
+  }
+  ['p-avg', 'p-total', 'p-units', 'p-costcur'].forEach(id => $(id).addEventListener('input', readBack));
+  $('p-costcur').addEventListener('change', readBack);
   function autoQuote() {
     if (quoteTouched) return;
     const crypto = $('p-type').value === 'crypto';
@@ -419,10 +427,12 @@
   $('m-pos').addEventListener('submit', e => {
     e.preventDefault();
     const type = $('p-type').value; const c = C.normCode($('p-code').value, { crypto: type === 'crypto' });
-    const units = num($('p-units').value), avg = num($('p-avg').value), mp = num($('p-mprice').value);
+    const units = num($('p-units').value), mp = num($('p-mprice').value);
+    let avg = num($('p-avg').value); const tot = num($('p-total').value);
+    if (!Number.isFinite(avg) && Number.isFinite(tot) && Number.isFinite(units) && units) avg = Math.abs(tot / units);
     if (!c) return err('p-err', 'Enter a code, for example DUOL:US, BHP.AX or BTC.');
     if (!Number.isFinite(units) || units === 0) return err('p-err', 'Units must be a number other than 0.');
-    if (!Number.isFinite(avg) || avg < 0) return err('p-err', 'Avg price must be a number (0 for free shares or rewards).');
+    if (!Number.isFinite(avg) || avg < 0) return err('p-err', 'Enter an avg price per unit or the total cost (0 for free shares or rewards).');
     const h = { id: edit || uid(), broker: $('p-broker').value, code: c.code, symbol: c.symbol, exchange: c.exchange, type,
       units, avgCost: avg, costCurrency: $('p-costcur').value, quoteCurrency: $('p-quotecur').value,
       manualPrice: Number.isFinite(mp) ? mp : null, name: $('p-name').value.trim() };
