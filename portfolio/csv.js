@@ -184,7 +184,17 @@
       } else if (CB_OUT.test(type)) {
         const b = get(asset); const share = b.units ? Math.min(1, qty / b.units) : 0;
         b.cost -= b.cost * share; b.units -= qty;
-      } else skipped.add(type);
+      } else { skipped.add(type); continue; }
+      // Advanced Trade crypto-to-crypto: "Sold 5.5 ETH for 0.17 BTC" / "Bought 0.0003 BTC for 22.6 USDC"
+      const tr = String(r[iNotes] || '').match(/^(bought|sold)\s+([\d.,]+)\s+(\w+)\s+for\s+([\d.,]+)\s+(\w+)/i);
+      if (tr && /advanced/i.test(type)) {
+        const other = tr[5].toUpperCase(), amt = num(tr[4]);
+        if (!FIAT.includes(other) && Number.isFinite(amt) && amt > 0) {
+          const o = get(other);
+          if (/bought/i.test(tr[1])) { const share = o.units > 0 ? Math.min(1, amt / o.units) : 0; o.cost -= o.cost * share; o.units -= amt; }
+          else { o.units += amt; o.cost += Math.abs(num(r[iTot])) || 0; }
+        }
+      }
     }
     const cur = priceCur || 'USD'; const out = [];
     for (const a in book) {
@@ -193,6 +203,31 @@
       out.push(pos(c, { type: 'crypto', units: +b.units.toFixed(10), avgCost: b.cost > 0 ? b.cost / b.units : NaN, costCurrency: cur, quoteCurrency: 'USD' }));
     }
     return { positions: out, skipped: [...skipped] };
+  }
+
+  // ---------- Coinbase PDF report: "Portfolio Summary" block ----------
+  // lines: page text grouped into rows, top to bottom. A holding row reads
+  // "<quantity> <price> AUD/BTC <value> AUD" (the asset name sits on its own row).
+  function fromCoinbaseSummary(lines, minValue) {
+    if (minValue == null) minValue = 0.05;
+    const start = lines.findIndex(l => /portfolio summary/i.test(l));
+    if (start < 0) return null;
+    let end = lines.findIndex((l, i) => i > start && /total market value/i.test(l));
+    if (end < 0) end = lines.length;
+    const re = /(\d[\d.,]*)\s+(\d[\d.,]*)\s+([A-Z]{3})\s*\/\s*([A-Z0-9]+)\s+(\d[\d.,]*)\s+([A-Z]{3})\b/;
+    const out = [], dust = []; let cur = null;
+    for (const l of lines.slice(start + 1, end)) {
+      const m = l.match(re); if (!m) continue;
+      const units = num(m[1]), price = num(m[2]), value = num(m[5]); cur = m[3];
+      const c = normCode(m[4], { crypto: true });
+      if (!(units > 0)) continue;
+      const v = Number.isFinite(value) ? value : units * price;
+      if (v < minValue) { dust.push(c.code); continue; }
+      out.push(pos(c, { type: 'crypto', units, avgCost: NaN, costCurrency: cur, quoteCurrency: cur, price }));
+    }
+    let total = NaN;
+    for (const l of lines.slice(end, end + 3)) { const t = l.match(/(\d[\d.,]*)\s+([A-Z]{3})\s*$/); if (t) { total = num(t[1]); break; } }
+    return { positions: out, skipped: dust.length ? [dust.join(', ') + ' (worth less than ' + minValue + ' ' + (cur || '') + ')'] : [], total, currency: cur };
   }
 
   // ---------- generic table with a column mapping ----------
@@ -238,6 +273,6 @@
     return [...m.values()];
   }
 
-  const api = { parseCSV, num, normCode, detect, guessColumns, fromIbkrActivity, fromCoinbase, fromTable, EX_CUR };
+  const api = { parseCSV, num, normCode, detect, guessColumns, fromIbkrActivity, fromCoinbase, fromCoinbaseSummary, fromTable, EX_CUR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PortfolioCSV = api;
 })(typeof window !== 'undefined' ? window : globalThis);

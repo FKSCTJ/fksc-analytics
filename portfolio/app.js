@@ -188,19 +188,19 @@
   }
   function drawBrokers(D) {
     const per = BROKERS.map(b => {
-      let v = 0, cost = 0;
+      let v = 0, cost = 0, vk = 0;
       S.holdings.filter(h => h.broker === b).forEach(h => {
         const q = quoteOf(h); const x = conv(h.units * q.price, q.cur, D); const c = conv(h.units * h.avgCost, h.costCurrency, D);
-        if (Number.isFinite(x)) { v += x; if (Number.isFinite(c)) cost += c; }
+        if (Number.isFinite(x)) { v += x; if (Number.isFinite(c)) { cost += c; vk += x; } }
       });
       const cashRow = S.cash.find(c => c.broker === b);
       const cash = cashRow ? conv(cashRow.amount, cashRow.currency, D) : 0;
       const n = S.holdings.filter(h => h.broker === b).length;
-      return { b, v, cost, cash: Number.isFinite(cash) ? cash : 0, cashRow, n };
+      return { b, v, cost, vk, cash: Number.isFinite(cash) ? cash : 0, cashRow, n };
     });
     const total = per.reduce((a, p) => a + p.v + p.cash, 0);
     $('brokers').innerHTML = per.map(p => {
-      const tot = p.v + p.cash, pl = p.v - p.cost;
+      const tot = p.v + p.cash, pl = p.vk - p.cost;
       return `<li>
         <span class="bn">${p.b}</span><span class="bv">${money(tot, D)}</span>
         <span class="bs">${p.n ? p.n + ' position' + (p.n > 1 ? 's' : '') : 'No positions'}${p.n ? ` · <span class="${cls(pl)}">${money(pl, D)}</span>` : ''}
@@ -486,7 +486,7 @@
   const HELP = {
     CMC: 'Export your holdings from CMC as a CSV. Average prices from CMC are in AUD, so the avg price currency is set to AUD.',
     IBKR: 'Use an IBKR Activity Statement saved as CSV, or a Flex Query CSV that includes open positions. Cost prices are read in each position\'s own currency.',
-    Coinbase: 'Use the transaction history CSV from Coinbase. Buys, sells, sends, receives, rewards and converts are added up into current balances and average cost.',
+    Coinbase: 'Best: the Transaction History Report PDF from Coinbase. Its Portfolio Summary lists your exact balances. A CSV also works, but only if its date range covers your whole history, because balances are added up from the transactions.',
     Other: 'Any CSV with a symbol column and a quantity column. Check the column choices below before importing.',
   };
   let det = null, parsed = null;
@@ -500,9 +500,47 @@
   $('i-broker').addEventListener('change', () => { $('i-help').textContent = HELP[$('i-broker').value]; if (det) analyse(); });
   $('i-file').addEventListener('change', async e => {
     const f = e.target.files[0]; if (!f) return;
+    $('i-err').hidden = true;
+    if (/\.pdf$/i.test(f.name) || f.type === 'application/pdf') {
+      $('i-help').textContent = 'Reading PDF…';
+      try {
+        const lines = await pdfLines(f);
+        const r = C.fromCoinbaseSummary(lines);
+        if (!r) { det = null; $('i-go').disabled = true; $('i-help').textContent = HELP[$('i-broker').value]; return err('i-err', 'No Portfolio Summary found in this PDF. Use the Coinbase Transaction History Report PDF, or a CSV file.'); }
+        if ($('i-broker').value === 'CMC' || $('i-broker').value === 'IBKR') $('i-broker').value = 'Coinbase';
+        det = { kind: 'coinbase-pdf' }; parsed = r; $('i-map').hidden = true; preview();
+      } catch (x) { $('i-help').textContent = HELP[$('i-broker').value]; err('i-err', 'This PDF could not be read. Check your internet connection (the PDF reader loads from the web) and try again.'); }
+      return;
+    }
     try { det = C.detect(await f.text(), $('i-broker').value); analyse(); }
     catch (x) { err('i-err', 'This file could not be read as a CSV.'); }
   });
+  let pdfLib = null;
+  function loadPdfJs() {
+    if (pdfLib) return pdfLib;
+    const base = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+    pdfLib = new Promise((res, rej) => {
+      const sc = document.createElement('script'); sc.src = base + 'pdf.min.js';
+      sc.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = base + 'pdf.worker.min.js'; res(window.pdfjsLib); };
+      sc.onerror = () => { pdfLib = null; rej(new Error('pdf.js failed to load')); };
+      document.head.appendChild(sc);
+    });
+    return pdfLib;
+  }
+  async function pdfLines(file) {
+    const lib = await loadPdfJs();
+    const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+    const lines = [];
+    for (let n = 1; n <= doc.numPages; n++) {
+      const page = await doc.getPage(n); const tc = await page.getTextContent();
+      const items = tc.items.filter(i => i.str && i.str.trim()).map(i => ({ s: i.str.trim(), x: i.transform[4], y: i.transform[5] }));
+      items.sort((a, b) => b.y - a.y || a.x - b.x);
+      const rows = [];
+      items.forEach(it => { const r = rows.find(r => Math.abs(r.y - it.y) < 2.5); if (r) r.items.push(it); else rows.push({ y: it.y, items: [it] }); });
+      rows.sort((a, b) => b.y - a.y).forEach(r => lines.push(r.items.sort((a, b) => a.x - b.x).map(i => i.s).join(' ')));
+    }
+    return lines;
+  }
   const MAP_FIELDS = [['symbol', 'Symbol / code'], ['units', 'Units / quantity'], ['avg', 'Avg price'], ['costTotal', 'Total cost (if no avg price)'],
     ['currency', 'Currency'], ['type', 'Asset type'], ['name', 'Name'], ['price', 'Last price']];
   function analyse() {
@@ -533,19 +571,28 @@
   function preview() {
     const P = parsed.positions;
     $('i-preview').hidden = false; $('i-replace-wrap').hidden = !P.length; $('i-go').disabled = !P.length;
-    const kind = det.kind === 'ibkr-activity' ? 'IBKR activity statement' : det.kind === 'coinbase-tx' ? 'Coinbase transaction history' : 'table';
+    const kind = det.kind === 'ibkr-activity' ? 'IBKR activity statement' : det.kind === 'coinbase-tx' ? 'Coinbase transaction history' : det.kind === 'coinbase-pdf' ? 'Coinbase report (Portfolio Summary)' : 'table';
     $('i-preview').innerHTML = `<table><thead><tr><th>Code</th><th>Type</th><th>Units</th><th>Avg price</th><th>Cur.</th><th>Quote cur.</th></tr></thead><tbody>` +
       P.map(p => `<tr><td>${esc(p.code)}</td><td>${TYPES[p.type]}</td><td>${fmtU(p.units)}</td><td>${fmtP(p.avgCost)}</td><td>${esc(p.costCurrency)}</td><td>${esc(p.quoteCurrency)}</td></tr>`).join('') +
       `</tbody></table>`;
-    $('i-help').textContent = `Read as ${kind}: ${P.length} position${P.length === 1 ? '' : 's'} found.` + (parsed.skipped.length ? ' Skipped: ' + parsed.skipped.join(', ') + '.' : '');
+    const noCost = P.some(p => !Number.isFinite(p.avgCost));
+    $('i-help').textContent = `Read as ${kind}: ${P.length} position${P.length === 1 ? '' : 's'} found.` +
+      (Number.isFinite(parsed.total) ? ` Report total: ${fmt(parsed.total)} ${parsed.currency || ''}.` : '') +
+      (parsed.skipped.length ? ' Skipped: ' + parsed.skipped.join(', ') + '.' : '') +
+      (noCost ? ' The file has no average prices: positions you already have keep theirs; add any missing ones with ✎ after importing.' : '');
     if (!P.length && det.kind !== 'table') err('i-err', 'No open positions were found in this file.');
   }
   $('m-import').addEventListener('submit', e => {
     e.preventDefault(); if (!parsed || !parsed.positions.length) return;
     const broker = $('i-broker').value; const replace = $('i-replace').checked;
+    const before = S.holdings.filter(h => h.broker === broker);
     if (replace) S.holdings = S.holdings.filter(h => h.broker !== broker);
     parsed.positions.forEach(p => {
       const h = { id: uid(), broker, ...p };
+      if (!Number.isFinite(h.avgCost)) {
+        const old = before.find(x => x.code === h.code && Number.isFinite(x.avgCost));
+        if (old) { h.avgCost = old.avgCost; h.costCurrency = old.costCurrency; }
+      }
       const i = S.holdings.findIndex(x => x.broker === broker && x.code === h.code);
       if (i >= 0) S.holdings[i] = { ...h, id: S.holdings[i].id }; else S.holdings.push(h);
     });
