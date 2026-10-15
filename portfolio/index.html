@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Portfolio</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="band">
+  <div class="wrap band-in">
+    <div class="kpis">
+      <div class="kpi"><span class="lbl">Total holdings</span><span class="val" id="k-hold">—</span></div>
+      <span class="op">+</span>
+      <div class="kpi"><span class="lbl">Cash</span><span class="val" id="k-cash">—</span></div>
+      <span class="op">=</span>
+      <div class="kpi"><span class="lbl">Total portfolio</span><span class="val" id="k-total">—</span></div>
+      <span class="vsep"></span>
+      <div class="kpi"><span class="lbl">Total P&amp;L</span><span class="val" id="k-pl">—</span></div>
+      <div class="kpi"><span class="lbl">Daily P&amp;L</span><span class="val" id="k-day">—</span></div>
+    </div>
+    <div class="band-right">
+      <span class="live" id="live" title="Price feed status"><i></i><span>Connecting…</span></span>
+      <div class="seg" id="cur-seg" role="group" aria-label="Display currency">
+        <button data-cur="AUD">AUD</button><button data-cur="EUR">EUR</button><button data-cur="USD">USD</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap main">
+  <div class="head">
+    <div class="titles"><a class="back" href="../">← FKSC Analytics</a><h1>Portfolio</h1></div>
+    <div class="tools">
+      <button class="btn ghost" id="btn-settings">Settings</button>
+      <button class="btn ghost" id="btn-import">Import CSV</button>
+      <button class="btn" id="btn-add">+ Add position</button>
+    </div>
+  </div>
+
+  <div class="notice" id="notice" hidden></div>
+
+  <section class="charts">
+    <div class="panel donut-card">
+      <div class="panel-head">
+        <h2>Allocation</h2>
+        <div class="seg small" id="donut-seg" role="group" aria-label="Group chart by">
+          <button data-donut="type">Asset type</button><button data-donut="holding">Holding</button>
+        </div>
+      </div>
+      <div class="donut-body">
+        <svg id="donut" viewBox="0 0 220 220" role="img" aria-label="Allocation chart"></svg>
+        <ul class="legend" id="legend"></ul>
+      </div>
+    </div>
+    <div class="panel brokers-card">
+      <div class="panel-head"><h2>Accounts</h2></div>
+      <ul class="brokers" id="brokers"></ul>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div class="chips" id="chips" role="group" aria-label="Filter by account"></div>
+      <span class="meta" id="fx-meta"></span>
+    </div>
+    <div class="scroll">
+      <table class="tbl">
+        <thead><tr>
+          <th>Code</th><th>Account</th><th>Last price</th><th>Chg</th><th>Chg (%)</th><th>Units</th>
+          <th>Avg price</th><th>Cost<small class="dc"></small></th><th>Mkt value<small class="dc"></small></th>
+          <th>Day P&amp;L<small class="dc"></small></th><th>P&amp;L<small class="dc"></small></th><th>P&amp;L (%)</th><th>Weight</th><th></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+        <tfoot id="foot"></tfoot>
+      </table>
+    </div>
+    <div class="cards" id="cards"></div>
+    <div class="empty" id="empty" hidden>
+      <strong>No positions yet</strong>
+      <span>Import a CSV export from CMC, IBKR or Coinbase, or add a position by hand.</span>
+      <div class="tools"><button class="btn ghost" data-act="import">Import CSV</button><button class="btn" data-act="add">+ Add position</button></div>
+    </div>
+  </section>
+
+  <p class="foot-note">
+    <span class="dot live-dot"></span> live &nbsp; <span class="dot stored-dot"></span> last known price &nbsp; <span class="dot manual-dot"></span> manual price.
+    Stocks: Finnhub (US listings on the free plan). Crypto: Coinbase. Exchange rates: Coinbase, refreshed every 10 minutes.
+    Your data stays in this browser only; use Settings → Export backup to move it to another device.
+  </p>
+</main>
+
+<!-- Modals -->
+<div class="ov" id="ov" hidden>
+
+  <form class="sheet" id="m-pos" hidden novalidate>
+    <h2 id="pos-title">Position</h2>
+    <div class="fields">
+      <label>Code<input id="p-code" autocomplete="off" placeholder="DUOL:US, BTC, BHP.AX"></label>
+      <label>Account<select id="p-broker"></select></label>
+      <label>Asset type<select id="p-type"></select></label>
+      <label>Units<input id="p-units" inputmode="decimal"></label>
+      <label>Avg price<input id="p-avg" inputmode="decimal"></label>
+      <label>Avg price currency<select id="p-costcur"></select></label>
+      <label>Quote currency<select id="p-quotecur"></select><span class="hint">Currency the price trades in</span></label>
+      <label>Manual price<input id="p-mprice" inputmode="decimal"><span class="hint">Used only when no live price</span></label>
+      <label class="full">Name (optional)<input id="p-name" autocomplete="off"></label>
+    </div>
+    <div class="err" id="p-err" hidden></div>
+    <div class="row">
+      <button type="button" class="btn ghost left" id="p-del" hidden>Delete</button>
+      <button type="button" class="btn ghost" data-close>Cancel</button>
+      <button type="submit" class="btn">Save</button>
+    </div>
+  </form>
+
+  <form class="sheet wide" id="m-import" hidden novalidate>
+    <h2>Import CSV</h2>
+    <div class="fields">
+      <label>Account<select id="i-broker"></select></label>
+      <label>File<input type="file" id="i-file" accept=".csv,text/csv"></label>
+    </div>
+    <p class="hint" id="i-help"></p>
+    <div id="i-map" class="fields" hidden></div>
+    <div id="i-preview" class="preview" hidden></div>
+    <label class="check" id="i-replace-wrap" hidden><input type="checkbox" id="i-replace" checked> Replace current positions in this account</label>
+    <div class="err" id="i-err" hidden></div>
+    <div class="row">
+      <button type="button" class="btn ghost" data-close>Cancel</button>
+      <button type="submit" class="btn" id="i-go" disabled>Import</button>
+    </div>
+  </form>
+
+  <form class="sheet" id="m-cash" hidden novalidate>
+    <h2 id="cash-title">Cash</h2>
+    <div class="fields">
+      <label>Amount<input id="c-amt" inputmode="decimal"></label>
+      <label>Currency<select id="c-cur"></select></label>
+    </div>
+    <div class="err" id="c-err" hidden></div>
+    <div class="row"><button type="button" class="btn ghost" data-close>Cancel</button><button type="submit" class="btn">Save</button></div>
+  </form>
+
+  <form class="sheet" id="m-settings" hidden novalidate>
+    <h2>Settings</h2>
+    <label>Finnhub API key
+      <input id="s-key" autocomplete="off" spellcheck="false" placeholder="Paste your free key">
+      <span class="hint">Free at finnhub.io → Get free API key. Stored only in this browser.</span>
+    </label>
+    <div class="settings-block">
+      <strong>Backup</strong>
+      <span class="hint">Move your positions to another browser or phone.</span>
+      <div class="tools">
+        <button type="button" class="btn ghost" id="s-export">Export backup</button>
+        <label class="btn ghost filebtn">Restore backup<input type="file" id="s-import" accept=".json,application/json"></label>
+      </div>
+    </div>
+    <div class="settings-block">
+      <strong>Reset</strong>
+      <span class="hint">Removes every position and cash balance from this browser.</span>
+      <div class="tools"><button type="button" class="btn ghost" id="s-reset">Clear all data</button></div>
+    </div>
+    <div class="err" id="s-err" hidden></div>
+    <div class="row"><button type="button" class="btn ghost" data-close>Close</button><button type="submit" class="btn">Save</button></div>
+  </form>
+
+</div>
+
+<script src="csv.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
