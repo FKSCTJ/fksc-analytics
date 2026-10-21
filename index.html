@@ -1603,6 +1603,8 @@ const SYNC_FIELDS = ['entryRating','execRating','followedPlan','beOutcome','sl03
   'isDirTags','isImbalance','isFlipATH','isPullback','isIndecision',
   // Stock Momentum review fields
   'smMomentum','smEntryType','smConf',
+  // Agriculture Valuation review fields
+  'avConf',
   // all strategies
   'outcome'];
 const SYNC_WINDOW_MINUTES = 30;
@@ -3617,7 +3619,7 @@ function renderReviewList() {
               </div>
             </div>
             ${outcomeHtml(t, i)}
-${t.strategy === FV_STRATEGY ? fvFieldsHtml(t, i, gradeBtns, execBtns) : t.strategy === IS_STRATEGY ? isFieldsHtml(t, i, gradeBtns, execBtns) : t.strategy === SM_STRATEGY ? smFieldsHtml(t, i, gradeBtns, execBtns) : `
+${t.strategy === FV_STRATEGY ? fvFieldsHtml(t, i, gradeBtns, execBtns) : t.strategy === IS_STRATEGY ? isFieldsHtml(t, i, gradeBtns, execBtns) : t.strategy === SM_STRATEGY ? smFieldsHtml(t, i, gradeBtns, execBtns) : t.strategy === AV_STRATEGY ? avFieldsHtml(t, i, gradeBtns, execBtns) : `
             <div class="form-group">
               <label>Asset Type</label>
               <div id="rv_session_${i}" style="display:flex;gap:8px;flex-wrap:wrap">
@@ -7569,14 +7571,15 @@ function partialsNoticeHtml(t, i) {
 const FV_STRATEGY = 'Forex Valuation';
 const IS_STRATEGY = 'Index Strength';
 const SM_STRATEGY = 'Stock Momentum';
-const STRATEGY_OPTIONS = ['', FV_STRATEGY, IS_STRATEGY, SM_STRATEGY]; // '' = standard review
+const AV_STRATEGY = 'Agriculture Valuation';
+const STRATEGY_OPTIONS = ['', FV_STRATEGY, IS_STRATEGY, SM_STRATEGY, AV_STRATEGY]; // '' = standard review
 const IS_TM_OPTIONS = ['Partial + trail','Partial + got stopped lower','Trailed stop too tight','Fully closed early'];
 const FV_TM_OPTIONS = ['Partial + TP','Partial + got stopped','Trailed stop prevented BE','Trailed stop prevented bigger win','Fully closed early','Fully closed at extreme valuation'];
 const FV_FOLLOWUP_DAYS = 30;
 let rvFollowUpOnly = false;
 
 function isFollowUpDue(t) {
-  if (!t || t.strategy !== FV_STRATEGY || t.fvValuation !== 'Extreme' || t.fvFollowUp) return false;
+  if (!t || (t.strategy !== FV_STRATEGY && t.strategy !== AV_STRATEGY) || t.fvValuation !== 'Extreme' || t.fvFollowUp) return false;
   const c = t.closeDate || t.date; if (!c) return false;
   return (Date.now() - new Date(c).getTime()) >= FV_FOLLOWUP_DAYS * 86400000;
 }
@@ -7708,12 +7711,70 @@ function fvFieldsHtml(t, i, gradeBtns, execBtns) {
               <div data-fvgrp="fvFollowUp-${i}" style="display:flex;gap:8px;flex-wrap:wrap">${fvBtn(i,'fvFollowUp','Yes','✓ Yes',t.fvFollowUp==='Yes')}${fvBtn(i,'fvFollowUp','No','✕ No',t.fvFollowUp==='No')}</div>
             </div>`;
 }
+const AV_CONF_OPTIONS = ['Left Sweep','Clean Base','Pullback >70%','Daily Indecision Candle','Bouncing from MA'];
+function avFieldsHtml(t, i, gradeBtns, execBtns) {
+  const tfSel = (t.timeframeReview||'').split(',').map(x=>x.trim());
+  const tags = Array.isArray(t.fvDirTags) ? t.fvDirTags : [];
+  const tm = Array.isArray(t.fvTradeMgmt) ? t.fvTradeMgmt : [];
+  const due = isFollowUpDue(t);
+  const closedAgo = (() => { const c=t.closeDate||t.date; if(!c) return ''; const d=Math.floor((Date.now()-new Date(c).getTime())/86400000); return d>=60?`${Math.floor(d/30)} months ago`:d>=30?'1 month ago':`${d} days ago`; })();
+  return `
+            <div class="form-group">
+              <label>Asset Type</label>
+              <div id="rv_session_${i}" style="display:flex;gap:8px;flex-wrap:wrap">
+                ${['Forex','Indices','Stocks','Commodity','Agriculture'].map(a => '<button class="plan-btn' + (t.session===a?' active-yes':'') + '" data-asset="' + a + '" onclick="event.stopPropagation();setSessionFor(' + i + ',this.dataset.asset)">' + a + '</button>').join('')}
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Trend Direction</label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <span data-fvgrp="fvDirection-${i}" style="display:contents">${fvBtn(i,'fvDirection','Short','Short',t.fvDirection==='Short')}${fvBtn(i,'fvDirection','Long','Long',t.fvDirection==='Long')}</span>
+                <span data-fvgrp="fvDirTags-${i}" style="display:contents">${fvMultiBtn(i,'fvDirTags','Reversal','Reversal',tags.includes('Reversal'))}${fvMultiBtn(i,'fvDirTags','Re-entry','Re-entry',tags.includes('Re-entry'))}${fvMultiBtn(i,'fvDirTags','Continuation','Continuation',tags.includes('Continuation'))}</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Valuation</label>
+              <div data-fvgrp="fvValuation-${i}" style="display:flex;gap:8px;flex-wrap:wrap">${fvBtn(i,'fvValuation','Extreme','Extreme',t.fvValuation==='Extreme')}${fvBtn(i,'fvValuation','At mean','At mean',t.fvValuation==='At mean')}</div>
+            </div>
+            <div class="form-group">
+              <label>Timeframe</label>
+              <div data-fvgrp="timeframeReview-${i}" style="display:flex;gap:8px;flex-wrap:wrap">${['12H','Daily','Weekly'].map(tf => fvMultiBtn(i,'timeframeReview',tf,tf,tfSel.includes(tf))).join('')}</div>
+            </div>
+            <div class="form-group">
+              <label>Confluences</label>
+              <div data-fvgrp="avConf-${i}" style="display:flex;gap:8px;flex-wrap:wrap">${AV_CONF_OPTIONS.map(o => fvMultiBtn(i,'avConf',o.replace(/>/g,'&gt;'),o.replace(/>/g,'&gt;'),(Array.isArray(t.avConf)?t.avConf:[]).includes(o))).join('')}</div>
+            </div>
+            <div class="form-group">
+              <label>Overall Quality Setup</label>
+              <div style="display:flex;gap:6px">${gradeBtns}</div>
+              <div id="rv_elabel_${i}" style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted);margin-top:4px">${ENTRY_GRADES[t.entryRating]||'Not rated'}</div>
+            </div>
+            <div class="form-group">
+              <label>Execution Quality 1–3</label>
+              <div style="display:flex;gap:6px">${execBtns}</div>
+              <div id="rv_xlabel_${i}" style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted);margin-top:4px">${EXEC_LABELS[parseInt(t.execRating)||0]||'Not rated'}</div>
+            </div>
+            <div class="form-group">
+              <label>Trade Management</label>
+              <div data-fvgrp="fvTradeMgmt-${i}" style="display:flex;gap:8px;flex-wrap:wrap">${FV_TM_OPTIONS.map(o => fvMultiBtn(i,'fvTradeMgmt',o,o,tm.includes(o))).join('')}</div>
+            </div>
+            <div class="form-group">
+              <label>Emotions when taking profit</label>
+              <textarea placeholder="Was your profit-taking decision influenced by emotions?" onclick="event.stopPropagation()" onchange="setFvText(${i},'fvProfitEmotion',this.value)" style="width:100%;box-sizing:border-box;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'EB Garamond',serif;font-size:0.9rem;outline:none;min-height:70px;resize:vertical">${(t.fvProfitEmotion||'').replace(/</g,'&lt;')}</textarea>
+            </div>
+            <div class="form-group" style="${due?'border:1px solid #e0b85a;border-radius:4px;padding:10px 12px;background:rgba(224,184,90,0.06)':''}">
+              <label>Follow Up ${due?`<span style="text-transform:none;letter-spacing:0;color:#e0b85a;font-size:0.85rem">— due · closed ${fmtDate(t.closeDate||t.date)}, ${closedAgo}</span>`:''}</label>
+              <div style="font-family:'EB Garamond',serif;color:var(--text);font-size:0.95rem;margin-bottom:8px">Extreme valuation gave full reversal?</div>
+              <div data-fvgrp="fvFollowUp-${i}" style="display:flex;gap:8px;flex-wrap:wrap">${fvBtn(i,'fvFollowUp','Yes','✓ Yes',t.fvFollowUp==='Yes')}${fvBtn(i,'fvFollowUp','No','✕ No',t.fvFollowUp==='No')}</div>
+            </div>`;
+}
 
 // Strategy picker on the Strategy tab (styled like the Trader Level cards)
 const STRATEGY_CARDS = [
   { key:'FV', name:FV_STRATEGY, accent:'var(--accent)', traits:['Extreme valuation','Left sweep · clean base','Daily indecision candle'], icon:'📐' },
   { key:'IS', name:IS_STRATEGY, accent:'#6dbf9e', traits:[], icon:'📊' },
   { key:'SM', name:SM_STRATEGY, accent:'#d4a45a', traits:[], icon:'📈' },
+  { key:'AV', name:AV_STRATEGY, accent:'#a3b86c', traits:[], icon:'🌾' },
 ];
 function selectStrategyCard(key) {
   const opening = currentStratAsset !== key;
