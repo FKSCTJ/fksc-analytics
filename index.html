@@ -4480,18 +4480,18 @@ function renderStrategy() {
       </div>
       ${renderStrategyCards(allStratTrades)}
       ${isNoneView ? '' : `
-      <div id="strat-static" class="${isFvView?'fv-overview':''}" style="margin-bottom:20px">
+      <div id="strat-static" class="${(isFvView || currentStratAsset === 'AV')?'fv-overview':''}" style="margin-bottom:20px">
       </div>
       ${renderOutcomeChart(stratTrades)}
       <div id="strat-dynamic"></div>
       <div id="strat-phase"></div>
-      ${(isFvView || currentStratAsset === 'IS') ? '' : beSection}
+      ${(isFvView || currentStratAsset === 'IS' || currentStratAsset === 'AV') ? '' : beSection}
       ${sl033Section}
       ${mistakesSection}`}`;
 
   // Always update phase section
   const phaseEl = document.getElementById('strat-phase');
-  if (phaseEl) phaseEl.innerHTML = (isFvView || currentStratAsset === 'IS') ? '' : phaseSection;
+  if (phaseEl) phaseEl.innerHTML = (isFvView || currentStratAsset === 'IS' || currentStratAsset === 'AV') ? '' : phaseSection;
 
   // ── Top KPI summary (strat-static) ──
   const staticEl = document.getElementById('strat-static');
@@ -4569,7 +4569,7 @@ function renderStrategy() {
 
   // Always update the dynamic drill section only
   const dynEl = document.getElementById('strat-dynamic');
-  if (dynEl) dynEl.innerHTML = isFvView ? renderFvStrategySections(stratTrades) : currentStratAsset === 'IS' ? `${renderIsDirectionSection(stratTrades)}${tfCardHtml}${renderIsStrategySections(stratTrades)}` : `${trendSection}${tfCardHtml}${baseCardHtml}`;
+  if (dynEl) dynEl.innerHTML = isFvView ? renderFvStrategySections(stratTrades) : currentStratAsset === 'AV' ? renderFvStrategySections(stratTrades, 'AV') : currentStratAsset === 'IS' ? `${renderIsDirectionSection(stratTrades)}${tfCardHtml}${renderIsStrategySections(stratTrades)}` : `${trendSection}${tfCardHtml}${baseCardHtml}`;
 
 }
 
@@ -8010,7 +8010,8 @@ function toggleFvBreak(el) {
   b.style.display = open ? 'none' : 'block';
   if (h) h.textContent = open ? h.dataset.closed : '▴ Hide';
 }
-function renderFvStrategySections(tr) {
+function renderFvStrategySections(tr, variant) {
+  const isAV = variant === 'AV';
   const F = "font-family:'EB Garamond',serif";
   const pnl = t => parseFloat(t.pnl)||0;
   const st = arr => { const w=arr.filter(t=>pnl(t)>0&&!isBreakEven(t.pnl)).length, l=arr.filter(t=>pnl(t)<0&&!isBreakEven(t.pnl)).length; return { n:arr.length, wr: (w+l)?Math.round(100*w/(w+l)):null }; };
@@ -8030,20 +8031,25 @@ function renderFvStrategySections(tr) {
       <div style="display:grid;grid-template-columns:repeat(${cols},minmax(0,1fr));gap:12px;align-items:start">${cards.join('')}</div>
     </div>`;
   const hasTag = (t,v) => Array.isArray(t.fvDirTags) && t.fvDirTags.includes(v);
-  const direction = section('DIRECTION', 4, [
+  const direction = section('DIRECTION', isAV ? 5 : 4, [
     card('↘ Short', tr.filter(t=>t.fvDirection==='Short')),
     card('↗ Long', tr.filter(t=>t.fvDirection==='Long')),
     card('↺ Reversal', tr.filter(t=>hasTag(t,'Reversal'))),
     card('⟲ Re-entry', tr.filter(t=>hasTag(t,'Re-entry'))),
+    ...(isAV ? [card('→ Continuation', tr.filter(t=>hasTag(t,'Continuation')))] : []),
   ]);
   const brk = arr => {
     const row = (lab, a) => { const s=st(a); return `<div style="display:flex;align-items:baseline;gap:12px;padding:5px 0"><span style="${F};font-size:0.85rem;letter-spacing:0.06em;color:var(--muted);width:78px;white-space:nowrap">${lab}</span><span style="${F};font-size:1.5rem;font-weight:700;color:${wrCol(s.wr)}">${s.wr===null?'—':s.wr+'%'}</span><span class="kpi-card-sub">${s.n} trade${s.n!==1?'s':''}</span></div>`; };
     return `<div class="fv-break" style="display:none;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">${row('↘ SHORT', arr.filter(t=>t.fvDirection==='Short'))}${row('↗ LONG', arr.filter(t=>t.fvDirection==='Long'))}</div><div class="fv-hint" data-closed="▾ Short / Long" style="${F};font-size:0.75rem;color:var(--muted);margin-top:8px">▾ Short / Long</div>`;
   };
   const valuation = section('VALUATION', 2, ['Extreme','At mean'].map(v => { const a=tr.filter(t=>t.fvValuation===v); return card(v, a, {click:true, style:';cursor:pointer', after:brk(a)}); }));
-  const tfs = ['4H','8H','12H','Daily','Weekly'];
-  const timeframe = section('TIMEFRAME', 5, tfs.map(tf => card(tf, tr.filter(t => (t.timeframeReview||'').split(',').map(x=>x.trim()).includes(tf)))));
-  const conf = section('CONFLUENCES', 4, [
+  const tfs = isAV ? ['12H','Daily','Weekly'] : ['4H','8H','12H','Daily','Weekly'];
+  const timeframe = section('TIMEFRAME', tfs.length, tfs.map(tf => card(tf, tr.filter(t => (t.timeframeReview||'').split(',').map(x=>x.trim()).includes(tf)))));
+  const avHas = (t,o) => Array.isArray(t.avConf) && t.avConf.includes(o);
+  const conf = isAV ? section('CONFLUENCES', 3, [
+    ...AV_CONF_OPTIONS.map(o => card(o.replace(/>/g,'&gt;'), tr.filter(t => avHas(t,o)))),
+    card('All five', tr.filter(t => AV_CONF_OPTIONS.every(o => avHas(t,o))), {style:';border-color:var(--accent)'}),
+  ]) : section('CONFLUENCES', 4, [
     card('Left Sweep', tr.filter(t=>t.fvLeftSweep==='Yes')),
     card('Clean Base', tr.filter(t=>t.fvCleanBase==='Yes')),
     card('Daily Indecision Candle', tr.filter(t=>t.fvIndecision==='Yes')),
