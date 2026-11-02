@@ -118,6 +118,8 @@
   .nav-tab { font-family: 'EB Garamond', serif; font-size: 0.95rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 4px; border: none; background: none; color: #7a93ae; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; white-space: nowrap; }
   .nav-tab:hover { color: var(--text); border-bottom-color: var(--accent); opacity: 0.6; }
   .nav-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+  @media (max-width:1260px){ .nav-tab { font-size:0.82rem; letter-spacing:0.03em; } }
+  @media (max-width:1060px){ .nav-tabs { gap:16px; overflow-x:auto; scrollbar-width:none; } .nav-tabs::-webkit-scrollbar{display:none} }
   .panel { display: none; padding: 32px 0; }
   .panel.active { display: block; }
   .panel.tab-entered .chart-card,
