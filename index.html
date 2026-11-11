@@ -498,6 +498,20 @@
   @media(max-width:900px){ .kpi-grid { grid-template-columns: repeat(2,1fr); } }
   @media(max-width:500px){ .kpi-grid { grid-template-columns: 1fr; } }
 
+  .kpi-card.kpi-click { cursor:pointer; transition:border-color .15s; }
+  .kpi-card.kpi-click:hover, .kpi-card.kpi-click.on { border-color: var(--accent); }
+  .costs-detail { margin-top:12px; background:var(--surface-light); border:1px solid var(--border); border-radius:4px; padding:16px 18px; }
+  .costs-head { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:10px; }
+  .costs-meta { font-family:'EB Garamond',serif; font-size:0.95rem; color:var(--muted); }
+  .costs-meta .neg, .costs-tbl .neg { color:var(--red); } .costs-meta .pos, .costs-tbl .pos { color:var(--green); }
+  .costs-x { margin-left:auto; background:none; border:1px solid var(--border); color:var(--muted); border-radius:3px; padding:3px 9px; cursor:pointer; }
+  .costs-scroll { overflow-x:auto; max-height:460px; overflow-y:auto; }
+  .costs-tbl { width:100%; border-collapse:collapse; font-family:'EB Garamond',serif; font-size:0.95rem; min-width:760px; }
+  .costs-tbl th { position:sticky; top:0; background:var(--surface-light); text-align:right; font-size:0.72rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); padding:7px 10px; border-bottom:1px solid var(--border); font-weight:600; }
+  .costs-tbl td { text-align:right; padding:7px 10px; border-bottom:1px solid var(--border); font-variant-numeric:tabular-nums; }
+  .costs-tbl th:nth-child(-n+3), .costs-tbl td:nth-child(-n+3) { text-align:left; }
+  .costs-tbl td.hl { font-weight:700; }
+  .costs-empty { font-family:'EB Garamond',serif; color:var(--muted); }
   .kpi-card { background: var(--surface-light); border: 1px solid var(--border); border-radius: 4px; padding: 18px 20px; position: relative; overflow: hidden; }
   .kpi-card-icon { font-size: 0.9rem; color: var(--muted); font-family:'EB Garamond',serif; letter-spacing: 0.06em; margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
   .kpi-card-icon::before { content: '◈'; color: var(--accent); font-size: 0.95rem; }
@@ -682,6 +696,7 @@
           <canvas id="equityCanvas" height="200"></canvas>
         </div>
         <div class="kpi-grid" id="kpiEquity" style="margin-top:12px"></div>
+        <div id="costsDetail" class="costs-detail" hidden></div>
       </div>
       <div style="margin-bottom:24px">
         <div class="chart-card-title" style="margin-bottom:12px">&#9632; WEEKLY P&amp;L DISTRIBUTION</div>
@@ -1365,7 +1380,9 @@ function getBEThreshold(tradesArr) {
   } catch(e) {}
   return 100;
 }
-function isBreakEven(pnl, tradesArr) {
+function isBreakEven(pnl, tradesArr, t) {
+  // a trade the user marked as breakeven (e.g. a swap turned a price-BE into a loss) counts as BE in all stats
+  if (t && t.markBE) return true;
   return Math.abs(parseFloat(pnl)||0) < getBEThreshold(tradesArr);
 }
 
@@ -1799,9 +1816,9 @@ function toast(msg, isError) {
 
 function calcStats() {
   if (!trades.length) return { total:0,wins:0,losses:0,be:0,winRate:0,totalPnl:0,avgWin:0,avgLoss:0,rr:0,profitFactor:0,expectancy:0,maxDD:0,avgR:0,avgLots:0,avgLotsWin:0,avgLotsLoss:0,grossWin:0,grossLoss:0 };
-  const wins   = trades.filter(x => parseFloat(x.pnl) > 0 && !isBreakEven(x.pnl));
-  const losses = trades.filter(x => parseFloat(x.pnl) < 0 && !isBreakEven(x.pnl));
-  const be     = trades.filter(x => isBreakEven(x.pnl));
+  const wins   = trades.filter(x => parseFloat(x.pnl) > 0 && !isBreakEven(x.pnl, undefined, x));
+  const losses = trades.filter(x => parseFloat(x.pnl) < 0 && !isBreakEven(x.pnl, undefined, x));
+  const be     = trades.filter(x => isBreakEven(x.pnl, undefined, x));
   const totalPnl = trades.reduce((a,x)=>a+(parseFloat(x.pnl)||0),0);
   const avgWin = wins.length ? wins.reduce((a,x)=>a+parseFloat(x.pnl),0)/wins.length : 0;
   const avgLoss = losses.length ? Math.abs(losses.reduce((a,x)=>a+parseFloat(x.pnl),0)/losses.length) : 0;
@@ -2295,9 +2312,9 @@ function renderOverviewFiltered() {
 
 function calcStatsFor(arr) {
   if (!arr.length) return { total:0,wins:0,losses:0,be:0,winRate:'0.0',totalPnl:'0.00',avgWin:'0.00',avgLoss:'0.00',rr:'0',profitFactor:'0.00',expectancy:'0.00',maxDD:'0.00',avgR:'0.00',avgLots:'0.00',avgLotsWin:'0.00',avgLotsLoss:'0.00',grossWin:'0.00',grossLoss:'0.00' };
-  const wins   = arr.filter(x => parseFloat(x.pnl) > 0 && !isBreakEven(x.pnl));
-  const losses = arr.filter(x => parseFloat(x.pnl) < 0 && !isBreakEven(x.pnl));
-  const be     = arr.filter(x => isBreakEven(x.pnl));
+  const wins   = arr.filter(x => parseFloat(x.pnl) > 0 && !isBreakEven(x.pnl, undefined, x));
+  const losses = arr.filter(x => parseFloat(x.pnl) < 0 && !isBreakEven(x.pnl, undefined, x));
+  const be     = arr.filter(x => isBreakEven(x.pnl, undefined, x));
   const totalPnl = arr.reduce((a,x)=>a+(parseFloat(x.pnl)||0),0);
   const avgWin = wins.length ? wins.reduce((a,x)=>a+parseFloat(x.pnl),0)/wins.length : 0;
   const avgLoss = losses.length ? Math.abs(losses.reduce((a,x)=>a+parseFloat(x.pnl),0)/losses.length) : 0;
@@ -2819,8 +2836,8 @@ function renderQuality(s){
   const avgScore = scoredTrades.length ? (scoredTrades.reduce((a,x)=>a+x.score,0)/scoredTrades.length).toFixed(1) : '—';
 
   const winScores  = scoredTrades.filter(x => (parseFloat(x.t.pnl)||0) > 0);
-  const lossScores = scoredTrades.filter(x => (parseFloat(x.t.pnl)||0) < 0 && !isBreakEven(x.t.pnl));
-  const beScores   = scoredTrades.filter(x => isBreakEven(x.t.pnl));
+  const lossScores = scoredTrades.filter(x => (parseFloat(x.t.pnl)||0) < 0 && !isBreakEven(x.t.pnl, undefined, x.t));
+  const beScores   = scoredTrades.filter(x => isBreakEven(x.t.pnl, undefined, x.t));
   const avgWinScore  = winScores.length  ? (winScores.reduce((a,x)=>a+x.score,0)/winScores.length).toFixed(1)   : '—';
   const avgLossScore = lossScores.length ? (lossScores.reduce((a,x)=>a+x.score,0)/lossScores.length).toFixed(1) : '—';
   const avgBeScore   = beScores.length   ? (beScores.reduce((a,x)=>a+x.score,0)/beScores.length).toFixed(1)     : '—';
@@ -2842,7 +2859,7 @@ function renderQuality(s){
     gradeData[g].trades.push(t);
     gradeData[g].pnl += parseFloat(t.pnl)||0;
     const pnl = parseFloat(t.pnl)||0;
-    if (isBreakEven(pnl)) gradeData[g].be++;
+    if (isBreakEven(pnl, undefined, t)) gradeData[g].be++;
     else if (pnl > 0) gradeData[g].wins++;
   });
   const gradeLabels = { A:'Perfect Setup', B:'Good Setup', C:'Poor Setup' };
@@ -2883,7 +2900,7 @@ function renderQuality(s){
 
   const tradeRow = ({t, score}) => {
     const pnl = parseFloat(t.pnl)||0;
-    const isbe = isBreakEven(pnl);
+    const isbe = isBreakEven(pnl, undefined, t);
     const pnlCol = isbe ? 'var(--muted)' : pnl>=0 ? 'var(--green)' : 'var(--red)';
     const gradeCol = gradeColors[t.entryRating]||'var(--muted)';
     return `<div class="chart-card" style="padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px">
@@ -2905,6 +2922,46 @@ function renderQuality(s){
   document.getElementById('qualityWorst').innerHTML = worstTrades.length ? worstTrades.map(tradeRow).join('') : '<p style="font-family:EB Garamond;font-size:0.95rem;color:var(--muted)">No reviewed trades yet.</p>';
 }
 
+// ── Per-trade commission / swap breakdown (opened from the cost cards) ──
+let _costsOpen = null;
+function toggleCostsDetail(k) {
+  _costsOpen = _costsOpen === k ? null : k;
+  document.querySelectorAll('#kpiEquity .kpi-card').forEach((c, n) => c.classList.toggle('on', ['comm','swap','all'][n] === _costsOpen));
+  if (!_costsOpen) { document.getElementById('costsDetail').hidden = true; return; }
+  renderCostsDetail();
+  setTimeout(() => document.getElementById('costsDetail').scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 30);
+}
+function renderCostsDetail() {
+  const el = document.getElementById('costsDetail'); if (!el) return;
+  const k = _costsOpen, arr = window._costsArr || [];
+  const n = v => parseFloat(v) || 0;
+  const money = v => (v > 0 ? '+' : v < 0 ? '−' : '') + '$' + Math.abs(v).toFixed(2);
+  const fmtD = d => d ? d.slice(0,10).split('-').reverse().join('/') : '—';
+  const days = t => { const a = new Date(t.date), b = new Date(t.closeDate || t.date); const d = Math.round((b - a) / 864e5); return isFinite(d) ? d : null; };
+  const val = t => k === 'comm' ? n(t.commission) : k === 'swap' ? n(t.swap) : n(t.commission) + n(t.swap);
+  const rows = arr.map(t => ({ t, c: n(t.commission), s: n(t.swap), v: val(t), d: days(t) }))
+    .filter(r => k === 'all' ? (r.c || r.s) : r.v)
+    .sort((a, b) => a.v - b.v);
+  const title = k === 'comm' ? 'Commission per trade' : k === 'swap' ? 'Swap per trade' : 'Commission + swap per trade';
+  const tot = rows.reduce((s, r) => s + r.v, 0);
+  const showAcct = currentAccount === 'OVERALL';
+  el.innerHTML = `<div class="costs-head"><span class="chart-card-title">&#9632; ${title.toUpperCase()}</span>
+      <span class="costs-meta">${rows.length} trade${rows.length === 1 ? '' : 's'} · total <b class="${tot < 0 ? 'neg' : 'pos'}">${money(tot)}</b> · most costly first</span>
+      <button class="costs-x" onclick="toggleCostsDetail('${k}')" aria-label="Close">✕</button></div>
+    ${rows.length ? `<div class="costs-scroll"><table class="costs-tbl"><thead><tr>
+      <th>Closed</th><th>Pair</th><th>Side</th>${showAcct ? '<th>Account</th>' : ''}<th>Lots</th><th>Days held</th><th>Commission</th><th>Swap</th><th>Total costs</th><th>Net P&amp;L</th></tr></thead><tbody>
+      ${rows.map(({ t, c, s, d }) => `<tr>
+        <td>${fmtD(t.closeDate || t.date)}</td><td><b>${t.pair || ''}</b></td><td>${(t.direction || '').toLowerCase() === 'buy' ? 'Long' : 'Short'}</td>
+        ${showAcct ? `<td>${t._account || ''}</td>` : ''}
+        <td>${t.lots || ''}</td><td>${d === null ? '—' : d === 0 ? 'same day' : d}</td>
+        <td class="${c < 0 ? 'neg' : c > 0 ? 'pos' : ''}${k === 'comm' ? ' hl' : ''}">${c ? money(c) : '—'}</td>
+        <td class="${s < 0 ? 'neg' : s > 0 ? 'pos' : ''}${k === 'swap' ? ' hl' : ''}">${s ? money(s) : '—'}</td>
+        <td class="${c + s < 0 ? 'neg' : 'pos'}${k === 'all' ? ' hl' : ''}">${money(c + s)}</td>
+        <td class="${n(t.pnl) < 0 ? 'neg' : 'pos'}">${money(n(t.pnl))}</td></tr>`).join('')}
+      </tbody></table></div>` : '<p class="costs-empty">No trades with these costs.</p>'}`;
+  el.hidden = false;
+}
+
 function renderEquityTab(s, filteredArr){
   const arr = filteredArr || trades;
   const totalComm = arr.reduce((a,t)=>a+(parseFloat(t.commission)||0),0);
@@ -2914,10 +2971,20 @@ function renderEquityTab(s, filteredArr){
   const pnlPctEq = startBalEq>0 ? ` · ${(pnlEq/startBalEq*100).toFixed(2)}%` : '';
   const totalCosts = totalComm + totalSwap;
   const costsPct = pnlEq !== 0 ? (Math.abs(totalCosts) / Math.abs(pnlEq) * 100).toFixed(1) : '—';
+  window._costsArr = arr;
   document.getElementById('kpiEquity').innerHTML=
     kpiCard('$','Total Commission',`$${Math.abs(totalComm).toFixed(2)}`,totalComm<=0?'neg':'pos',`${s.total} trades`,totalComm<0?'Costs eating into profits — factor into edge calculation':'No commission recorded')+
     kpiCard('↺','Total Swap',`$${totalSwap>=0?'+':'−'}${totalSwap.toFixed(2)}`,totalSwap>=0?'pos':'neg','Overnight financing',totalSwap<0?'Negative swap — avoid holding overnight where possible':'Positive swap — carry trade benefit')+
     kpiCard('◈','Total Costs',`${totalCosts>=0?'+':'−'}$${totalCosts.toFixed(2)}`,totalCosts>=0?'pos':'neg',`${costsPct !== '—' ? costsPct+'% of net P&L' : 'No P&L yet'}`,`Comm + Swap · Net P&L ${pnlEq>=0?'+':'−'}$${pnlEq.toFixed(2)}`);
+  // make the three cost cards open the per-trade breakdown
+  const costCards = document.querySelectorAll('#kpiEquity .kpi-card');
+  ['comm','swap','all'].forEach((k, n) => {
+    const c = costCards[n]; if (!c) return;
+    c.classList.add('kpi-click'); c.title = 'Show each trade';
+    c.onclick = () => toggleCostsDetail(k);
+    if (_costsOpen === k) c.classList.add('on');
+  });
+  if (_costsOpen) renderCostsDetail(); else document.getElementById('costsDetail').hidden = true;
   const sorted=[...arr].sort((a,b)=>new Date(a.closeDate||a.date)-new Date(b.closeDate||b.date));
   let eq=0;
   const labels=['Start'], data=[0], eqMeta=[null];
@@ -2930,7 +2997,7 @@ function renderEquityTab(s, filteredArr){
   const ctx=document.getElementById('equityCanvas').getContext('2d');
   const grad=ctx.createLinearGradient(0,0,0,200);
   grad.addColorStop(0,'rgba(0,229,160,0.25)');grad.addColorStop(1,'rgba(0,229,160,0)');
-  mkChart('equityCanvas',{type:'line',data:{labels,datasets:[{data,borderColor:'#00e5a0',backgroundColor:grad,borderWidth:2,pointRadius:3,pointHoverRadius:6,pointBackgroundColor:data.map((_,i)=>{if(i===0)return'#00e5a0';const t=eqMeta[i];if(!t)return'#00e5a0';const p=parseFloat(t.pnl)||0;return isBreakEven(p)?'#7bafd4':p>0?'#6dbf9e':'#e85555';}),tension:0.3,fill:true}]},options:{...CD,plugins:{...CD.plugins,tooltip:{...CD.plugins.tooltip,callbacks:{label:c=>{const t=eqMeta[c.dataIndex];if(!t)return`Equity: $${c.raw}`;const p=parseFloat(t.pnl)||0;return[`Equity: $${c.raw}`,`${t.pair||''} ${(t.direction||'').toUpperCase()}`,`P&L: ${p>=0?'+':'−'}$${p.toFixed(2)}`];}}}},scales:{...CD.scales,y:{...CD.scales.y,ticks:{...CD.scales.y.ticks,callback:v=>`$${v}`}}}}});
+  mkChart('equityCanvas',{type:'line',data:{labels,datasets:[{data,borderColor:'#00e5a0',backgroundColor:grad,borderWidth:2,pointRadius:3,pointHoverRadius:6,pointBackgroundColor:data.map((_,i)=>{if(i===0)return'#00e5a0';const t=eqMeta[i];if(!t)return'#00e5a0';const p=parseFloat(t.pnl)||0;return isBreakEven(p, undefined, t)?'#7bafd4':p>0?'#6dbf9e':'#e85555';}),tension:0.3,fill:true}]},options:{...CD,plugins:{...CD.plugins,tooltip:{...CD.plugins.tooltip,callbacks:{label:c=>{const t=eqMeta[c.dataIndex];if(!t)return`Equity: $${c.raw}`;const p=parseFloat(t.pnl)||0;return[`Equity: $${c.raw}`,`${t.pair||''} ${(t.direction||'').toUpperCase()}`,`P&L: ${p>=0?'+':'−'}$${p.toFixed(2)}`];}}}},scales:{...CD.scales,y:{...CD.scales.y,ticks:{...CD.scales.y.ticks,callback:v=>`$${v}`}}}}});
 }
 
 function renderSizing(s){
@@ -2969,7 +3036,7 @@ function renderTable() {
   let filtered = trades.filter(t => {
     if (fp && t.pair !== fp) return false;
     if (fd && t.direction !== fd) return false;
-    if (fr) { const absPnl=Math.abs(parseFloat(t.pnl)||0); const isbe=isBreakEven(t.pnl); if(fr==='be'&&!isbe)return false; if(fr==='win'&&(parseFloat(t.pnl)<=0||isbe))return false; if(fr==='loss'&&(parseFloat(t.pnl)>=0||isbe))return false; }
+    if (fr) { const absPnl=Math.abs(parseFloat(t.pnl)||0); const isbe=isBreakEven(t.pnl, undefined, t); if(fr==='be'&&!isbe)return false; if(fr==='win'&&(parseFloat(t.pnl)<=0||isbe))return false; if(fr==='loss'&&(parseFloat(t.pnl)>=0||isbe))return false; }
     if (fs && !(t.pair||'').toLowerCase().includes(fs)) return false;
     return true;
   });
@@ -3001,7 +3068,7 @@ function renderTable() {
 
   tbody.innerHTML = filtered.sort((a,b)=>new Date(b.closeDate||b.date)-new Date(a.closeDate||a.date)).map(t => {
     const pnl = parseFloat(t.pnl)||0;
-    const isBe = isBreakEven(pnl);
+    const isBe = isBreakEven(pnl, undefined, t);
     const pc = isBe ? '' : pnl>=0?'pnl-pos':'pnl-neg';
     const ps = pnl>=0?'+':'';
     const idx = trades.indexOf(t);
@@ -3491,7 +3558,7 @@ function renderReviewList() {
   const filtered = sorted.filter(({t}) => {
     if (rvFollowUpOnly && !isFollowUpDue(t)) return false;
     if (rvOutcomeFilter && t.outcome !== rvOutcomeFilter) return false;
-    const pnl = parseFloat(t.pnl)||0; const isbe = isBreakEven(pnl);
+    const pnl = parseFloat(t.pnl)||0; const isbe = isBreakEven(pnl, undefined, t);
     if (search && !(t.pair||'').toLowerCase().includes(search)) return false;
     if (fResult==='win' && (pnl<=0||isbe)) return false;
     if (fResult==='loss' && (pnl>=0||isbe)) return false;
@@ -3538,7 +3605,7 @@ function renderReviewList() {
     </div>` : '';
   list.innerHTML = fuBanner + filtered.map(({t, i, accounts}) => {
     const pnl = parseFloat(t.pnl)||0;
-    const isbe = isBreakEven(pnl);
+    const isbe = isBreakEven(pnl, undefined, t);
     const pnlCol = isbe?'var(--muted)':pnl>0?'var(--green)':'var(--red)';
     const resBadge = isbe?`<span class="badge badge-be">B/E</span>`:pnl>0?`<span class="badge badge-win">WIN</span>`:`<span class="badge badge-loss">LOSS</span>`;
     const hasReview = t.setup||t.strategy||t.entryRating;
@@ -3757,7 +3824,22 @@ ${t.strategy === FV_STRATEGY ? fvFieldsHtml(t, i, gradeBtns, execBtns) : t.strat
                 <button class="plan-btn ${t.followedPlan==='partial'?'active-partial':''}" data-plan="partial" onclick="event.stopPropagation();setPlanFor(${i},'partial')">~ Partial</button>
               </div>
             </div>
-${isBreakEven(t.pnl) ? `<div class="form-group">
+${(() => {
+              const autoBE = isBreakEven(t.pnl, undefined, { ...t, markBE: false });
+              if (autoBE && !t.markBE) return '';
+              const nz = v => parseFloat(v) || 0;
+              const price = nz(t.pnl) - nz(t.swap) - nz(t.commission);
+              const fees = nz(t.swap) + nz(t.commission);
+              return `<div class="form-group">
+              <label>Count in stats as</label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="plan-btn${t.markBE ? '' : ' active-yes'}" onclick="event.stopPropagation();setMarkBE(${i},false)">${nz(t.pnl) >= 0 ? 'Win' : 'Loss'} (from P&amp;L)</button>
+                <button class="plan-btn${t.markBE ? ' active-yes' : ''}" onclick="event.stopPropagation();setMarkBE(${i},true)">Breakeven</button>
+              </div>
+              <div class="sync-link-hint" style="margin-top:6px">Price result ${price >= 0 ? '+' : '−'}$${Math.abs(price).toFixed(2)} · swap &amp; commission ${fees >= 0 ? '+' : '−'}$${Math.abs(fees).toFixed(2)}. The P&amp;L stays ${nz(t.pnl) >= 0 ? '+' : '−'}$${Math.abs(nz(t.pnl)).toFixed(2)} in your totals.</div>
+            </div>`;
+            })()}
+            ${isBreakEven(t.pnl, undefined, t) ? `<div class="form-group">
               <label>Break Even</label>
               <div style="display:flex;gap:8px">
                 <button class="plan-btn ${t.beOutcome==='saved'?'active-yes':''}" onclick="event.stopPropagation();setBeOutcome(${i},'saved')" title="BE was hit, saved from a loss">🛡 Saved from Loss</button>
@@ -4031,9 +4113,9 @@ const STRAT_DIMS = [];
 
 function stratStats(arr) {
   if (!arr.length) return null;
-  const wins   = arr.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl));
-  const losses = arr.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl));
-  const be     = arr.filter(t => isBreakEven(t.pnl));
+  const wins   = arr.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl, undefined, t));
+  const losses = arr.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl, undefined, t));
+  const be     = arr.filter(t => isBreakEven(t.pnl, undefined, t));
   const pnls   = arr.map(t => parseFloat(t.pnl)||0);
   const total  = pnls.reduce((a,b)=>a+b,0);
   const denom  = wins.length + losses.length;
@@ -4196,9 +4278,9 @@ function renderStrategy() {
 
   function phaseStats(arr) {
     if (!arr.length) return null;
-    const wins   = arr.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl));
-    const losses = arr.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl));
-    const be     = arr.filter(t => isBreakEven(t.pnl));
+    const wins   = arr.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl, undefined, t));
+    const losses = arr.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl, undefined, t));
+    const be     = arr.filter(t => isBreakEven(t.pnl, undefined, t));
     const total  = arr.reduce((a,t) => a + (parseFloat(t.pnl)||0), 0);
     const denom  = wins.length + losses.length;
     const wr     = denom > 0 ? Math.round((wins.length / denom) * 100) : null;
@@ -4263,9 +4345,9 @@ function renderStrategy() {
 
   function trendStats(arr) {
     if (!arr.length) return null;
-    const wins   = arr.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl));
-    const losses = arr.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl));
-    const be     = arr.filter(t => isBreakEven(t.pnl));
+    const wins   = arr.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl, undefined, t));
+    const losses = arr.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl, undefined, t));
+    const be     = arr.filter(t => isBreakEven(t.pnl, undefined, t));
     const total  = arr.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
     const denom  = wins.length + losses.length;
     const wr     = denom > 0 ? (wins.length / denom) * 100 : 0;
@@ -4365,9 +4447,9 @@ function renderStrategy() {
         <div style="font-family:'EB Garamond',serif;font-size:1rem;color:var(--muted)">—</div>
         <div class="kpi-card-sub">no trades</div>
       </div></div>`;
-      const ws  = sub.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl)).length;
-      const wl  = sub.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl)).length;
-      const wbe = sub.filter(t => isBreakEven(t.pnl)).length;
+      const ws  = sub.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl, undefined, t)).length;
+      const wl  = sub.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl, undefined, t)).length;
+      const wbe = sub.filter(t => isBreakEven(t.pnl, undefined, t)).length;
       const wr  = (ws + wl) > 0 ? (ws / (ws + wl)) * 100 : 0;
       const pnl = sub.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
       const wrTxt = wr >= 60 ? 'strong edge' : wr >= 50 ? 'solid' : 'needs review';
@@ -4458,7 +4540,7 @@ function renderStrategy() {
   const sl033Pct    = sl033Total > 0 ? (sl033Trades.length / sl033Total * 100).toFixed(0) : 0;
   const sl033Wins   = sl033Trades.filter(t => (parseFloat(t.pnl)||0) > 0).length;
   const sl033Losses = sl033Trades.filter(t => (parseFloat(t.pnl)||0) < 0).length;
-  const sl033Be     = sl033Trades.filter(t => isBreakEven(t.pnl)).length;
+  const sl033Be     = sl033Trades.filter(t => isBreakEven(t.pnl, undefined, t)).length;
   const sl033Pnl    = sl033Trades.reduce((a,t) => a + (parseFloat(t.pnl)||0), 0);
 
   const sl033Section = `
@@ -4568,9 +4650,9 @@ function renderStrategy() {
   const staticEl = document.getElementById('strat-static');
   if (staticEl) {
     const st = stratTrades; // same filtered array used throughout
-    const stWins   = st.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl));
-    const stLosses = st.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl));
-    const stBe     = st.filter(t => isBreakEven(t.pnl));
+    const stWins   = st.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl, undefined, t));
+    const stLosses = st.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl, undefined, t));
+    const stBe     = st.filter(t => isBreakEven(t.pnl, undefined, t));
     const stNet    = st.reduce((a,t) => a + (parseFloat(t.pnl)||0), 0);
     const stDenom  = stWins.length + stLosses.length;
     const stWR     = stDenom > 0 ? (stWins.length / stDenom) * 100 : 0;
@@ -4769,21 +4851,21 @@ function renderMonthlyTab() {
     if (!qd) return '';
     const { trades: qt, yr, q } = qd;
     const pnl    = qt.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
-    const wins   = qt.filter(t=>(parseFloat(t.pnl)||0)>0 && !isBreakEven(t.pnl)).length;
-    const losses = qt.filter(t=>(parseFloat(t.pnl)||0)<0 && !isBreakEven(t.pnl)).length;
-    const beCount= qt.filter(t=>isBreakEven(parseFloat(t.pnl)||0)).length;
+    const wins   = qt.filter(t=>(parseFloat(t.pnl)||0)>0 && !isBreakEven(t.pnl, undefined, t)).length;
+    const losses = qt.filter(t=>(parseFloat(t.pnl)||0)<0 && !isBreakEven(t.pnl, undefined, t)).length;
+    const beCount= qt.filter(t=>isBreakEven(parseFloat(t.pnl)||0, undefined, t)).length;
     const denom  = wins + losses;
     const wr     = denom > 0 ? ((wins/denom)*100).toFixed(0) : 0;
     const pnlCol = pnl >= 0 ? 'var(--green)' : 'var(--red)';
     const qKey   = `${yr}-Q${q}`;
 
     // Stats
-    const avgWin  = wins   ? qt.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0)/wins : 0;
-    const avgLoss = losses ? Math.abs(qt.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0)/losses) : 0;
+    const avgWin  = wins   ? qt.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0)/wins : 0;
+    const avgLoss = losses ? Math.abs(qt.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0)/losses) : 0;
     const rr      = avgLoss > 0 ? (avgWin/avgLoss).toFixed(2) : '—';
     const exp     = avgLoss > 0 ? ((wins/(denom||1))*avgWin - (losses/(denom||1))*avgLoss).toFixed(0) : '—';
-    const grossWin  = qt.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
-    const grossLoss = Math.abs(qt.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0));
+    const grossWin  = qt.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
+    const grossLoss = Math.abs(qt.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0));
     const pf        = grossLoss > 0 ? (grossWin/grossLoss).toFixed(2) : '—';
     const swap      = qt.reduce((a,t)=>a+(parseFloat(t.swap)||0),0);
     const comm      = qt.reduce((a,t)=>a+(parseFloat(t.commission)||0),0);
@@ -4879,9 +4961,9 @@ function renderMonthlyTab() {
       return d && d.startsWith(ym);
     });
     const netPnl = monthTrades.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
-    const wins   = monthTrades.filter(t=>(parseFloat(t.pnl)||0)>0 && !isBreakEven(t.pnl)).length;
-    const losses = monthTrades.filter(t=>(parseFloat(t.pnl)||0)<0 && !isBreakEven(t.pnl)).length;
-    const beCount= monthTrades.filter(t=>isBreakEven(t.pnl)).length;
+    const wins   = monthTrades.filter(t=>(parseFloat(t.pnl)||0)>0 && !isBreakEven(t.pnl, undefined, t)).length;
+    const losses = monthTrades.filter(t=>(parseFloat(t.pnl)||0)<0 && !isBreakEven(t.pnl, undefined, t)).length;
+    const beCount= monthTrades.filter(t=>isBreakEven(t.pnl, undefined, t)).length;
     const wr = (wins+losses) > 0 ? ((wins/(wins+losses))*100).toFixed(0) : 0;
     const pnlCol = netPnl>=0?'var(--green)':'var(--red)';
     const pnlSign = netPnl>=0?'+':'−';
@@ -4956,19 +5038,19 @@ function buildMonthBody(ym, yr, mo, monthTrades) {
 
   // Stats
   const netPnl = monthTrades.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
-  const wins = monthTrades.filter(t=>(parseFloat(t.pnl)||0)>0 && !isBreakEven(t.pnl)).length;
-  const losses = monthTrades.filter(t=>(parseFloat(t.pnl)||0)<0 && !isBreakEven(t.pnl)).length;
-  const beCount = monthTrades.filter(t=>isBreakEven(parseFloat(t.pnl)||0)).length;
+  const wins = monthTrades.filter(t=>(parseFloat(t.pnl)||0)>0 && !isBreakEven(t.pnl, undefined, t)).length;
+  const losses = monthTrades.filter(t=>(parseFloat(t.pnl)||0)<0 && !isBreakEven(t.pnl, undefined, t)).length;
+  const beCount = monthTrades.filter(t=>isBreakEven(parseFloat(t.pnl)||0, undefined, t)).length;
   const wr = (wins+losses)>0 ? ((wins/(wins+losses))*100).toFixed(0) : 0;
   const tradingDays = Object.keys(dayMap).length;
 
   // Stats panel — mirrors overview KPIs for this month
-  const avgWin  = wins   ? monthTrades.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0)/wins : 0;
-  const avgLoss = losses ? Math.abs(monthTrades.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0)/losses) : 0;
+  const avgWin  = wins   ? monthTrades.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0)/wins : 0;
+  const avgLoss = losses ? Math.abs(monthTrades.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0)/losses) : 0;
   const rr      = avgLoss > 0 ? (avgWin/avgLoss).toFixed(2) : '—';
   const exp     = avgLoss > 0 ? ((wins/(wins+losses||1))*avgWin - (losses/(wins+losses||1))*avgLoss).toFixed(0) : '—';
-  const grossWin  = monthTrades.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
-  const grossLoss = Math.abs(monthTrades.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0));
+  const grossWin  = monthTrades.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
+  const grossLoss = Math.abs(monthTrades.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0));
   const pf = grossLoss > 0 ? (grossWin/grossLoss).toFixed(2) : '—';
   const swap = monthTrades.reduce((a,t)=>a+(parseFloat(t.swap)||0),0);
   const comm = monthTrades.reduce((a,t)=>a+(parseFloat(t.commission)||0),0);
@@ -5053,7 +5135,7 @@ function openCalDayModal(indices) {
   title.textContent = d ? `Trades — ${d}` : 'Trades';
   body.innerHTML = dayTrades.map(({t, i}) => {
     const pnl = parseFloat(t.pnl)||0;
-    const isbe = isBreakEven(pnl);
+    const isbe = isBreakEven(pnl, undefined, t);
     const pnlCol = isbe?'var(--muted)':pnl>0?'var(--green)':'var(--red)';
     const resBadge = isbe?`<span class="badge badge-be">B/E</span>`:pnl>0?`<span class="badge badge-win">WIN</span>`:`<span class="badge badge-loss">LOSS</span>`;
     const hasReview = t.setup||t.strategy||t.entryRating;
@@ -5216,9 +5298,9 @@ function generateAiReview(type, key) {
   }
 
   // ── Core stats ──────────────────────────────────────────────────────────────
-  const trueWins   = periodTrades.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl));
-  const trueLosses = periodTrades.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl));
-  const besTrades  = periodTrades.filter(t => isBreakEven(t.pnl));
+  const trueWins   = periodTrades.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl, undefined, t));
+  const trueLosses = periodTrades.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl, undefined, t));
+  const besTrades  = periodTrades.filter(t => isBreakEven(t.pnl, undefined, t));
   const besSaved   = besTrades.filter(t => t.beOutcome === 'saved');
   const besStopped = besTrades.filter(t => t.beOutcome === 'stopped');
   const netPnl     = periodTrades.reduce((a,t) => a+(parseFloat(t.pnl)||0), 0);
@@ -5253,7 +5335,7 @@ function generateAiReview(type, key) {
         const p = parseFloat(t.pnl)||0;
         map[k].trades.push(t);
         map[k].pnl += p;
-        if (isBreakEven(p)) map[k].bes++;
+        if (isBreakEven(p, undefined, t)) map[k].bes++;
         else if (p > 0) map[k].wins++;
         else map[k].losses++;
       });
@@ -5526,7 +5608,7 @@ function switchMonthTab(ym, tab) {
       type:'line',
       data:{ labels, datasets:[{ data, borderColor:lineCol, backgroundColor:grad, borderWidth:2,
         pointRadius:3, pointHoverRadius:6,
-        pointBackgroundColor: mTrades.map(t => { const p=parseFloat(t.pnl)||0; return isBreakEven(p)?'#7bafd4':p>0?'#6dbf9e':'#e85555'; }),
+        pointBackgroundColor: mTrades.map(t => { const p=parseFloat(t.pnl)||0; return isBreakEven(p, undefined, t)?'#7bafd4':p>0?'#6dbf9e':'#e85555'; }),
         tension:0.3, fill:true }] },
       options:{ ...CD, plugins:{ ...CD.plugins, tooltip:{ ...CD.plugins.tooltip, callbacks:{ label: c => {
         const t = mTrades[c.dataIndex]; if (!t) return `$${c.raw}`;
@@ -5586,7 +5668,7 @@ function drawQuarterEquity(qKey) {
     type:'line',
     data:{ labels, datasets:[{ data, borderColor:lineCol, backgroundColor:grad, borderWidth:2,
       pointRadius:3, pointHoverRadius:6,
-      pointBackgroundColor: qTrades.map(t => { const p=parseFloat(t.pnl)||0; return isBreakEven(p)?'#7bafd4':p>0?'#6dbf9e':'#e85555'; }),
+      pointBackgroundColor: qTrades.map(t => { const p=parseFloat(t.pnl)||0; return isBreakEven(p, undefined, t)?'#7bafd4':p>0?'#6dbf9e':'#e85555'; }),
       tension:0.3, fill:true }] },
     options:{ ...CD, plugins:{ ...CD.plugins, tooltip:{ ...CD.plugins.tooltip, callbacks:{ label: c => {
       const t = qTrades[c.dataIndex]; if (!t) return `$${c.raw}`;
@@ -5915,8 +5997,8 @@ function renderChallenge() {
         const ddPct   = Math.abs(Math.min(0, ls.pnl) / ls.bal * 100);
         const profProg = Math.min(100, Math.max(0, (pnlPct / config.targetPct) * 100));
         const ddProg   = Math.min(100, (ddPct / config.maxDDPct) * 100);
-        const w = ls.trades.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl)).length;
-        const l = ls.trades.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl)).length;
+        const w = ls.trades.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl, undefined, t)).length;
+        const l = ls.trades.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl, undefined, t)).length;
         const wr = (w+l)>0 ? `${((w/(w+l))*100).toFixed(0)}%` : '—';
         return `
         <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px">
@@ -6134,8 +6216,8 @@ function renderChallenge() {
           <div>
             <div style="font-family:'EB Garamond',serif;font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em">Win Rate</div>
             <div style="font-family:'EB Garamond',serif;font-size:1rem;font-weight:700;color:var(--text)">${(() => {
-              const w = ps.trades.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl)).length;
-              const l = ps.trades.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl)).length;
+              const w = ps.trades.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl, undefined, t)).length;
+              const l = ps.trades.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl, undefined, t)).length;
               return (w+l)>0?`${((w/(w+l))*100).toFixed(0)}%`:'—';
             })()}</div>
           </div>
@@ -7324,6 +7406,19 @@ function toggleBaseOption(e, idx, val) {
 
 const OUTCOME_OPTIONS = ['Deserved Win','Bad Luck','Dumb Luck','Deserved Loss'];
 const OUTCOME_PENALTY = { 'Dumb Luck':10, 'Deserved Loss':10 };
+function setMarkBE(idx, on) {
+  const t = trades[idx]; if (!t) return;
+  if (on) t.markBE = true; else delete t.markBE;
+  if (currentAccount === 'OVERALL' && t._account) {
+    const src = (allTrades[t._account]||[]).find(x => x.date===t.date && x.pair===t.pair && x.pnl===t.pnl);
+    if (src) { if (on) src.markBE = true; else delete src.markBE; saveAccount(t._account); }
+  } else save();
+  toast(on ? `${t.pair||'Trade'} counted as breakeven in your stats` : `${t.pair||'Trade'} counted from its P&L again`);
+  renderReviewList();
+  setTimeout(() => { const c = document.getElementById('rvc-' + idx); if (c) c.classList.add('open'); }, 10);
+  try { renderTable(); } catch(e) {}
+}
+
 function setOutcomeFor(idx, val) {
   const t = trades[idx];
   t.outcome = t.outcome === val ? '' : val;
@@ -8021,7 +8116,7 @@ function smFieldsHtml(t, i, gradeBtns, execBtns) {
 function renderIsStrategySections(tr) {
   const F = "font-family:'EB Garamond',serif";
   const pnl = t => parseFloat(t.pnl)||0;
-  const st = arr => { const w=arr.filter(t=>pnl(t)>0&&!isBreakEven(t.pnl)).length, l=arr.filter(t=>pnl(t)<0&&!isBreakEven(t.pnl)).length; return { n:arr.length, wr:(w+l)?Math.round(100*w/(w+l)):null }; };
+  const st = arr => { const w=arr.filter(t=>pnl(t)>0&&!isBreakEven(t.pnl, undefined, t)).length, l=arr.filter(t=>pnl(t)<0&&!isBreakEven(t.pnl, undefined, t)).length; return { n:arr.length, wr:(w+l)?Math.round(100*w/(w+l)):null }; };
   const wrCol = wr => wr===null?'var(--muted)':wr>=50?'var(--green)':'var(--red)';
   const LBL = t => `<span style="${F};font-size:0.8rem;color:var(--muted);letter-spacing:0.08em">${t}</span>`;
   const money = v => `${v>=0?'+':'−'}$${Math.abs(v).toLocaleString('en-US',{maximumFractionDigits:0})}`;
@@ -8060,7 +8155,7 @@ function renderIsStrategySections(tr) {
 function renderIsDirectionSection(tr) {
   const F = "font-family:'EB Garamond',serif";
   const pnl = t => parseFloat(t.pnl)||0;
-  const st = arr => { const w=arr.filter(t=>pnl(t)>0&&!isBreakEven(t.pnl)).length, l=arr.filter(t=>pnl(t)<0&&!isBreakEven(t.pnl)).length; return { n:arr.length, wr:(w+l)?Math.round(100*w/(w+l)):null }; };
+  const st = arr => { const w=arr.filter(t=>pnl(t)>0&&!isBreakEven(t.pnl, undefined, t)).length, l=arr.filter(t=>pnl(t)<0&&!isBreakEven(t.pnl, undefined, t)).length; return { n:arr.length, wr:(w+l)?Math.round(100*w/(w+l)):null }; };
   const wrCol = wr => wr===null?'var(--muted)':wr>=50?'var(--green)':'var(--red)';
   const card = (name, arr) => { const s=st(arr); return `<div class="kpi-card" style="display:flex;flex-direction:column;gap:0;padding:18px 20px">
       <div style="${F};font-size:1.3rem;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:8px">${name}</div>
@@ -8085,7 +8180,7 @@ function renderFvStrategySections(tr, variant) {
   const isAV = variant === 'AV';
   const F = "font-family:'EB Garamond',serif";
   const pnl = t => parseFloat(t.pnl)||0;
-  const st = arr => { const w=arr.filter(t=>pnl(t)>0&&!isBreakEven(t.pnl)).length, l=arr.filter(t=>pnl(t)<0&&!isBreakEven(t.pnl)).length; return { n:arr.length, wr: (w+l)?Math.round(100*w/(w+l)):null }; };
+  const st = arr => { const w=arr.filter(t=>pnl(t)>0&&!isBreakEven(t.pnl, undefined, t)).length, l=arr.filter(t=>pnl(t)<0&&!isBreakEven(t.pnl, undefined, t)).length; return { n:arr.length, wr: (w+l)?Math.round(100*w/(w+l)):null }; };
   const wrCol = wr => wr===null?'var(--muted)':wr>=50?'var(--green)':'var(--red)';
   const LBL = t => `<span style="${F};font-size:0.8rem;color:var(--muted);letter-spacing:0.08em">${t}</span>`;
   const money = v => `${v>=0?'+':'−'}$${Math.abs(v).toLocaleString('en-US',{maximumFractionDigits:0})}`;
