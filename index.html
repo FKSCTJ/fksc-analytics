@@ -519,6 +519,11 @@
   .acct-btn.acct-overall.acct-active { background: rgba(255,209,102,0.1); border-color: #ffd166; color: #ffd166; }
   .overall-badge { display:inline-flex;align-items:center;gap:4px;background:rgba(255,209,102,0.06);border:1px solid rgba(255,209,102,0.2);color:#ffd166;padding:2px 6px;border-radius:3px;font-family:'EB Garamond',serif;font-size:0.72rem;letter-spacing:0.05em; }
   .overall-badge img { width:14px;height:14px;border-radius:2px;object-fit:contain; }
+  .sync-link-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:8px; }
+  .sync-link-row .plan-btn.unlinked { color: var(--gold, #c9a96e); border-color: rgba(201,169,110,0.45); background: rgba(201,169,110,0.08); }
+  .sync-link-hint { font-family:'EB Garamond',serif; font-size:0.8rem; color:var(--muted); }
+  .sync-badge { font-family:'EB Garamond',serif; font-size:0.72rem; color:var(--accent); border:1px solid rgba(123,175,212,0.3); border-radius:3px; padding:2px 7px; flex-shrink:0; }
+  .sync-badge.unlinked { color: var(--gold, #c9a96e); border-color: rgba(201,169,110,0.45); }
   .synced-indicator { font-family: 'EB Garamond', serif; font-size: 0.58rem; color: var(--accent); background: rgba(123,175,212,0.08); border: 1px solid rgba(123,175,212,0.2); border-radius: 3px; padding: 3px 8px; margin-top: 6px; display: inline-block; }
   .kpi-defs { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
   @media(max-width:800px){ .kpi-defs { grid-template-columns: repeat(2,1fr); } }
@@ -1650,7 +1655,10 @@ const SYNC_WINDOW_MINUTES = 30;
 const SYNC_WINDOW_DAYS = 1; // also try matching by closeDate within 1 day
 
 function findSimilarTrades(sourceTrade, acct) {
+  // a trade unlinked by the user never syncs with the other account, in either direction
+  if (!sourceTrade || sourceTrade.noSync) return [];
   return (allTrades[acct]||[]).map((t,i)=>({t,i})).filter(({t})=>{
+    if (t.noSync) return false;
     if (!t.pair || !sourceTrade.pair) return false;
     if (t.pair.replace(/\.R$/i,'').trim() !== sourceTrade.pair.replace(/\.R$/i,'').trim()) return false;
     if (t.direction !== sourceTrade.direction) return false;
@@ -1735,6 +1743,26 @@ function autoSyncReviews() {
     });
   });
   if (syncCount > 0) toast(`↻ Auto-synced reviews to ${syncCount} trade${syncCount>1?'s':''}`);
+}
+
+// Unlink / relink a trade from the review sync with the other account
+function findLinkCandidates(t) {
+  return ACCOUNTS.filter(a => a !== currentAccount).flatMap(a => findSimilarTrades({ ...t, noSync: false }, a).map(x => a));
+}
+function toggleNoSync(idx) {
+  const t = trades[idx]; if (!t) return;
+  if (t.noSync) {
+    delete t.noSync;
+    save();
+    toast(`${t.pair||'Trade'} linked again — Save Review to copy this review to the other account`);
+  } else {
+    const others = [...new Set(findLinkCandidates(t))];
+    t.noSync = true; delete t.syncedFrom; delete t.syncedAt;
+    save();
+    toast(`${t.pair||'Trade'} unlinked${others.length ? ' from ' + others.join(', ') : ''} — its review stays separate`);
+  }
+  renderReviewList();
+  setTimeout(() => { const c = document.getElementById('rvc-' + idx); if (c) c.classList.add('open'); }, 10);
 }
 
 function syncReviewToOtherAccounts(idx) {
@@ -3446,7 +3474,7 @@ function renderReviewList() {
   if (currentAccount === 'OVERALL') {
     const groups = {};
     sorted.forEach(({t, i}) => {
-      const key = `${t.pair}|${t.direction}|${t.closeDate||t.date}`;
+      const key = `${t.pair}|${t.direction}|${t.closeDate||t.date}${t.noSync ? '|' + (t._account||'') : ''}`;
       if (!groups[key]) groups[key] = { t, i, accounts: [] };
       if (t._account && !groups[key].accounts.includes(t._account)) groups[key].accounts.push(t._account);
       // Prefer the one with most review data
@@ -3544,7 +3572,7 @@ function renderReviewList() {
             ? `<span style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:3px;border:1px solid var(--border);background:rgba(255,255,255,0.03);flex-shrink:0">${svg}</span>`
             : `<span style="font-family:'EB Garamond',serif;font-size:0.75rem;font-weight:700;color:var(--muted);padding:3px 8px;border-radius:3px;border:1px solid var(--border)">${a}</span>`;
         }).join('')
-      : (t.syncedFrom ? `<span class="sync-badge">↻ ${t.syncedFrom}</span>` : '');
+      : (t.noSync ? `<span class="sync-badge unlinked">⛓ Unlinked</span>` : t.syncedFrom ? `<span class="sync-badge">↻ ${t.syncedFrom}</span>` : '');
 
     // In OVERALL — hide P&L and lots (different per account)
     const showPnlLots = currentAccount !== 'OVERALL';
@@ -3768,7 +3796,11 @@ ${isBreakEven(t.pnl) ? `<div class="form-group">
               <input type="text" placeholder="How were you feeling? Any context…" value="${(t.emotionNote||'').replace(/"/g,'&quot;')}" onchange="saveEmotionNote(${i},this.value)" onclick="event.stopPropagation()" style="margin-top:8px;width:100%;box-sizing:border-box;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'EB Garamond',serif;font-size:0.9rem;outline:none">
             </div>
             <button class="btn btn-primary" style="align-self:flex-start" onclick="saveReviewField(${i});syncReviewToOtherAccounts(${i});toast('Review saved for ${t.pair||'trade'}')">Save Review</button>
-            ${t.syncedFrom ? `<div class="synced-indicator">↻ Synced from ${t.syncedFrom} · ${t.syncedAt?new Date(t.syncedAt).toLocaleDateString():''}</div>` : ''}
+            ${t.syncedFrom && !t.noSync ? `<div class="synced-indicator">↻ Synced from ${t.syncedFrom} · ${t.syncedAt?new Date(t.syncedAt).toLocaleDateString():''}</div>` : ''}
+            ${currentAccount !== 'OVERALL' && (t.noSync || findLinkCandidates(t).length) ? `<div class="sync-link-row">
+              <button class="plan-btn${t.noSync ? ' unlinked' : ''}" onclick="event.stopPropagation();toggleNoSync(${i})">${t.noSync ? '⛓ Unlinked from other account · Relink' : '↻ Linked to other account · Unlink'}</button>
+              <span class="sync-link-hint">${t.noSync ? 'This review and its screenshots stay separate from the other account.' : 'Unlink when you managed this trade differently on the other account.'}</span>
+            </div>` : ''}
           </div>
         </div>
       </div>
