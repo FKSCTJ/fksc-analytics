@@ -510,6 +510,44 @@
   .qs-stats li { padding-left:0 !important; }
   .qs-stats li b { font-size:1.15rem; font-variant-numeric:tabular-nums; }
   @media (max-width:760px){ .qs-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  .sp-bar { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:0 0 20px; font-family:'EB Garamond',serif; }
+  .sp-lbl { font-size:0.75rem; letter-spacing:0.12em; color:var(--muted); font-weight:700; margin-right:4px; }
+  .sp-chip { font-family:'EB Garamond',serif; font-size:0.88rem; padding:4px 12px; border:1px solid var(--border); border-radius:3px; background:none; color:var(--muted); cursor:pointer; letter-spacing:0.03em; }
+  .sp-chip.on { color:var(--accent); border-color:var(--accent); background:rgba(123,175,212,0.08); }
+  .sp-dates { display:inline-flex; align-items:center; gap:6px; color:var(--muted); }
+  .sp-dates input { background:var(--surface2); border:1px solid var(--border); border-radius:3px; color:var(--text); font-family:'EB Garamond',serif; font-size:0.88rem; padding:3px 8px; color-scheme:dark; }
+  .sp-meta { font-size:0.85rem; color:var(--muted); margin-left:8px; }
+  .mg-sec { border-top:1px dashed rgba(123,175,212,0.35); border-bottom:1px dashed rgba(123,175,212,0.35); padding:14px 0 6px; margin:4px 0 18px; }
+  .mg-sec .form-group { margin-bottom:14px; }
+  .mg-in { width:100%; box-sizing:border-box; background:var(--surface2); border:1px solid var(--border); border-radius:3px; color:var(--text); font-family:'EB Garamond',serif; font-size:0.9rem; padding:7px 10px; outline:none; }
+  .mg-ta { resize:vertical; line-height:1.4; margin-top:4px; }
+  .mg-hint { font-family:'EB Garamond',serif; font-size:0.85rem; color:var(--muted); margin-top:6px; }
+  .mg-auto { font-family:'EB Garamond',serif; font-size:0.88rem; color:var(--muted); margin:0 0 8px; }
+  .mg-due { display:inline-block; margin-top:8px; font-family:'EB Garamond',serif; font-size:0.85rem; color:#e0b85a; border:1px solid rgba(224,184,90,0.45); background:rgba(224,184,90,0.08); border-radius:3px; padding:3px 9px; }
+  .mg-subt { font-size:0.9rem; color:var(--muted); font-weight:400; margin-left:8px; letter-spacing:0; text-transform:none; }
+  .mg-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .mg-grid3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+  .mg-stats li { display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding-left:0 !important; margin-bottom:6px; }
+  .mg-stats li::before { content:none; }
+  .mg-stats b { font-size:1.1rem; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .mg-s { font-family:'EB Garamond',serif; font-size:0.78rem; letter-spacing:0.12em; color:var(--muted); font-weight:700; margin-bottom:4px; }
+  .mg-v { font-family:'EB Garamond',serif; font-size:1.7rem; font-weight:700; margin:4px 0; }
+  .mg-v small { font-size:0.85rem; color:var(--muted); font-weight:400; }
+  .mg-d { font-family:'EB Garamond',serif; font-size:0.9rem; color:var(--muted); }
+  .mg-bar { height:4px; background:var(--border); border-radius:2px; margin-top:10px; overflow:hidden; } .mg-bar i { display:block; height:100%; }
+  .mg-tbl { width:100%; border-collapse:collapse; font-family:'EB Garamond',serif; font-size:1rem; }
+  .mg-tbl th { text-align:right; font-size:0.72rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); padding:8px 12px; border-bottom:1px solid var(--border); font-weight:600; }
+  .mg-tbl td { text-align:right; padding:9px 12px; border-bottom:1px solid var(--border); }
+  .mg-tbl th:first-child, .mg-tbl td:first-child { text-align:left; }
+  .mg-tbl .pos { color:var(--green); } .mg-tbl .neg { color:var(--red); }
+  .mg-plan { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .mg-plan > div { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:14px 16px; }
+  .mg-plan b { display:block; font-family:'EB Garamond',serif; font-size:0.78rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--accent); margin-bottom:6px; }
+  .mg-two { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  @media (max-width:760px){ .mg-grid2, .mg-grid3, .mg-plan { grid-template-columns:1fr; } }
+  @media print { body.mg-printing * { visibility:hidden; } body.mg-printing #mgPlanBox, body.mg-printing #mgPlanBox * { visibility:visible; }
+    body.mg-printing #mgPlanBox { position:absolute; left:0; top:0; width:100%; } body.mg-printing #mgPlanBox textarea, body.mg-printing #mgPlanBox input { border:none; background:none; color:#000; }
+    body.mg-printing #mgPlanBox > div { border:1px solid #999; background:none; } body.mg-printing #mgPlanBox b { color:#000; } }
   .kpi-card.kpi-click { cursor:pointer; transition:border-color .15s; }
   .kpi-card.kpi-click:hover, .kpi-card.kpi-click.on { border-color: var(--accent); }
   .costs-detail { margin-top:12px; background:var(--surface-light); border:1px solid var(--border); border-radius:4px; padding:16px 18px; }
@@ -658,12 +696,10 @@
 <div class="wrapper" id="mainNav">
   <nav class="nav-tabs">
     <button class="nav-tab" onclick="switchTab('overview', this)">Overview</button>
-    <button class="nav-tab" onclick="switchTab('system', this)">Sizing</button>
     <button class="nav-tab" onclick="switchTab('review', this)">Trade Review</button>
-    <button class="nav-tab" onclick="switchTab('quality', this)">Trade Quality</button>
     <button class="nav-tab" onclick="switchTab('strategy', this)">Strategy</button>
-    <button class="nav-tab" onclick="switchTab('risk', this)">Risk-Adjusted</button>
-    <button class="nav-tab" onclick="switchTab('timing', this)">Timing</button>
+    <button class="nav-tab" onclick="switchTab('mental', this)">Mental Game</button>
+    <button class="nav-tab" id="qualityNavTab" onclick="switchTab('quality', this)">Trade Quality</button>
     <button class="nav-tab" onclick="switchTab('monthly', this)">Monthly Review</button>
     <button class="nav-tab" onclick="switchTab('challenge', this)" id="challengeNavTab">Challenge</button>
     <button class="nav-tab" onclick="switchTab('portfolio', this)">Portfolio</button>
@@ -730,6 +766,7 @@
 
   <!-- RISK-ADJUSTED -->
   <div id="tab-risk" class="panel">
+    <div id="qBar-risk"></div>
     <div id="dsub-risk" class="dsub active">
       <div class="kpi-grid" id="kpiRisk"></div>
 
@@ -761,6 +798,7 @@
 
   <!-- TIMING -->
   <div id="tab-timing" class="panel">
+    <div id="qBar-timing"></div>
     <div id="dsub-timing" class="dsub active">
 
       <!-- P&L by Day of Week -->
@@ -797,6 +835,7 @@
 
   <!-- TRADE QUALITY -->
   <div id="tab-quality" class="panel">
+    <div id="qBar-quality"></div>
     <div id="dsub-quality" class="dsub active">
 
       <!-- Scoring Methodology -->
@@ -926,8 +965,9 @@
   </script>
   <!-- SYSTEM -->
   <div id="tab-system" class="panel">
-    <!-- Sub-tabs -->
-    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:28px;margin-top:8px">
+    <div id="csBarSys"></div>
+    <!-- Sub-tabs (hidden: the Challenge / Sizing bar above replaces them) -->
+    <div style="display:none;gap:0;border-bottom:1px solid var(--border);margin-bottom:28px;margin-top:8px">
       <button id="systab-challenge" onclick="switchSystemTab('challenge')" style="font-family:'EB Garamond',serif;font-size:0.95rem;letter-spacing:0.06em;text-transform:uppercase;padding:8px 18px;border:none;background:none;color:var(--text);cursor:pointer;border-bottom:2px solid var(--accent);margin-bottom:-1px">Challenge</button>
       <button id="systab-funded" onclick="switchSystemTab('funded')" style="font-family:'EB Garamond',serif;font-size:0.95rem;letter-spacing:0.06em;text-transform:uppercase;padding:8px 18px;border:none;background:none;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px">Funded <span style="font-size:0.7rem;opacity:0.5;font-style:italic">(soon)</span></button>
     </div>
@@ -981,6 +1021,7 @@
 
   <!-- TRADE LOG -->
   <div id="tab-strategy" class="panel"></div>
+  <div id="tab-mental" class="panel"></div>
 
   <div id="tab-trades" class="panel">
     <div class="table-header">
@@ -1492,6 +1533,12 @@ function switchTab(name, el) {
   const panel = document.getElementById('tab-' + name);
   panel.classList.add('active');
   if (el) el.classList.add('active');
+  if (['quality','risk','timing'].includes(name)) {
+    // Trade Quality, Risk-Adjusted and Timing share the Trade Quality nav tab
+    const q = document.getElementById('qualityNavTab'); if (q) q.classList.add('active');
+    const bar = document.getElementById('qBar-' + name);
+    if (bar) bar.innerHTML = `<div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin:4px 0 24px">${[['quality','Trade Quality'],['risk','Risk-Adjusted'],['timing','Timing']].map(([k, l]) => `<button onclick="switchTab('${k}', document.getElementById('qualityNavTab'))" style="font-family:'EB Garamond',serif;font-size:0.95rem;letter-spacing:0.08em;text-transform:uppercase;padding:9px 20px;border:none;background:none;cursor:pointer;color:${k === name ? 'var(--text)' : 'var(--muted)'};border-bottom:2px solid ${k === name ? 'var(--accent)' : 'transparent'}">${l}</button>`).join('')}</div>` + statsPeriodBarHtml();
+  }
   if (ANALYTICS_TABS.includes(name)) renderDashSubTab(name);
   if (name === 'import') {
     const lbl = document.getElementById('importAccountLabel');
@@ -1499,10 +1546,12 @@ function switchTab(name, el) {
   }
   if (name === 'review') { renderReviewList(); }
   if (name === 'monthly') { renderMonthlyTab(); }
+  if (name === 'mental') { renderMentalGame(); }
   if (name === 'challenge') { renderChallenge(); }
   if (name === 'budget') { openBudgetTab(); }
   if (name === 'portfolio') { openPortfolioTab(); }
   if (name === 'system') {
+    const bar = document.getElementById('csBarSys'); if (bar) bar.innerHTML = csBarHtml('sizing');
     renderCorrMatrix();
     const btnFunded = document.getElementById('systab-funded');
     const btnChallenge = document.getElementById('systab-challenge');
@@ -1644,7 +1693,7 @@ function switchAccount(acct, el) {
   if (sizingBtn) sizingBtn.style.display = acct === 'OVERALL' ? 'none' : '';
   // If on system tab and switching to OVERALL, redirect to overview
   if (acct === 'OVERALL' && document.getElementById('tab-system').classList.contains('active')) {
-    switchTab('overview', document.querySelector('.nav-tab[onclick="switchTab(\'overview\', this)"]'));
+    switchTab('challenge', document.getElementById('challengeNavTab'));
   }
   // Set correct system sub-tab when account switches
   const sysTabOpen = document.getElementById('tab-system') && document.getElementById('tab-system').classList.contains('active');
@@ -1664,13 +1713,16 @@ function switchAccount(acct, el) {
   renderOverviewFiltered();
   renderTable();
   if (document.getElementById('tab-review').classList.contains('active')) renderReviewList();
+  if (document.getElementById('tab-mental')?.classList.contains('active')) renderMentalGame();
+  if (document.getElementById('tab-challenge')?.classList.contains('active')) renderChallenge();
+  if (document.getElementById('tab-system')?.classList.contains('active')) { const bar = document.getElementById('csBarSys'); if (bar) bar.innerHTML = csBarHtml('sizing'); }
   const challengeNavTab = document.getElementById('challengeNavTab');
   if (challengeNavTab) challengeNavTab.textContent = acct === '5ERS' ? 'Level' : acct === 'OVERALL' ? 'Funded Accounts' : 'Challenge';
   toast(acct === 'OVERALL' ? 'Overall — all accounts merged' : `Switched to ${acct}`);
 }
 
 // SYNC: fields copied across accounts on review save
-const SYNC_FIELDS = ['entryRating','execRating','followedPlan','beOutcome','sl033','session','phase','mistakes','emotions','emotionNote','timeframeReview','setup','trendDir','reviewNotes',
+const SYNC_FIELDS = ['mgState','mgFelt','mgExit','mgMaxR','mgRevenge','entryRating','execRating','followedPlan','beOutcome','sl033','session','phase','mistakes','emotions','emotionNote','timeframeReview','setup','trendDir','reviewNotes',
   // Forex Valuation review fields
   'strategy','fvDirection','fvDirTags','fvValuation','fvLeftSweep','fvCleanBase','fvIndecision','fvTradeMgmt','fvProfitEmotion','fvFollowUp',
   // Index Strength review fields
@@ -1908,7 +1960,48 @@ function renderDashboard(){
   renderDashSubTab('overview');
 }
 
+// ── Shared analysis period (same as the Overview period) for Strategy, Mental Game and Trade Quality ──
+const STATS_PERIODS = [['all','All Time'],['current_month','Current Month'],['last_month','Last Month'],['current_year','Current Year'],['custom','Select Period…']];
+function statsPeriodBarHtml() {
+  const n = getFilteredTrades().length;
+  const chip = (v, l) => `<button onclick="setStatsPeriod('${v}')" class="sp-chip${currentPeriod === v ? ' on' : ''}">${v === 'custom' ? 'Custom' : l}</button>`;
+  const fmt = d => d ? d.split('-').reverse().join('/') : '';
+  return `<div class="sp-bar">
+    <span class="sp-lbl">PERIOD</span>
+    ${STATS_PERIODS.map(([v, l]) => chip(v, l)).join('')}
+    ${currentPeriod === 'custom' ? `<span class="sp-dates"><input type="date" value="${ovPeriodFrom}" onchange="setStatsDate('from',this.value)"> → <input type="date" value="${ovPeriodTo}" onchange="setStatsDate('to',this.value)"></span>` : ''}
+    <span class="sp-meta">${n} trade${n === 1 ? '' : 's'}${currentPeriod === 'custom' && (ovPeriodFrom || ovPeriodTo) ? ` · ${ovPeriodFrom ? fmt(ovPeriodFrom) : 'start'} → ${ovPeriodTo ? fmt(ovPeriodTo) : 'today'}` : ''} · same period as Overview</span>
+  </div>`;
+}
+function setStatsPeriod(v) {
+  const l = (STATS_PERIODS.find(p => p[0] === v) || [v, v])[1];
+  setPeriod(v, l);
+  rerenderStatsTab();
+}
+function setStatsDate(which, iso) {
+  if (which === 'from') { ovPeriodFrom = iso || ''; if (ovPeriodTo && ovPeriodFrom > ovPeriodTo) ovPeriodTo = ''; }
+  else { ovPeriodTo = iso || ''; if (ovPeriodFrom && ovPeriodTo && ovPeriodTo < ovPeriodFrom) ovPeriodFrom = ''; }
+  setPeriod('custom', 'Select Period…');
+  const fromBtn = document.getElementById('ovFromBtn'), toBtn = document.getElementById('ovToBtn');
+  if (fromBtn) { fromBtn.textContent = ovPeriodFrom ? fmtDateStrat(ovPeriodFrom) : 'From date'; fromBtn.style.color = ovPeriodFrom ? 'var(--text)' : 'var(--muted)'; }
+  if (toBtn)   { toBtn.textContent   = ovPeriodTo   ? fmtDateStrat(ovPeriodTo)   : 'To date';   toBtn.style.color   = ovPeriodTo   ? 'var(--text)' : 'var(--muted)'; }
+  rerenderStatsTab();
+}
+function rerenderStatsTab() {
+  const active = document.querySelector('.panel.active'); if (!active) return;
+  const name = active.id.replace('tab-', '');
+  if (['quality','risk','timing'].includes(name)) switchTab(name, document.getElementById('qualityNavTab'));
+  else if (name === 'mental') renderMentalGame();
+  else if (name === 'strategy') renderStrategy();
+}
 function renderDashSubTab(name){
+  if (['risk','timing','quality'].includes(name)) {
+    // these views follow the shared analysis period
+    const saved = trades; trades = getFilteredTrades();
+    try { const s = calcStats(); if (name === 'risk') renderRisk(s); else if (name === 'timing') renderTiming(s); else renderQuality(s); }
+    finally { trades = saved; }
+    return;
+  }
   const s=calcStats();
   // Update meta bar whenever an analytics tab is shown
   const dates=trades.map(t=>t.date).filter(Boolean).sort();
@@ -1966,6 +2059,8 @@ let stratPeriodFrom = '';
 let stratPeriodTo = '';
 
 function getStratFilteredTrades() {
+  return getFilteredTrades(); // Strategy follows the shared analysis period
+
   const period = currentStratPeriod || 'all';
   const now = new Date();
   const y = now.getFullYear(), m = now.getMonth();
@@ -3589,10 +3684,10 @@ function renderReviewList() {
     sorted = Object.values(groups);
   }
 
-  const fuDueCount = sorted.filter(({t}) => isFollowUpDue(t)).length;
+  const fuDueCount = sorted.filter(({t}) => isAnyFollowUpDue(t)).length;
   if (!fuDueCount) rvFollowUpOnly = false;
   const filtered = sorted.filter(({t}) => {
-    if (rvFollowUpOnly && !isFollowUpDue(t)) return false;
+    if (rvFollowUpOnly && !isAnyFollowUpDue(t)) return false;
     if (rvOutcomeFilter && t.outcome !== rvOutcomeFilter) return false;
     const pnl = parseFloat(t.pnl)||0; const isbe = isBreakEven(pnl, undefined, t);
     if (search && !(t.pair||'').toLowerCase().includes(search)) return false;
@@ -3700,7 +3795,7 @@ function renderReviewList() {
         <span style="flex-shrink:0;width:24px;display:inline-flex;justify-content:center" id="rv_gbadge_${i}">${t.entryRating ? `<span class="grade-badge grade-active-${t.entryRating}">${t.entryRating}</span>` : ''}</span>
         <span style="flex-shrink:0;width:28px;display:inline-flex;justify-content:center" id="rv_sbadge_${i}">${(()=>{ const sc=calcTradeScore(t); if(!sc) return ''; const col=sc>=70?'#6dbf9e':sc>=45?'#7bafd4':'#e85555'; return `<span class="grade-badge" style="background:${col};color:#0a1220;font-size:0.9rem;opacity:0.9">${sc}</span>`; })()}</span>
         <span style="flex-shrink:0;width:16px;text-align:center;color:${planCol};font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700">${planIcon}</span>
-        ${isFollowUpDue(t) ? `<span style="flex-shrink:0;font-family:'EB Garamond',serif;font-size:0.8rem;padding:2px 8px;border-radius:3px;border:1px solid #e0b85a;color:#e0b85a;white-space:nowrap">⏰ Follow-up due</span>` : ''}
+        ${isAnyFollowUpDue(t) ? `<span style="flex-shrink:0;font-family:'EB Garamond',serif;font-size:0.8rem;padding:2px 8px;border-radius:3px;border:1px solid #e0b85a;color:#e0b85a;white-space:nowrap">⏰ Follow-up due</span>` : ''}
         ${acctBadges}
         <span class="rv-card-chevron">▼</span>
       </div>
@@ -3788,6 +3883,7 @@ function renderReviewList() {
                 </div>
               </div>
             </div>
+            ${mgTopHtml(t, i)}
             ${outcomeHtml(t, i)}
 ${t.strategy === FV_STRATEGY ? fvFieldsHtml(t, i, gradeBtns, execBtns) : t.strategy === IS_STRATEGY ? isFieldsHtml(t, i, gradeBtns, execBtns) : t.strategy === SM_STRATEGY ? smFieldsHtml(t, i, gradeBtns, execBtns) : t.strategy === AV_STRATEGY ? avFieldsHtml(t, i, gradeBtns, execBtns) : `
             <div class="form-group">
@@ -3851,6 +3947,7 @@ ${t.strategy === FV_STRATEGY ? fvFieldsHtml(t, i, gradeBtns, execBtns) : t.strat
               <div style="display:flex;gap:6px">${execBtns}</div>
               <div id="rv_xlabel_${i}" style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted);margin-top:4px">${EXEC_LABELS[parseInt(t.execRating)||0]||'Not rated'}</div>
             </div>
+            ${mgExitHtml(t, i)}
 `}
             <div class="form-group">
               <label>Followed Trading Plan?</label>
@@ -3891,7 +3988,7 @@ ${(() => {
             <div class="form-group">
               <label>Mistakes</label>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                ${['Impatience','Moved SL','Forced Setup','Closed Early','Emotional'].map(m => {
+                ${['Impatience','Moved SL','Forced Setup','Closed Early','Emotional','Exit before zone','Partial < 50%','Revenge','Oversized','Not an A setup'].map(m => {
                   const active = (t.mistakes||[]).includes(m);
                   return `<button class="plan-btn ${active?'active-no':''}" onclick="event.stopPropagation();toggleMistake(${i},'${m}')">${active?'✕ ':''}${m}</button>`;
                 }).join('')}
@@ -4644,29 +4741,9 @@ function renderStrategy() {
               `<button onclick="currentStratAsset=currentStratAsset==='${a}'?'':'${a}';renderStrategy()" style="font-family:'EB Garamond',serif;font-size:0.85rem;padding:4px 14px;border:none;border-radius:3px;cursor:pointer;letter-spacing:0.04em;background:${currentStratAsset===a?'var(--accent)':'transparent'};color:${currentStratAsset===a?'#0a1220':'var(--muted)'}">${icon} ${a==='FV'?FV_STRATEGY:a}</button>`
             ).join('')}
           </div>
-          <div class="multi-select" id="stratPeriodDropdown" style="position:relative;width:fit-content">
-            <div class="ms-trigger" onclick="toggleStratPeriodDropdown()" style="min-width:unset">
-              <span id="stratPeriodLabel" style="display:none">${({'all':'All Time','current_month':'Current Month','last_month':'Last Month','current_year':'Current Year','custom':'Custom'})[currentStratPeriod]||'All Time'}</span>
-              <span style="font-size:0.9rem;color:var(--muted)">▼</span>
-            </div>
-            <div class="ms-dropdown" id="strat-period-drop">
-              ${[['all','All Time'],['current_month','Current Month'],['last_month','Last Month'],['current_year','Current Year'],['custom','Select Period…']].map(([v,l])=>
-                `<div class="ms-option ${v===currentStratPeriod?'ms-selected':''}" onclick="setStratPeriod('${v}','${l}')">${v===currentStratPeriod?'✓ ':'\u00a0\u00a0'}${l}</div>`
-              ).join('')}
-            </div>
-          </div>
-          <div id="stratCustomPeriodInputs" style="display:${currentStratPeriod==='custom'?'flex':'none'};gap:8px;align-items:center;flex-wrap:wrap">
-            <div style="position:relative">
-              <button onclick="openStratCal('from')" style="font-family:'EB Garamond',serif;font-size:0.88rem;padding:5px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:${stratPeriodFrom?'var(--text)':'var(--muted)'};cursor:pointer;letter-spacing:0.03em;min-width:110px;text-align:left" id="stratFromBtn">${stratPeriodFrom?fmtDateStrat(stratPeriodFrom):'From date'}</button>
-            </div>
-            <span style="color:var(--muted);font-family:'EB Garamond',serif;font-size:0.9rem">→</span>
-            <div style="position:relative">
-              <button onclick="openStratCal('to')" style="font-family:'EB Garamond',serif;font-size:0.88rem;padding:5px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:${stratPeriodTo?'var(--text)':'var(--muted)'};cursor:pointer;letter-spacing:0.03em;min-width:110px;text-align:left" id="stratToBtn">${stratPeriodTo?fmtDateStrat(stratPeriodTo):'To date'}</button>
-            </div>
-            ${stratPeriodFrom||stratPeriodTo?`<button onclick="stratPeriodFrom='';stratPeriodTo='';renderStrategy()" style="font-family:'EB Garamond',serif;font-size:0.8rem;padding:4px 8px;background:none;border:1px solid var(--border);border-radius:3px;color:var(--muted);cursor:pointer">✕ Clear</button>`:''}
-          </div>
         </div>
       </div>
+      ${statsPeriodBarHtml()}
       ${renderStrategyCards(allStratTrades)}
       ${isNoneView ? '' : `
       <div id="strat-static" class="${(isFvView || currentStratAsset === 'AV')?'fv-overview':''}" style="margin-bottom:20px">
@@ -5833,7 +5910,21 @@ function saveQuarterlyReview(qKey, yr, q) {
   if (dot) { dot.classList.remove('empty'); }
 }
 
+// Challenge and Sizing share one nav tab: a sub-tab bar at the top of each switches between them
+function csBarHtml(active) {
+  const b = (k, label) => `<button onclick="${k === 'challenge' ? "switchTab('challenge', document.getElementById('challengeNavTab'))" : "openSizingTab()"}" style="font-family:'EB Garamond',serif;font-size:0.95rem;letter-spacing:0.08em;text-transform:uppercase;padding:9px 20px;border:none;background:none;cursor:pointer;color:${active === k ? 'var(--text)' : 'var(--muted)'};border-bottom:2px solid ${active === k ? 'var(--accent)' : 'transparent'}">${label}</button>`;
+  const chLabel = currentAccount === 'OVERALL' ? 'Funded Accounts' : 'Challenge';
+  return `<div class="cs-bar" style="display:flex;gap:0;border-bottom:1px solid var(--border);margin:4px 0 24px">${b('challenge', chLabel)}${currentAccount === 'OVERALL' ? '' : b('sizing', 'Sizing')}</div>`;
+}
+function openSizingTab() {
+  switchTab('system', document.getElementById('challengeNavTab'));
+}
 function renderChallenge() {
+  _renderChallengeInner();
+  const panel = document.getElementById('tab-challenge');
+  if (panel && !panel.querySelector(':scope > .cs-bar')) panel.insertAdjacentHTML('afterbegin', csBarHtml('challenge'));
+}
+function _renderChallengeInner() {
   const panel = document.getElementById('tab-challenge');
   const navTab = document.getElementById('challengeNavTab');
   if (navTab) navTab.textContent = currentAccount === '5ERS' ? 'Level' : currentAccount === 'OVERALL' ? 'Funded Accounts' : 'Challenge';
@@ -7887,6 +7978,272 @@ const FV_TM_OPTIONS = ['Partial + TP','Partial + got stopped','Trailed stop prev
 const FV_FOLLOWUP_DAYS = 30;
 let rvFollowUpOnly = false;
 
+// ══════════════════════════════════════════════════════════════
+// MENTAL GAME — per-trade behaviour fields + Mental Game tab
+// ══════════════════════════════════════════════════════════════
+const MG_EXIT_OPTIONS = [['zone','✓ At opposing zone'],['before','✕ Before opposing zone'],['stop','⛔ Stopped out'],['extreme','◎ Extreme valuation']];
+const MG_STATE_OPTIONS = [['1','1 · Calm'],['2','2'],['3','3 · Tense'],['4','4'],['5','5 · On fire']];
+const MG_FOLLOWUP_DAYS = 30;
+const _mgNum = v => parseFloat(v) || 0;
+const _mgEsc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const mgIsWin = t => _mgNum(t.pnl) > 0 && !isBreakEven(t.pnl, undefined, t);
+const mgIsLoss = t => _mgNum(t.pnl) < 0 && !isBreakEven(t.pnl, undefined, t);
+// 1R = average losing trade of the account (same convention as the app's R-multiple), unless set in My Plan
+function mgRUnit(acct) {
+  const plan = mgPlan();
+  const set = parseFloat((plan.rUnit || {})[acct || currentAccount]);
+  if (set > 0) return set;
+  const src = acct && allTrades[acct] ? allTrades[acct] : trades;
+  const L = src.filter(mgIsLoss);
+  return L.length ? Math.abs(L.reduce((a, t) => a + _mgNum(t.pnl), 0) / L.length) : 0;
+}
+const mgR = t => { const u = mgRUnit(t._account || currentAccount); return u > 0 ? _mgNum(t.pnl) / u : null; };
+function isMaxRDue(t) {
+  if (!t || !mgIsWin(t) || !t.mgExit || t.mgExit === 'stop' || (t.mgMaxR !== undefined && t.mgMaxR !== '')) return false;
+  const c = t.closeDate || t.date; if (!c) return false;
+  return (Date.now() - new Date(c).getTime()) >= MG_FOLLOWUP_DAYS * 86400000;
+}
+function isAnyFollowUpDue(t) { return isFollowUpDue(t) || isMaxRDue(t); }
+function mgIsASetup(t) { return t.entryRating ? t.entryRating === 'A' : null; }
+
+function setMg(idx, field, val) {
+  const t = trades[idx]; if (!t) return;
+  t[field] = t[field] === val ? '' : val;
+  _fvPersist(idx, [field]);
+  try { updateScoreBadge(idx); } catch (e) {}
+  renderReviewList();
+  setTimeout(() => { const c = document.getElementById(`rvc-${idx}`); if (c) c.classList.add('open'); }, 10);
+}
+function setMgText(idx, field, val) {
+  const t = trades[idx]; if (!t) return;
+  t[field] = String(val).trim();
+  _fvPersist(idx, [field]);
+  if (field === 'mgMaxR') { renderReviewList(); setTimeout(() => { const c = document.getElementById(`rvc-${idx}`); if (c) c.classList.add('open'); }, 10); }
+}
+const _mgBtn = (i, field, v, label, on) => `<button class="plan-btn ${on ? 'active-yes' : ''}" onclick="event.stopPropagation();setMg(${i},'${field}','${v}')">${label}</button>`;
+const _mgSub = s => `<span style="text-transform:none;letter-spacing:0;font-size:0.85rem;color:var(--muted)">${s}</span>`;
+
+function mgTopHtml(t, i) {
+  return `<div class="mg-sec">
+      <div class="chart-card-title" style="margin:2px 0 12px">&#9632; MENTAL GAME</div>
+      <div class="form-group">
+        <label>State before entry ${_mgSub('— 1 calm · 5 on fire')}</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${MG_STATE_OPTIONS.map(([v, l]) => _mgBtn(i, 'mgState', v, l, t.mgState === v)).join('')}</div>
+      </div>
+      <div class="form-group">
+        <label>Felt · wanted · did</label>
+        <input type="text" placeholder="What I felt / what I wanted to do / what I actually did" value="${_mgEsc(t.mgFelt)}" onclick="event.stopPropagation()" onchange="setMgText(${i},'mgFelt',this.value)" class="mg-in">
+      </div>
+    </div>`;
+}
+function mgExitHtml(t, i) {
+  const win = mgIsWin(t);
+  let maxR = '';
+  if (win) {
+    const r = mgR(t), mx = parseFloat(t.mgMaxR);
+    const left = r !== null && mx > 0 ? mx - r : null;
+    const c = t.closeDate || t.date;
+    const dueDate = c ? new Date(new Date(c).getTime() + MG_FOLLOWUP_DAYS * 86400000) : null;
+    const filled = t.mgMaxR !== undefined && t.mgMaxR !== '';
+    const due = isMaxRDue(t);
+    maxR = `<div class="form-group" style="${due ? 'border:1px solid #e0b85a;border-radius:4px;padding:10px 12px;background:rgba(224,184,90,0.06)' : ''}">
+        <label>Max R reached after my exit ${_mgSub('— the furthest price went your way after you closed')}</label>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <input type="number" step="0.1" placeholder="e.g. 4.2" value="${_mgEsc(t.mgMaxR)}" onclick="event.stopPropagation()" onchange="setMgText(${i},'mgMaxR',this.value)" class="mg-in" style="width:100px">
+          <span class="mg-hint" style="margin:0">${r !== null ? `Exited at ${r >= 0 ? '+' : ''}${r.toFixed(1)}R` : ''}${left !== null ? ` → <b style="color:${left > 0.05 ? '#e0b85a' : 'var(--green)'}">${left > 0.05 ? left.toFixed(1) + 'R left on the table' : 'nothing left on the table'}</b>` : ''}</span>
+        </div>
+        ${!filled && t.mgExit && t.mgExit !== 'stop' && dueDate ? `<div class="mg-due">⏰ ${due ? 'Follow-up due' : 'Follow-up'} ${dueDate.toLocaleDateString('en-GB')} — one month after close</div>` : ''}
+      </div>`;
+  }
+  return `<div class="form-group">
+        <label>Partial / Exit</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${MG_EXIT_OPTIONS.map(([v, l]) => _mgBtn(i, 'mgExit', v, l, t.mgExit === v)).join('')}</div>
+      </div>
+      ${maxR}
+      <div class="form-group">
+        <label>Revenge trade?</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${_mgBtn(i, 'mgRevenge', 'no', 'No', t.mgRevenge === 'no')}${_mgBtn(i, 'mgRevenge', 'yes', 'Yes — even a winner counts as a rule break', t.mgRevenge === 'yes')}</div>
+      </div>`;
+}
+
+// ── plan & weekly review storage ──
+const MG_PLAN_KEY = 'fx_mg_plan', MG_WEEK_KEY = 'fx_mg_weekly';
+const MG_PLAN_DEFAULT = {
+  top1: 'Fear', top1Desc: 'Giving back profits — taking profits too early, protecting too fast, trailing too tight',
+  top2: 'Lack of discipline', top2Desc: 'Taking entries that do not meet every criterion of an A setup',
+  commitment: 'Entries and exits taken only on my checklist',
+  exits: 'Take 50% minimum (or 66%) at the first quality opposing zone. Run the rest to the next opposing zone or extreme valuation. Break-even only at a structural level that protects the entry, at true 0 when possible. An exit before the opposing zone, other than the stop, is a rule break.',
+  breakers: 'Triggers: a loss, fear of giving back. Signal: checking my P&L too often. Correlated trades count as one risk.',
+  checkin: 'Before every trade: run the idea through the deserved win / bad luck test and every confluence of the strategy. State 1–5 and main emotion. Setup or feeling? Weekend review.',
+  size: 'Risk linked to account balance and trade quality (currently 0.25% per entry).',
+  premortem: 'Not respecting the entry rules · not journaling entries and attitudes · fear of failing.',
+  values: 'A trader confident in his data, highly aware of his destructive behaviours — decisions by process and strategy, always honest with himself.',
+  sizeUpTarget: 25, rUnit: {}
+};
+function mgPlan() { try { return Object.assign({}, MG_PLAN_DEFAULT, JSON.parse(localStorage.getItem(MG_PLAN_KEY) || '{}')); } catch (e) { return { ...MG_PLAN_DEFAULT }; } }
+function mgSavePlanField(f, v) { const p = mgPlan(); p[f] = f === 'sizeUpTarget' ? (parseInt(v) || 25) : v; localStorage.setItem(MG_PLAN_KEY, JSON.stringify(p)); toast('Plan saved'); if (f === 'sizeUpTarget') renderMentalGame(); }
+function mgSaveRUnit(acct, v) { const p = mgPlan(); p.rUnit = p.rUnit || {}; if (parseFloat(v) > 0) p.rUnit[acct] = parseFloat(v); else delete p.rUnit[acct]; localStorage.setItem(MG_PLAN_KEY, JSON.stringify(p)); renderMentalGame(); }
+function mgWeekKey(d) { const x = new Date(d || Date.now()); const day = (x.getDay() + 6) % 7; x.setDate(x.getDate() - day); return x.toISOString().slice(0, 10); }
+function mgWeekly() { try { return JSON.parse(localStorage.getItem(MG_WEEK_KEY) || '{}'); } catch (e) { return {}; } }
+function mgSaveWeek(k, f, v) { const w = mgWeekly(); w[k] = w[k] || {}; w[k][f] = v; w[k].at = new Date().toISOString(); localStorage.setItem(MG_WEEK_KEY, JSON.stringify(w)); toast('Weekly review saved'); }
+function mgPrintPlan() { document.body.classList.add('mg-printing'); window.print(); setTimeout(() => document.body.classList.remove('mg-printing'), 500); }
+
+// ── stats ──
+function mgStats(list) {
+  const W = list.filter(mgIsWin), L = list.filter(mgIsLoss);
+  const gw = W.reduce((a, t) => a + _mgNum(t.pnl), 0), gl = Math.abs(L.reduce((a, t) => a + _mgNum(t.pnl), 0));
+  const rs = list.map(mgR).filter(v => v !== null);
+  return { n: list.length, w: W.length, l: L.length, wr: W.length + L.length ? 100 * W.length / (W.length + L.length) : null,
+    pf: gl > 0 ? gw / gl : (gw > 0 ? Infinity : null), avgR: rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null,
+    pnl: list.reduce((a, t) => a + _mgNum(t.pnl), 0) };
+}
+function mgAccountPhase(arr) {
+  // balance of each trade's account just before the trade, relative to its starting balance
+  const out = new Map(), byAcct = {};
+  arr.forEach(t => { const a = t._account || currentAccount; (byAcct[a] = byAcct[a] || []).push(t); });
+  Object.entries(byAcct).forEach(([a, list]) => {
+    const src = allTrades[a] || list;
+    const start = getStartingBalance(a, src) || 0;
+    const sorted = [...src].sort((x, y) => new Date(x.closeDate || x.date) - new Date(y.closeDate || y.date));
+    list.forEach(t => {
+      const open = new Date(t.date || t.closeDate);
+      const before = sorted.filter(x => x !== t && new Date(x.closeDate || x.date) < open).reduce((s, x) => s + _mgNum(x.pnl), 0);
+      out.set(t, start > 0 ? before / start * 100 : null);
+    });
+  });
+  return out;
+}
+function mgRuleFollowed(t) {
+  return t.followedPlan !== 'no' && t.mgRevenge !== 'yes' && t.mgExit !== 'before' && !(t.mistakes || []).length && t.outcome !== 'Dumb Luck' && t.outcome !== 'Deserved Loss';
+}
+function mgReviewed(t) { return !!(t.mgState || t.mgExit || t.mgRevenge || t.mgFelt); }
+
+function renderMentalGame() {
+  const el = document.getElementById('tab-mental'); if (!el) return;
+  const plan = mgPlan();
+  const all = [...getFilteredTrades()].filter(t => t.date || t.closeDate).sort((a, b) => new Date(a.closeDate || a.date) - new Date(b.closeDate || b.date));
+  const rev = all.filter(mgReviewed);
+  const F = "font-family:'EB Garamond',serif";
+  const money = v => (v >= 0 ? '+' : '−') + '$' + Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 });
+  const fR = v => v === null || !isFinite(v) ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1) + 'R';
+  const fPF = v => v === null ? '—' : v === Infinity ? '∞' : v.toFixed(2);
+  const pct = (a, b) => b ? Math.round(100 * a / b) + '%' : '—';
+  const row = (label, val, col) => `<li><span>${label}</span><b style="color:${col || 'var(--text)'}">${val}</b></li>`;
+
+  // Fear — exits & leftovers
+  const exits = all.filter(t => t.mgExit && t.mgExit !== 'stop');
+  const early = exits.filter(t => t.mgExit === 'before');
+  const lefts = all.filter(t => mgIsWin(t) && parseFloat(t.mgMaxR) > 0).map(t => { const r = mgR(t); return r === null ? 0 : Math.max(0, parseFloat(t.mgMaxR) - r); });
+  const leftSum = lefts.reduce((a, b) => a + b, 0);
+  const closedEarly = all.filter(t => (t.fvTradeMgmt || []).includes('Fully closed early') || (t.mistakes || []).includes('Closed Early')).length;
+  const smallPartial = all.filter(t => Array.isArray(t.partials) && t.partials.length > 1 && (() => { const tot = t.partials.reduce((a, p) => a + _mgNum(p.lots), 0); const first = [...t.partials].sort((a, b) => (a.closeDate || '').localeCompare(b.closeDate || ''))[0]; return tot > 0 && _mgNum(first.lots) / tot < 0.5 - 1e-9; })()).length
+    + all.filter(t => (t.mistakes || []).includes('Partial < 50%') && !(Array.isArray(t.partials) && t.partials.length > 1)).length;
+  // Discipline
+  const graded = all.filter(t => t.entryRating);
+  const notA = graded.filter(t => t.entryRating !== 'A');
+  const notAstats = mgStats(notA);
+  const dumb = all.filter(t => t.outcome === 'Dumb Luck').length;
+  const revenge = all.filter(t => t.mgRevenge === 'yes');
+  const breaks = all.filter(t => !mgRuleFollowed(t) && (mgReviewed(t) || t.followedPlan || (t.mistakes || []).length));
+
+  // by state
+  const st = [['1–2 · CALM', ['1', '2'], 'var(--green)'], ['3 · TENSE', ['3'], '#e0b85a'], ['4–5 · ON FIRE', ['4', '5'], 'var(--red)']].map(([l, vals, c]) => ({ l, c, s: mgStats(all.filter(t => vals.includes(t.mgState))) }));
+  const maxPF = Math.max(1, ...st.map(x => x.s.pf === Infinity ? 3 : (x.s.pf || 0)));
+
+  // account phase
+  const phase = mgAccountPhase(all);
+  const phases = [['In drawdown (below −1%)', p => p !== null && p < -1], ['Around break-even (±1%)', p => p !== null && p >= -1 && p <= 1], ['In profit (above +1%)', p => p !== null && p > 1]].map(([l, fn]) => {
+    const list = all.filter(t => fn(phase.get(t)));
+    const ex = list.filter(t => t.mgExit && t.mgExit !== 'stop');
+    const states = list.map(t => parseInt(t.mgState)).filter(Boolean);
+    return { l, n: list.length, s: mgStats(list), early: ex.length ? pct(ex.filter(t => t.mgExit === 'before').length, ex.length) : '—',
+      breaks: list.filter(t => !mgRuleFollowed(t) && (mgReviewed(t) || t.followedPlan || (t.mistakes || []).length)).length,
+      state: states.length ? (states.reduce((a, b) => a + b, 0) / states.length).toFixed(1) : '—' };
+  });
+
+  // streaks
+  const decided = all.filter(t => mgIsWin(t) || mgIsLoss(t));
+  let cur = 0; for (let k = decided.length - 1; k >= 0 && mgIsLoss(decided[k]); k--) cur++;
+  let longest = 0, run = 0; decided.forEach(t => { run = mgIsLoss(t) ? run + 1 : 0; longest = Math.max(longest, run); });
+  const s0 = mgStats(all); const q = s0.wr !== null ? 1 - s0.wr / 100 : 0.5;
+  const normal = q > 0 && q < 1 ? Math.max(1, Math.round(Math.log(100 * (1 - q)) / -Math.log(q))) : null;
+  // size-up counter: rule-following streak among reviewed trades
+  const target = parseInt(plan.sizeUpTarget) || 25;
+  const reviewedSorted = all.filter(t => mgReviewed(t) || t.followedPlan);
+  let follow = 0; for (let k = reviewedSorted.length - 1; k >= 0 && mgRuleFollowed(reviewedSorted[k]); k--) follow++;
+  // weekly review
+  const wk = mgWeekKey(), weekly = mgWeekly(), thisWeek = weekly[wk] || {};
+  const past = Object.entries(weekly).filter(([k]) => k !== wk).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 6);
+  const wkLabel = d => new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+  const unit = mgRUnit(currentAccount === 'OVERALL' ? null : currentAccount);
+  const ta = (f, rows) => `<textarea class="mg-in mg-ta" rows="${rows || 3}" onchange="mgSavePlanField('${f}',this.value)">${_mgEsc(plan[f])}</textarea>`;
+
+  el.innerHTML = `<div class="mg-tab">${statsPeriodBarHtml()}
+    <div class="chart-card-title" style="margin-bottom:12px">&#9632; MY LEAKS <span class="mg-subt">from every trade review · ${rev.length} trade${rev.length === 1 ? '' : 's'} reviewed with Mental Game</span></div>
+    <div class="mg-grid2">
+      <div class="tl-card tl-active" style="opacity:1;transform:none;background:var(--surface2);border-color:var(--red)">
+        <div class="tl-level" style="color:var(--red)">TOP 1 · ${_mgEsc(plan.top1).toUpperCase()}</div><div class="tl-name" style="color:var(--red)">${_mgEsc(plan.top1Desc.split('—')[0])}</div>
+        <ul class="tl-traits mg-stats">
+          ${row('Exits before the opposing zone', exits.length ? `${early.length} / ${exits.length} · ${pct(early.length, exits.length)}` : '—', early.length ? 'var(--red)' : 'var(--green)')}
+          ${row('R left on the table (winners with max R)', lefts.length ? '−' + leftSum.toFixed(1) + 'R' : '—', leftSum > 0 ? '#e0b85a' : 'var(--text)')}
+          ${row('Fully closed early / closed early', closedEarly, closedEarly ? 'var(--red)' : 'var(--text)')}
+          ${row('First partial under 50%', smallPartial, smallPartial ? 'var(--red)' : 'var(--text)')}
+        </ul>
+      </div>
+      <div class="tl-card tl-active" style="opacity:1;transform:none;background:var(--surface2);border-color:var(--accent)">
+        <div class="tl-level" style="color:var(--accent)">TOP 2 · ${_mgEsc(plan.top2).toUpperCase()}</div><div class="tl-name" style="color:var(--accent)">A setups only</div>
+        <ul class="tl-traits mg-stats">
+          ${row('Trades that were not an A setup', graded.length ? `${notA.length} / ${graded.length}` : '—', notA.length ? 'var(--red)' : 'var(--green)')}
+          ${row('Their result', notA.length ? `${money(notAstats.pnl)} · ${fR(notAstats.avgR)} avg` : '—', notAstats.pnl < 0 ? 'var(--red)' : 'var(--green)')}
+          ${row('Dumb Luck (rule broken, won)', dumb, dumb ? '#e0b85a' : 'var(--text)')}
+          ${row('Revenge trades', revenge.length, revenge.length ? 'var(--red)' : 'var(--text)')}
+        </ul>
+        <span class="tl-badge" style="color:var(--accent);border:1px solid var(--accent)">▶ ${_mgEsc(plan.commitment)}</span>
+      </div>
+    </div>
+
+    <div class="chart-card-title" style="margin:26px 0 12px">&#9632; RESULTS BY STATE <span class="mg-subt">state scored before entry</span></div>
+    <div class="mg-grid3">${st.map(({ l, c, s }) => `<div class="kpi-card"><div class="mg-s">${l}</div>
+      <div class="mg-v" style="color:${s.n ? c : 'var(--muted)'}">PF ${fPF(s.pf)}</div>
+      <div class="mg-d">${s.n ? `${s.n} trade${s.n === 1 ? '' : 's'} · ${s.wr === null ? '—' : Math.round(s.wr) + '% WR'} · ${fR(s.avgR)} avg · ${money(s.pnl)}` : 'No trades scored yet'}</div>
+      <div class="mg-bar"><i style="width:${s.n ? Math.min(100, 100 * ((s.pf === Infinity ? 3 : s.pf || 0) / maxPF)) : 0}%;background:${c}"></i></div></div>`).join('')}</div>
+
+    <div class="chart-card-title" style="margin:26px 0 12px">&#9632; WHEN THE ACCOUNT IS IN PROFIT <span class="mg-subt">account balance before each trade, vs its starting balance</span></div>
+    <table class="mg-tbl"><thead><tr><th>Account</th><th>Trades</th><th>Win rate</th><th>Exits before zone</th><th>Rule breaks</th><th>Avg state</th><th>P&amp;L</th></tr></thead><tbody>
+      ${phases.map(p => `<tr><td>${p.l}</td><td>${p.n}</td><td>${p.s.wr === null ? '—' : Math.round(p.s.wr) + '%'}</td><td>${p.early}</td><td>${p.breaks}</td><td>${p.state}</td><td class="${p.s.pnl >= 0 ? 'pos' : 'neg'}">${p.n ? money(p.s.pnl) : '—'}</td></tr>`).join('')}
+    </tbody></table>
+
+    <div class="mg-grid3" style="margin-top:26px">
+      <div class="kpi-card"><div class="mg-s">LOSING STREAK</div><div class="mg-v">${cur} <small>current · longest ${longest}</small></div>
+        <div class="mg-d">${normal ? `Normal at your ${Math.round(s0.wr)}% win rate: up to ${normal} in a row over 100 trades. ${cur >= normal ? 'You are at the edge of normal — step back and review.' : 'Nothing unusual.'}` : 'Not enough trades yet.'}</div></div>
+      <div class="kpi-card"><div class="mg-s">BEFORE SIZING UP</div><div class="mg-v">${Math.min(follow, target)} / <input type="number" value="${target}" min="5" class="mg-in" style="width:64px;display:inline-block;padding:2px 6px;font-size:1.1rem" onchange="mgSavePlanField('sizeUpTarget',this.value)"></div>
+        <div class="mg-d">rule-following trades in a row (plan followed, no mistakes, no revenge, no early exit) · then +10–20% max</div>
+        <div class="mg-bar"><i style="width:${Math.min(100, 100 * follow / target)}%;background:var(--accent)"></i></div></div>
+      <div class="kpi-card"><div class="mg-s">1R ${currentAccount === 'OVERALL' ? '' : '· ' + currentAccount}</div><div class="mg-v">${unit ? '$' + unit.toFixed(0) : '—'}</div>
+        <div class="mg-d">${currentAccount === 'OVERALL' ? 'Each account uses its own 1R.' : `Your average loss, used to turn P&amp;L into R. Set your own: <input type="number" class="mg-in" style="width:90px;display:inline-block;padding:2px 6px" placeholder="auto" value="${_mgEsc((plan.rUnit || {})[currentAccount] || '')}" onchange="mgSaveRUnit('${currentAccount}',this.value)">`}</div></div>
+    </div>
+
+    <div class="chart-card-title" style="margin:26px 0 12px">&#9632; WEEKEND REVIEW <span class="mg-subt">week of ${wkLabel(wk)}</span></div>
+    <div class="mg-grid3">
+      <div class="kpi-card"><div class="mg-s">PLAN LINES I KEPT</div><textarea class="mg-in mg-ta" rows="3" onchange="mgSaveWeek('${wk}','kept',this.value)">${_mgEsc(thisWeek.kept)}</textarea></div>
+      <div class="kpi-card"><div class="mg-s">PLAN LINES I BROKE</div><textarea class="mg-in mg-ta" rows="3" onchange="mgSaveWeek('${wk}','broken',this.value)">${_mgEsc(thisWeek.broken)}</textarea></div>
+      <div class="kpi-card"><div class="mg-s">ONE PATTERN I SPOTTED</div><textarea class="mg-in mg-ta" rows="3" onchange="mgSaveWeek('${wk}','pattern',this.value)">${_mgEsc(thisWeek.pattern)}</textarea></div>
+    </div>
+    ${past.length ? `<table class="mg-tbl" style="margin-top:10px"><thead><tr><th>Week of</th><th>Kept</th><th>Broke</th><th>Pattern</th></tr></thead><tbody>${past.map(([k, v]) => `<tr><td>${wkLabel(k)}</td><td>${_mgEsc(v.kept || '—')}</td><td>${_mgEsc(v.broken || '—')}</td><td>${_mgEsc(v.pattern || '—')}</td></tr>`).join('')}</tbody></table>` : ''}
+
+    <div class="chart-card-title" style="margin:26px 0 12px;display:flex;align-items:center;gap:10px">&#9632; MY PLAN <span class="mg-subt">edit any line · saved automatically</span><button class="btn" style="margin-left:auto;padding:5px 14px" onclick="mgPrintPlan()">Print</button></div>
+    <div class="mg-plan" id="mgPlanBox">
+      <div><b>My leaks</b><div class="mg-two"><input class="mg-in" value="${_mgEsc(plan.top1)}" onchange="mgSavePlanField('top1',this.value)"><input class="mg-in" value="${_mgEsc(plan.top2)}" onchange="mgSavePlanField('top2',this.value)"></div>
+        <div class="mg-two" style="margin-top:6px"><textarea class="mg-in mg-ta" rows="3" onchange="mgSavePlanField('top1Desc',this.value)">${_mgEsc(plan.top1Desc)}</textarea><textarea class="mg-in mg-ta" rows="3" onchange="mgSavePlanField('top2Desc',this.value)">${_mgEsc(plan.top2Desc)}</textarea></div></div>
+      <div><b>Commitment this month</b>${ta('commitment', 2)}<b style="margin-top:10px">Values</b>${ta('values', 3)}</div>
+      <div><b>Exit rules</b>${ta('exits', 5)}</div>
+      <div><b>Circuit breakers</b>${ta('breakers', 5)}</div>
+      <div><b>Check-in routine</b>${ta('checkin', 5)}</div>
+      <div><b>Size &amp; recovery</b>${ta('size', 2)}<b style="margin-top:10px">If I fail this year, the most likely reason is…</b>${ta('premortem', 2)}</div>
+    </div>
+  </div>`;
+}
+
 function isFollowUpDue(t) {
   if (!t || (t.strategy !== FV_STRATEGY && t.strategy !== AV_STRATEGY) || t.fvValuation !== 'Extreme' || t.fvFollowUp) return false;
   const c = t.closeDate || t.date; if (!c) return false;
@@ -8006,6 +8363,7 @@ function fvFieldsHtml(t, i, gradeBtns, execBtns) {
               <div style="display:flex;gap:6px">${execBtns}</div>
               <div id="rv_xlabel_${i}" style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted);margin-top:4px">${EXEC_LABELS[parseInt(t.execRating)||0]||'Not rated'}</div>
             </div>
+            ${mgExitHtml(t, i)}
             <div class="form-group">
               <label>Trade Management</label>
               <div data-fvgrp="fvTradeMgmt-${i}" style="display:flex;gap:8px;flex-wrap:wrap">${FV_TM_OPTIONS.map(o => fvMultiBtn(i,'fvTradeMgmt',o,o,tm.includes(o))).join('')}</div>
@@ -8063,6 +8421,7 @@ function avFieldsHtml(t, i, gradeBtns, execBtns) {
               <div style="display:flex;gap:6px">${execBtns}</div>
               <div id="rv_xlabel_${i}" style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted);margin-top:4px">${EXEC_LABELS[parseInt(t.execRating)||0]||'Not rated'}</div>
             </div>
+            ${mgExitHtml(t, i)}
             <div class="form-group">
               <label>Trade Management</label>
               <div data-fvgrp="fvTradeMgmt-${i}" style="display:flex;gap:8px;flex-wrap:wrap">${FV_TM_OPTIONS.map(o => fvMultiBtn(i,'fvTradeMgmt',o,o,tm.includes(o))).join('')}</div>
@@ -8192,6 +8551,7 @@ function isFieldsHtml(t, i, gradeBtns, execBtns) {
               <div style="display:flex;gap:6px">${execBtns}</div>
               <div id="rv_xlabel_${i}" style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted);margin-top:4px">${EXEC_LABELS[parseInt(t.execRating)||0]||'Not rated'}</div>
             </div>
+            ${mgExitHtml(t, i)}
             <div class="form-group">
               <label>Trade Management</label>
               <div data-fvgrp="fvTradeMgmt-${i}" style="display:flex;gap:8px;flex-wrap:wrap">${IS_TM_OPTIONS.map(o => fvMultiBtn(i,'fvTradeMgmt',o,o,tm.includes(o))).join('')}</div>
@@ -8244,6 +8604,7 @@ function smFieldsHtml(t, i, gradeBtns, execBtns) {
               <div style="display:flex;gap:6px">${execBtns}</div>
               <div id="rv_xlabel_${i}" style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted);margin-top:4px">${EXEC_LABELS[parseInt(t.execRating)||0]||'Not rated'}</div>
             </div>
+            ${mgExitHtml(t, i)}
             <div class="form-group">
               <label>Trade Management</label>
               <div data-fvgrp="fvTradeMgmt-${i}" style="display:flex;gap:8px;flex-wrap:wrap">${IS_TM_OPTIONS.map(o => fvMultiBtn(i,'fvTradeMgmt',o,o,tm.includes(o))).join('')}</div>
