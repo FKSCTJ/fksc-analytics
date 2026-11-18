@@ -5347,7 +5347,7 @@ function closeCalDayModal() {
 }
 
 function buildAiReviewPane(type, key, tradesArr) {
-  const storageKey = `fx_ai_review_${type}_${key}`;
+  const storageKey = `fx_ai_review_v2_${type}_${key}`;
   const saved = localStorage.getItem(storageKey);
   let savedHtml = saved ? JSON.parse(saved) : null;
   // Invalidate stale cache from old API-based versions
@@ -5452,6 +5452,7 @@ function generateAiReview(type, key) {
     periodTrades = trades.filter(t => { const d = t.closeDate||t.date; return d && months.some(m => d.startsWith(m)); });
   }
 
+  periodTrades = countedTrades(periodTrades);
   if (!periodTrades.length) {
     pane.innerHTML = `<div style="text-align:center;padding:40px;font-family:'EB Garamond',serif;color:var(--muted)">No trades found for this period.</div>`;
     return;
@@ -5562,137 +5563,99 @@ function generateAiReview(type, key) {
       </div>`;
   }
 
-  // ── Build findings ───────────────────────────────────────────────────────────
+  // ── Build findings — based on current strategies, exit rules and mental game ──
   const findings = { strengths:[], weaknesses:[], actions:[], focus:'' };
+  const P = t => parseFloat(t.pnl) || 0;
+  const sum = a => a.reduce((x, t) => x + P(t), 0);
+  const Rof = t => (typeof mgR === 'function' ? mgR(t) : null);
+  const fR = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1) + 'R';
+  const winsR = trueWins.map(Rof).filter(v => v !== null), lossR = trueLosses.map(Rof).filter(v => v !== null);
+  const avgWinR = winsR.length ? winsR.reduce((a, b) => a + b, 0) / winsR.length : null;
+  const avgLossR = lossR.length ? Math.abs(lossR.reduce((a, b) => a + b, 0) / lossR.length) : null;
+  const netR = periodTrades.map(Rof).filter(v => v !== null).reduce((a, b) => a + b, 0);
+  const label = type === 'month' ? 'month' : 'quarter';
 
-  // P&L outcome
-  if (netPnl > 0) findings.strengths.push(`Positive month: net <strong>${fmt$(netPnl)}</strong> across ${periodTrades.length} trades.`);
-  else findings.weaknesses.push(`Negative month: net <strong>${fmt$(netPnl)}</strong>. Capital is moving in the wrong direction.`);
-
-  // Win rate
-  if (wr >= 60) findings.strengths.push(`Strong win rate of <strong>${wr.toFixed(0)}%</strong> — setups are being selected well.`);
-  else if (wr < 40 && (trueWins.length+trueLosses.length) >= 3) findings.weaknesses.push(`Win rate of <strong>${wr.toFixed(0)}%</strong> is below the threshold needed to be profitable at your R:R. You need either higher WR or better R:R.`);
-
-  // R:R
-  if (rr >= 2.5) findings.strengths.push(`Excellent R:R of <strong>${rr.toFixed(2)}</strong> — winners are significantly larger than losers.`);
-  else if (rr < 1 && trueLosses.length >= 2) findings.weaknesses.push(`R:R of <strong>${rr.toFixed(2)}</strong> means your average loss is bigger than your average win. The 3R rule exists to fix this — use it.`);
-
-  // BE analysis
-  if (besSaved.length > 0) findings.strengths.push(`The 1R BE rule <strong>saved ${besSaved.length} trade(s)</strong> from becoming losses — the system is working when followed.`);
-  if (besStopped.length > 0) findings.weaknesses.push(`<strong>${besStopped.length} trade(s)</strong> were stopped at BE after price reversed — consider wider structure-based SL on A-grade zones instead of mechanical 1R.`);
-
-  // Closed early — biggest potential mistake
-  if (closedEarly.length > 0) {
-    const missedR = closedEarly.map(t => {
-      const p = parseFloat(t.pnl)||0;
-      const potentialLoss = trueLosses.length ? avgLoss : 100;
-      const missed = (potentialLoss * 3) - p;
-      return `${t.pair} (closed +${fmt$(p)}, could have been ~${fmt$(potentialLoss*3)})`;
-    });
-    findings.weaknesses.push(`<strong>Closed early on ${closedEarly.length} trade(s)</strong> — you sabotaged your own 3R rule. ${missedR.join(', ')}. This is the single most costly habit to break.`);
-    findings.actions.push(`Never close a trade manually before 3R. If the setup was good enough to enter, trust the exit. Set your TP at 3R the moment you open.`);
+  // Result
+  if (netPnl > 0) findings.strengths.push(`Positive ${label}: <strong>${fmt$(netPnl)}</strong> (${fR(netR)}) across ${periodTrades.length} trade${periodTrades.length === 1 ? '' : 's'}.`);
+  else findings.weaknesses.push(`Negative ${label}: <strong>${fmt$(netPnl)}</strong> (${fR(netR)}) across ${periodTrades.length} trade${periodTrades.length === 1 ? '' : 's'}.`);
+  if (avgWinR !== null && avgLossR) {
+    if (avgWinR / avgLossR >= 2) findings.strengths.push(`Winners average <strong>${fR(avgWinR)}</strong> against <strong>−${avgLossR.toFixed(1)}R</strong> losers — exits are paying.`);
+    else if (avgWinR / avgLossR < 1.2 && trueWins.length >= 2) findings.weaknesses.push(`Winners average only <strong>${fR(avgWinR)}</strong> against <strong>−${avgLossR.toFixed(1)}R</strong> losers — winners are being cut short.`);
   }
 
-  // Moved SL
-  if (movedSL.length > 0) {
-    findings.weaknesses.push(`<strong>Moved SL on ${movedSL.length} trade(s)</strong> (${movedSL.map(t=>t.pair).join(', ')}) — this is a strategy breach. SL is set at entry, moved to BE at 1R, and never touched again.`);
-    findings.actions.push(`Once you set the SL, it has one and only one allowed move: to BE when price hits 1R. Any other SL adjustment is a rule violation.`);
-  }
+  // By strategy
+  const byStrategy = dimBreak(t => t.strategy || 'Standard review');
+  const bestS = byStrategy.filter(r => r.n >= 2 && r.pnl > 0)[0], worstS = byStrategy.filter(r => r.n >= 2 && r.pnl < 0).slice(-1)[0];
+  if (bestS) findings.strengths.push(`<strong>${bestS.label}</strong> is carrying the ${label}: ${fmt$(bestS.pnl)} on ${bestS.n} trades${bestS.wr !== null ? `, ${bestS.wr}% WR` : ''}.`);
+  if (worstS) findings.weaknesses.push(`<strong>${worstS.label}</strong> lost ${fmt$(worstS.pnl)} on ${worstS.n} trades${worstS.wr !== null ? ` (${worstS.wr}% WR)` : ''} — check whether those entries met every confluence.`);
 
-  // Forced setups
-  if (forcedSetups.length > 0) {
-    const forcedPnl = forcedSetups.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
-    findings.weaknesses.push(`<strong>${forcedSetups.length} forced setup(s)</strong> (${forcedSetups.map(t=>t.pair).join(', ')}) — net P&L on these: <strong style="color:${pnlCol(forcedPnl)}">${fmt$(forcedPnl)}</strong>. No setup = no trade.`);
-    findings.actions.push(`If you have to force the analysis to justify an entry, the setup doesn't exist. Walk away.`);
-  }
+  // Outcome — judge the decision, not the result
+  const oc = o => periodTrades.filter(t => t.outcome === o);
+  const dWin = oc('Deserved Win'), bLuck = oc('Bad Luck'), dLuck = oc('Dumb Luck'), dLoss = oc('Deserved Loss');
+  const tagged = dWin.length + bLuck.length + dLuck.length + dLoss.length;
+  if (dWin.length + bLuck.length && tagged) findings.strengths.push(`<strong>${dWin.length + bLuck.length} of ${tagged}</strong> tagged trades were good decisions (Deserved Win or Bad Luck)${bLuck.length ? ` — the ${bLuck.length} Bad Luck loss${bLuck.length > 1 ? 'es are' : ' is'} part of the plan, not a mistake` : ''}.`);
+  if (dLoss.length) { findings.weaknesses.push(`<strong>${dLoss.length} Deserved Loss${dLoss.length > 1 ? 'es' : ''}</strong> (${dLoss.map(t => t.pair).join(', ')}) cost <strong>${fmt$(sum(dLoss))}</strong> — rule breaks, not market.`); }
+  if (dLuck.length) findings.weaknesses.push(`<strong>${dLuck.length} Dumb Luck</strong> win${dLuck.length > 1 ? 's' : ''} (${dLuck.map(t => t.pair).join(', ')}) — a broken rule that paid. Treat it as a rule break.`);
 
+  // Fear of giving back — exits vs the opposing zone
+  const exitTagged = periodTrades.filter(t => t.mgExit && t.mgExit !== 'stop');
+  const early = periodTrades.filter(t => t.mgExit === 'before');
+  const closedEarlyTm = periodTrades.filter(t => (t.fvTradeMgmt || []).includes('Fully closed early') || getMistakes(t).includes('Closed Early') || getMistakes(t).includes('Exit before zone'));
+  const leftR = early.filter(t => parseFloat(t.mgMaxR) > 0).reduce((a, t) => { const r = Rof(t); return a + (r === null ? 0 : Math.max(0, parseFloat(t.mgMaxR) - r)); }, 0);
+  if (early.length || closedEarlyTm.length) {
+    const n = Math.max(early.length, closedEarlyTm.length);
+    findings.weaknesses.push(`<strong>${n} exit${n > 1 ? 's' : ''} before the opposing zone</strong>${exitTagged.length ? ` (${early.length} of ${exitTagged.length} tagged exits)` : ''}${leftR > 0 ? ` — <strong>${leftR.toFixed(1)}R</strong> left on the table` : ''}. This is your Fear leak.`);
+    findings.actions.push('Take 50–66% at the first quality opposing zone, then let the rest run to the next zone or extreme valuation. No exit before the zone except the stop.');
+  } else if (exitTagged.length) findings.strengths.push(`Every tagged exit respected the opposing-zone rule (${exitTagged.length} trade${exitTagged.length > 1 ? 's' : ''}).`);
 
+  // Discipline — A setups only, plan, revenge, mistakes
+  const graded = periodTrades.filter(t => t.entryRating);
+  const notA = graded.filter(t => t.entryRating !== 'A');
+  if (notA.length) {
+    findings.weaknesses.push(`<strong>${notA.length} of ${graded.length}</strong> graded trades were not A setups — result <strong style="color:${pnlCol(sum(notA))}">${fmt$(sum(notA))}</strong>.`);
+    findings.actions.push('A setups only: if a confluence of the strategy is missing, there is no trade.');
+  } else if (graded.length) findings.strengths.push(`Only A setups taken (${graded.length} graded trade${graded.length > 1 ? 's' : ''}).`);
+  if (brokeplan.length) findings.weaknesses.push(`Plan broken on <strong>${brokeplan.length}/${periodTrades.length}</strong> trades — P&L <strong style="color:${pnlCol(sum(brokeplan))}">${fmt$(sum(brokeplan))}</strong>${followedplan.length ? ` vs ${fmt$(sum(followedplan))} when followed` : ''}.`);
+  else if (followedplan.length) findings.strengths.push(`Plan followed on every reviewed trade (${followedplan.length}).`);
+  const revenge = periodTrades.filter(t => t.mgRevenge === 'yes' || getMistakes(t).includes('Revenge'));
+  if (revenge.length) { findings.weaknesses.push(`<strong>${revenge.length} revenge trade${revenge.length > 1 ? 's' : ''}</strong> (${revenge.map(t => t.pair).join(', ')}) — ${fmt$(sum(revenge))}.`); findings.actions.push('After a loss: stop, name it, step away. Only a valid setup from the plan gets the next click.'); }
+  const mCount = {}; periodTrades.forEach(t => getMistakes(t).forEach(x => { mCount[x] = (mCount[x] || 0) + 1; }));
+  const topM = Object.entries(mCount).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  if (topM.length) findings.weaknesses.push(`Most frequent mistake tags: ${topM.map(([k, v]) => `<strong>${k}</strong> ×${v}`).join(', ')}.`);
 
-  // Emotional / impatience
-  if (emotional.length + impatient.length > 0) {
-    const pairs = [...emotional, ...impatient].map(t=>t.pair).filter((v,i,a)=>a.indexOf(v)===i).join(', ');
-    findings.weaknesses.push(`<strong>Emotional/impatience flags on ${emotional.length+impatient.length} trade(s)</strong> (${pairs}) — emotions are overriding the system. Every deviation costs.`);
-  }
+  // State before entry
+  const tense = periodTrades.filter(t => parseInt(t.mgState) >= 3), calm = periodTrades.filter(t => t.mgState && parseInt(t.mgState) <= 2);
+  if (tense.length) findings.weaknesses.push(`<strong>${tense.length} trade${tense.length > 1 ? 's' : ''}</strong> taken at state 3 or higher — ${fmt$(sum(tense))}${calm.length ? ` vs ${fmt$(sum(calm))} when calm` : ''}.`);
+  else if (calm.length) findings.strengths.push(`Every scored trade was taken calm (state 1–2): ${fmt$(sum(calm))}.`);
 
-  // Plan discipline
-  if (followedplan.length > 0 && brokeplan.length === 0) {
-    findings.strengths.push(`<strong>100% plan adherence</strong> — every trade followed the plan. This is the standard to maintain.`);
-  } else if (brokeplan.length > 0) {
-    const brokePnl = brokeplan.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
-    findings.weaknesses.push(`Broke the plan on <strong>${brokeplan.length}/${periodTrades.length} trades</strong>. P&L when breaking plan: <strong style="color:${pnlCol(brokePnl)}">${fmt$(brokePnl)}</strong>.`);
-    if (followedplan.length > 0) {
-      const followedPnl = followedplan.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
-      findings.strengths.push(`P&L when following the plan: <strong style="color:${pnlCol(followedPnl)}">${fmt$(followedPnl)}</strong> — the plan works when respected.`);
-    }
-  }
+  // Review completeness
+  const noOutcome = periodTrades.length - tagged, noState = periodTrades.filter(t => !t.mgState).length;
+  if (noOutcome || noState) findings.actions.push(`Complete the reviews: ${noOutcome ? `${noOutcome} trade${noOutcome > 1 ? 's' : ''} without an Outcome` : ''}${noOutcome && noState ? ', ' : ''}${noState ? `${noState} without a state score` : ''}.`);
 
-  // Grade analysis
-  const gradeA = byGrade.find(g=>g.label==='A');
-  const gradeC = byGrade.find(g=>g.label==='C');
-  if (gradeA && gradeA.n >= 2 && gradeA.pnl > 0) findings.strengths.push(`A-grade entries are profitable: <strong>${fmt$(gradeA.pnl)}</strong> across ${gradeA.n} trades.`);
-  if (gradeC && gradeC.n > 0) {
-    findings.weaknesses.push(`<strong>${gradeC.n} C-grade trade(s)</strong> taken — P&L: <strong style="color:${pnlCol(gradeC.pnl)}">${fmt$(gradeC.pnl)}</strong>. C grades should not be taken.`);
-    findings.actions.push(`Only take A and B grade setups. If it's a C, it's a no-trade.`);
-  }
+  // Single focus — follows the two leaks in My Plan
+  if (early.length || closedEarlyTm.length) findings.focus = 'Hold to the opposing zone: partial there, not before.';
+  else if (notA.length) findings.focus = 'A setups only — every confluence, or no trade.';
+  else if (revenge.length) findings.focus = 'No trade after a loss unless the plan gives a valid setup.';
+  else if (dLoss.length) findings.focus = 'Follow the checklist on entries and exits — every Deserved Loss was avoidable.';
+  else findings.focus = 'Keep executing the checklist — judge decisions, not outcomes.';
 
-  // Trend direction
-  const contTrades = byTrend.find(t=>t.label==='Continuation');
-  const ctrTrades  = byTrend.find(t=>t.label==='Countertrend');
-  if (contTrades && ctrTrades && contTrades.n >= 2 && ctrTrades.n >= 2) {
-    if (contTrades.pnl > 0 && ctrTrades.pnl < 0)
-      findings.strengths.push(`Continuation trades are your edge: <strong>${fmt$(contTrades.pnl)}</strong>. Countertrend is draining: <strong style="color:var(--red)">${fmt$(ctrTrades.pnl)}</strong>. Trade with the HTF trend.`);
-    else if (ctrTrades.pnl > contTrades.pnl)
-      findings.weaknesses.push(`Countertrend P&L (${fmt$(ctrTrades.pnl)}) is outperforming continuation (${fmt$(contTrades.pnl)}) — small sample, don't over-read, but monitor closely.`);
-  }
-
-  // Top performing setup
-  const posSetups = bySetup.filter(s => s.pnl > 0 && s.n >= 2);
-  const negSetups = bySetup.filter(s => s.pnl < 0 && s.n >= 2);
-  if (posSetups.length > 0) findings.strengths.push(`Best performing setup tag: <strong>${posSetups[0].label}</strong> — ${posSetups[0].n} trades, ${fmt$(posSetups[0].pnl)}.`);
-  if (negSetups.length > 0) findings.weaknesses.push(`Worst performing setup tag: <strong>${negSetups[negSetups.length-1].label}</strong> — ${negSetups[negSetups.length-1].n} trades, ${fmt$(negSetups[negSetups.length-1].pnl)}.`);
-
-  // Actions defaults
-  if (findings.actions.length === 0 && findings.weaknesses.length === 0) {
-    findings.actions.push('Maintain current discipline — the system is working.');
-  }
-  if (findings.actions.length < 2 && sl033.length > 0) {
-    findings.actions.push(`${sl033.length} trade(s) had SL below 0.33R — ensure your stop is sized correctly relative to the zone before entering.`);
-  }
-
-  // Focus
-  if (closedEarly.length > 0) findings.focus = 'Stop closing trades early. Set 3R TP at entry and do not touch it.';
-  else if (movedSL.length > 0) findings.focus = 'Stop moving the SL. One move only: to BE when price hits 1R.';
-  else if (forcedSetups.length > 0) findings.focus = 'No more forced entries. If the zone is not clean, there is no trade.';
-  else if (brokeplan.length > periodTrades.length/2) findings.focus = 'Follow the plan on every single trade — no exceptions.';
-  else if (netPnl < 0 && wr < 45) findings.focus = 'Setup selection — only take A and B grade zones aligned with HTF trend.';
-  else findings.focus = 'Maintain discipline and let the system work.';
-
-  // ── Build HTML output ────────────────────────────────────────────────────────
+  // ── Build HTML output ──
   const sectionStyle = `margin-bottom:28px`;
   const h3Style = `font-family:'EB Garamond',serif;font-size:1.05rem;letter-spacing:0.06em;text-transform:uppercase;color:var(--accent);margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)`;
   const liStyle = `margin-bottom:7px;line-height:1.6`;
-
-  const strengthsHtml = findings.strengths.length
-    ? `<ul style="margin:0;padding-left:18px">${findings.strengths.map(s=>`<li style="${liStyle}">${s}</li>`).join('')}</ul>`
-    : `<p style="color:var(--muted);font-style:italic">No clear strengths identified this period — focus on fixing the weaknesses below.</p>`;
-
-  const weaknessesHtml = findings.weaknesses.length
-    ? `<ul style="margin:0;padding-left:18px">${findings.weaknesses.map(s=>`<li style="${liStyle}">${s}</li>`).join('')}</ul>`
-    : `<p style="color:var(--muted);font-style:italic">No major weaknesses flagged — clean period.</p>`;
-
-  const actionsHtml = findings.actions.length
-    ? `<ul style="margin:0;padding-left:18px">${findings.actions.map(s=>`<li style="${liStyle}">${s}</li>`).join('')}</ul>`
-    : `<p style="color:var(--muted);font-style:italic">Keep doing what you're doing.</p>`;
-
+  const strengthsHtml = findings.strengths.length ? `<ul style="margin:0;padding-left:18px">${findings.strengths.map(s=>`<li style="${liStyle}">${s}</li>`).join('')}</ul>` : `<p style="color:var(--muted);font-style:italic">No clear strengths this period.</p>`;
+  const weaknessesHtml = findings.weaknesses.length ? `<ul style="margin:0;padding-left:18px">${findings.weaknesses.map(s=>`<li style="${liStyle}">${s}</li>`).join('')}</ul>` : `<p style="color:var(--muted);font-style:italic">No major weaknesses flagged — clean period.</p>`;
+  const actionsHtml = findings.actions.length ? `<ul style="margin:0;padding-left:18px">${findings.actions.map(s=>`<li style="${liStyle}">${s}</li>`).join('')}</ul>` : `<p style="color:var(--muted);font-style:italic">Keep doing what you're doing.</p>`;
+  const byOutcome = dimBreak(t => t.outcome || null);
+  const EXIT_L = { zone:'At opposing zone', before:'Before opposing zone', stop:'Stopped out', extreme:'Extreme valuation' };
+  const byExit = dimBreak(t => EXIT_L[t.mgExit] || null);
+  const byState = dimBreak(t => t.mgState ? (parseInt(t.mgState) <= 2 ? 'State 1–2 · calm' : parseInt(t.mgState) === 3 ? 'State 3 · tense' : 'State 4–5 · on fire') : null);
   const statsHtml = `
-    ${dimTable(bySetup, 'By Setup Tag')}
-    ${dimTable(byTf, 'By Timeframe')}
-    ${dimTable(byTrend, 'By Trend Direction')}
-    ${dimTable(byGrade, 'By Entry Grade')}
-    ${dimTable(byPair, 'By Pair')}
-    ${dimTable(byDow, 'By Day of Week')}
-    ${dimTable(bySession, 'By Session', 1)}
-    ${dimTable(byPlan, 'By Plan Discipline')}`;
+    ${dimTable(byStrategy, 'By Strategy', 1)}
+    ${dimTable(byOutcome, 'By Outcome', 1)}
+    ${dimTable(byExit, 'By Partial / Exit', 1)}
+    ${dimTable(byState, 'By State Before Entry', 1)}
+    ${dimTable(bySession, 'By Asset Type', 1)}`;
 
   const html = `
     <div style="${sectionStyle}">
@@ -5718,7 +5681,7 @@ function generateAiReview(type, key) {
     </div>`;
 
   // Save and render
-  const storageKey = `fx_ai_review_${type}_${key}`;
+  const storageKey = `fx_ai_review_v2_${type}_${key}`;
   const saveData = { html, date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) };
   localStorage.setItem(storageKey, JSON.stringify(saveData));
 
