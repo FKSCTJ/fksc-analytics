@@ -503,13 +503,13 @@
   .qs-wrap { margin-bottom:22px; }
   .qs-nav { background:none; border:1px solid var(--border); color:var(--text); border-radius:3px; width:24px; height:22px; cursor:pointer; font-size:0.9rem; line-height:1; }
   .qs-nav:disabled { opacity:.35; cursor:default; }
-  .qs-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; padding-top:4px; }
-  .qs-tl:not(.tl-active):hover { border-color:var(--accent) !important; }
+  .qs-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; padding-top:4px; }
+  .qs-tl:not(.tl-active):not(.qs-ytd):hover { border-color:var(--accent) !important; }
   .qs-stats li { display:flex; justify-content:space-between; align-items:baseline; padding-left:10px; margin-bottom:5px; }
   .qs-stats li::before { content:none; }
   .qs-stats li { padding-left:0 !important; }
   .qs-stats li b { font-size:1.15rem; font-variant-numeric:tabular-nums; }
-  @media (max-width:760px){ .qs-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:760px){ .qs-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .qs-ytd { grid-column:1 / -1; } }
   .sp-bar { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-wrap:wrap; margin:-6px 0 12px; font-family:'EB Garamond',serif; }
   .sp-label { font-size:0.85rem; color:var(--muted); margin-right:6px; letter-spacing:0.03em; }
   .sp-dates { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:0.9rem; }
@@ -5845,7 +5845,26 @@ function quarterStrip(quarterMap) {
       <span class="tl-badge" style="background:transparent;color:${acc};border:1px solid ${acc}">${st.pnl >= 0 ? '▲ ' : '▼ '}${_fmtR(st.pnl)} · ${st.n} trade${st.n === 1 ? '' : 's'}</span>
       ${current ? `<div class="tl-you" style="color:${acc}">▶ THIS QUARTER</div>` : ''}
     </div>`;
-  }).join('');
+  }).join('') + (() => {
+    const yt = [1, 2, 3, 4].flatMap(q => (quarterMap[`${_qsYear}-Q${q}`] || {}).trades || []);
+    if (!yt.length) return `<div class="tl-card qs-tl" style="background:var(--surface);border-color:var(--border);opacity:0.35;cursor:default">
+      <div class="tl-level" style="color:var(--muted)">YEAR TO DATE</div><div class="tl-name" style="color:var(--muted)">${_qsYear}</div>
+      <span class="tl-badge" style="background:transparent;color:var(--muted);border:1px solid var(--border)">— No trades</span></div>`;
+    const st = quarterStats(yt);
+    const acc = st.pnl >= 0 ? 'var(--green)' : 'var(--red)';
+    const col = (x, good) => x === null ? 'var(--muted)' : x >= good ? 'var(--green)' : 'var(--red)';
+    const row = (label, val, c) => `<li><span>${label}</span><b style="color:${c}">${val}</b></li>`;
+    return `<div class="tl-card qs-tl qs-ytd" style="cursor:default;opacity:1;background:var(--surface2);border-color:var(--accent)">
+      <div class="tl-level" style="color:var(--accent)">YEAR TO DATE</div>
+      <div class="tl-name" style="color:${acc}">${_qsYear}</div>
+      <ul class="tl-traits qs-stats">
+        ${row('Win rate', fmtV(st.wr, 0, '%'), col(st.wr, 50))}
+        ${row('Profit factor', fmtV(st.pf, 2), col(st.pf, 1))}
+        ${row('R/R', st.rr === null ? '—' : fmtV(st.rr, 2, 'R'), col(st.rr, 1))}
+      </ul>
+      <span class="tl-badge" style="background:transparent;color:${acc};border:1px solid ${acc}">${st.pnl >= 0 ? '▲ ' : '▼ '}${_fmtR(st.pnl)} · ${st.n} trade${st.n === 1 ? '' : 's'}</span>
+    </div>`;
+  })();
   const nav = (dir, y, dis) => years.length > 1 ? `<button class="qs-nav" ${dis ? 'disabled' : ''} onclick="_qsYear=${y};renderMonthlyTab()">${dir}</button>` : '';
   return `<div class="qs-wrap">
     <div class="chart-card-title" style="margin-bottom:12px;display:flex;align-items:center;gap:8px">&#9632; QUARTERS ${nav('‹', years[Math.max(0, yi - 1)], yi <= 0)}<span style="color:var(--accent)">${_qsYear}</span>${nav('›', years[Math.min(years.length - 1, yi + 1)], yi >= years.length - 1)}
@@ -8250,7 +8269,7 @@ function renderMentalGame() {
   }
 
   // in my own words — latest rule breaks with their note
-  const breakTags = t => [mgExitFear(t) && 'Fear partial', t.entryRating && t.entryRating !== 'A' && `${t.entryRating} setup`, t.mgRevenge === 'yes' && 'Revenge'].filter(Boolean);
+  const breakTags = t => [mgExitFear(t) && 'Fear partial', t.entryRating && t.entryRating !== 'A' && `${t.entryRating} setup`, t.mgRevenge === 'yes' && 'Revenge', (t.outcome === 'Dumb Luck' || t.outcome === 'Deserved Loss') && t.outcome].filter(Boolean);
   const broken = all.filter(t => breakTags(t).length).slice(-6).reverse();
   const keyOf = t => _mgEsc((t._account || '') + '|' + (t.date || '') + '|' + t.pair + '|' + t.pnl);
   const dLabel = t => new Date(t.closeDate || t.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
@@ -8291,7 +8310,7 @@ function renderMentalGame() {
         `<li><span>Revenge trades</span><b style="color:${revenge.length ? 'var(--red)' : 'var(--text)'}">${revenge.length}</b></li>`)}
     </div>
 
-    <div class="chart-card-title" style="margin:26px 0 12px">&#9632; IN MY OWN WORDS <span class="mg-subt">latest rule breaks and what I wrote · click to open the review</span></div>
+    <div class="chart-card-title" style="margin:26px 0 12px">&#9632; IN MY OWN WORDS <span class="mg-subt">latest rule breaks — fear partial, B/C setup, revenge, Dumb Luck, Deserved Loss · click to open the review</span></div>
     ${broken.length ? `<div class="mg-words">${broken.map(t => { const r = mgR(t); return `<div class="mg-word" onclick="mgOpenTrade('${keyOf(t)}')">
         <div class="mg-word-h"><span>${dLabel(t)} · <b>${_mgEsc(t.pair)}</b></span>${breakTags(t).map(x => `<span class="mg-tag">${x}</span>`).join('')}<span style="margin-left:auto;color:${col(r)}">${fR(r)}</span></div>
         <div class="mg-word-q">${t.mgFelt ? '“' + _mgEsc(t.mgFelt) + '”' : '<span style="color:var(--muted)">No note — what did you feel, want, and do?</span>'}</div></div>`; }).join('')}</div>`
