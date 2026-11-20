@@ -543,6 +543,9 @@
   .mg-rbox-parts { margin-top:6px; font-family:'EB Garamond',serif; font-size:0.95rem; }
   .mg-rbox-parts div { display:flex; justify-content:space-between; gap:10px; padding:3px 0; border-bottom:1px dashed var(--border); color:var(--muted); }
   .mg-rbox-parts b { font-variant-numeric:tabular-nums; }
+  .ov-unit { display:inline-flex; border:1px solid var(--border); border-radius:3px; overflow:hidden; }
+  .ov-unit button { font-family:'EB Garamond',serif; font-size:0.85rem; padding:3px 12px; background:none; border:none; color:var(--muted); cursor:pointer; }
+  .ov-unit button.on { background:var(--surface2); color:var(--text); }
   .mg-focus { background:var(--surface2); border:1px solid var(--accent); border-radius:6px; padding:16px 18px; }
   .mg-focus-t { font-family:'EB Garamond',serif; font-size:1.45rem; font-weight:700; margin:4px 0 6px; }
   .mg-words { display:grid; gap:8px; }
@@ -749,7 +752,7 @@
       </div>
     </div>
     <div id="dsub-overview" class="dsub active">
-      <div class="chart-card-title" style="margin-bottom:12px">&#9632; KPI'S</div>
+      <div class="chart-card-title" style="margin-bottom:12px;display:flex;align-items:center">&#9632; KPI'S<span id="ovUnitSw" class="ov-unit" style="margin-left:auto"></span></div>
       <div class="kpi-grid" id="kpiGrid"></div>
       <div style="margin-bottom:24px">
         <div class="chart-card-title" style="margin-bottom:12px">&#9632; EQUITY CURVE</div>
@@ -2544,6 +2547,33 @@ function renderTraderLevel(s, arr) {
     <div class="tl-wrap">${cards}</div>`;
 }
 
+function ovUnit() { try { return localStorage.getItem('fx_ov_unit') || 'R'; } catch (e) { return 'R'; } }
+function setOvUnit(u) { try { localStorage.setItem('fx_ov_unit', u); } catch (e) {} if (typeof renderOverviewFiltered === 'function') renderOverviewFiltered(); else renderDashboard(); }
+function renderOverviewR(s, arr, balInputHtml, totalFundingHtml, pnlPct) {
+  const list = countedTrades(arr);
+  const r = t => mgR(t) || 0;
+  const W = list.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl, undefined, t));
+  const L = list.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl, undefined, t));
+  const net = arr.reduce((a, t) => a + r(t), 0);
+  const gw = W.reduce((a, t) => a + r(t), 0), gl = Math.abs(L.reduce((a, t) => a + r(t), 0));
+  const aw = W.length ? gw / W.length : 0, al = L.length ? gl / L.length : 0;
+  const dec = W.length + L.length;
+  const exp = dec ? (W.length / dec) * aw - (L.length / dec) * al : 0;
+  const pf = gl > 0 ? (gw / gl) : null, rr = al > 0 ? aw / al : null;
+  let cum = 0, peak = 0, dd = 0;
+  [...arr].sort((a, b) => (a.closeDate || a.date || '').localeCompare(b.closeDate || b.date || '')).forEach(t => { cum += r(t); peak = Math.max(peak, cum); dd = Math.max(dd, peak - cum); });
+  const avgR = list.length ? list.reduce((a, t) => a + r(t), 0) / list.length : 0;
+  const netCard = `<div class="kpi-card"><div class="kpi-card-icon">◉ NET R</div><div class="kpi-card-value ${net>=0?'pos':'neg'}">${_fmtR(net)}</div><div class="kpi-card-sub">${s.total} trades${pnlPct}</div><div class="kpi-card-comment">${net>=0?'Positive — keep executing the plan':'Negative — review losing setups'}</div>${balInputHtml}${totalFundingHtml}</div>`;
+  document.getElementById('kpiGrid').innerHTML =
+    netCard +
+    kpiCard('◉','Win Rate',`${s.winRate}%`,parseFloat(s.winRate)>=50?'pos':'neg',`${s.wins}W / ${s.losses}L${s.be?` / ${s.be}BE`:''}`,getComment('winRate',s.winRate)) +
+    kpiCard('◇','Profit Factor',pf===null?'—':pf.toFixed(2),pf>=1.5?'pos':pf>=1?'warn':'neg',`${_fmtR(gw)} / ${_fmtR(-gl)}`,pf===null?'—':getComment('profitFactor',pf.toFixed(2))) +
+    kpiCard('◈','R:R Ratio',rr===null?'—':`${rr.toFixed(2)}:1`,rr>=1.5?'hi':'warn',`Avg Win ${_fmtR(aw)} · Avg Loss ${_fmtR(-al)}`,rr===null?'—':getComment('rr',rr.toFixed(2))) +
+    kpiCard('△','Max Drawdown',`${dd.toFixed(2)}R`,'neg','Peak to trough',dd>=10?'Deep drawdown — reduce risk until it recovers':dd>=5?'Meaningful drawdown — stay on A setups':'Contained drawdown') +
+    kpiCard('⚡','Expectancy',_fmtR(exp),exp>0?'pos':'neg','Expected R per trade',exp>0?`Every trade has a ${_fmtR(exp)} edge — volume amplifies this`:'Negative expectancy — fix your edge first') +
+    kpiCard('◌','Avg R-Multiple',_fmtR(avgR),avgR>=1?'pos':'warn','Risk-adjusted return',getComment('avgR',avgR.toFixed(2))) +
+    kpiCard('◈','Recovery Factor',dd>0?(net/dd).toFixed(2):'—','hi','Net R / Max DD','Above 2.0 is excellent resilience');
+}
 function renderOverview(s, filteredArr) {
   const pnl=parseFloat(s.totalPnl);
   const sorted = [...trades].sort((a,b)=>new Date(a.date)-new Date(b.date));
@@ -2577,9 +2607,13 @@ function renderOverview(s, filteredArr) {
     </div>`;
   })() : '';
 
-  const netPnlCard = `<div class="kpi-card"><div class="kpi-card-icon">◉ NET P&L</div><div class="kpi-card-value ${pnl>=0?'pos':'neg'}">$${pnl>=0?'+':'−'}${s.totalPnl}</div><div class="kpi-card-sub">${s.total} trades${pnlPct}</div><div class="kpi-card-comment">${getComment('pnl',pnl)}</div>${balInputHtml}${totalFundingHtml}</div>`;
+  const netPnlCard = `<div class="kpi-card"><div class="kpi-card-icon">◉ NET P&L</div><div class="kpi-card-value ${pnl>=0?'pos':'neg'}">${pnl>=0?'+':'−'}$${Math.abs(pnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="kpi-card-sub">${s.total} trades${pnlPct}</div><div class="kpi-card-comment">${getComment('pnl',pnl)}</div>${balInputHtml}${totalFundingHtml}</div>`;
 
-  document.getElementById('kpiGrid').innerHTML=
+  const arrR = filteredArr || trades;
+  const sw = document.getElementById('ovUnitSw');
+  if (sw) sw.innerHTML = ['R','$'].map(u => `<button class="${ovUnit()===u?'on':''}" onclick="setOvUnit('${u}')">${u}</button>`).join('');
+  if (ovUnit() === 'R') { renderOverviewR(s, arrR, balInputHtml, totalFundingHtml, pnlPct); }
+  else document.getElementById('kpiGrid').innerHTML=
     netPnlCard+
     kpiCard('◉','Win Rate',`${s.winRate}%`,parseFloat(s.winRate)>=50?'pos':'neg',`${s.wins}W / ${s.losses}L${s.be?` / ${s.be}BE`:''}`,getComment('winRate',s.winRate))+
     kpiCard('◇','Profit Factor',s.profitFactor,parseFloat(s.profitFactor)>=1.5?'pos':parseFloat(s.profitFactor)>=1?'warn':'neg',`$${s.grossWin} / $${s.grossLoss}`,getComment('profitFactor',s.profitFactor))+
@@ -2615,7 +2649,9 @@ function renderOverview(s, filteredArr) {
   mkChart('weeklyPnlCanvas',{type:'bar',data:{labels:weeks.map(([w])=>fmtWeek(w)),datasets:[{data:weeks.map(([,v])=>parseFloat(v.toFixed(2))),backgroundColor:weeks.map(([,v])=>v>0?'rgba(0,229,160,0.75)':v<0?'rgba(232,85,85,0.75)':'rgba(255,255,255,0.1)'),borderRadius:3}]},options:{...CD,scales:{...CD.scales,y:{...CD.scales.y,ticks:{...CD.scales.y.ticks,callback:v=>`$${v}`}}}}});
 
   // Volatility & Distribution stats for overview
-  const pnlsOv = arr.map(t=>parseFloat(t.pnl)||0);
+  const inR = ovUnit() === 'R';
+  const pnlsOv = arr.map(t=> inR ? (mgR(t)||0) : (parseFloat(t.pnl)||0));
+  const $f = (v, sign) => inR ? (sign ? _fmtR(v) : Math.abs(v).toFixed(2)+'R') : (sign ? `${v>=0?'+':'−'}$${Math.abs(v).toFixed(0)}` : `$${Math.abs(v).toFixed(0)}`);
   const nOv = pnlsOv.length;
   const avgPnlOv = nOv ? pnlsOv.reduce((a,v)=>a+v,0)/nOv : 0;
   const varianceOv = nOv>1 ? pnlsOv.reduce((a,v)=>a+Math.pow(v-avgPnlOv,2),0)/(nOv-1) : 0;
@@ -2632,12 +2668,12 @@ function renderOverview(s, filteredArr) {
   const winLossRatio = avgLossOv > 0 ? (avgWinOv/avgLossOv).toFixed(2) : '—';
   const volEl = document.getElementById('kpiVolatilityOverview');
   if (volEl) volEl.innerHTML =
-    kpiCard('σ','P&L Std Deviation',`$${stdDevOv.toFixed(0)}`,'hi','Total volatility of returns',stdDevOv<avgPnlOv*2?'Low volatility relative to avg — consistent results':'High variance — results unpredictable')+
-    kpiCard('↓','Downside Std Dev',`$${downsideStdOv.toFixed(0)}`,'warn','Volatility of losing trades only',downsideStdOv<stdDevOv*0.7?'Losses tighter than wins — great asymmetry':'Downside as volatile as upside')+
-    kpiCard('◉','Avg P&L Per Trade',`${avgPnlOv>=0?'+':'−'}$${Math.abs(avgPnlOv).toFixed(0)}`,avgPnlOv>=0?'pos':'neg','Expected value each time you trade',avgPnlOv>0?`Positive expectancy — keep executing`:`Negative expectancy — review your edge`)+
-    kpiCard('▲','Largest Win',`$${largestWin.toFixed(0)}`,'pos','Single best trade result',`Your best single trade returned $${largestWin.toFixed(0)}`)+
-    kpiCard('▼','Largest Loss',`$${Math.abs(largestLoss).toFixed(0)}`,'neg','Single worst trade result',`Your worst single trade lost $${Math.abs(largestLoss).toFixed(0)}`)+
-    kpiCard('÷','Win/Loss $ Ratio',winLossRatio==='—'?'—':`${winLossRatio}:1`,winLossRatio!=='—'&&parseFloat(winLossRatio)>=1.5?'pos':winLossRatio!=='—'&&parseFloat(winLossRatio)>=1?'warn':'neg','Avg win $ vs avg loss $ (Payoff Ratio)',winLossRatio!=='—'&&parseFloat(winLossRatio)>=2?'Excellent payoff ratio — wins are much larger than losses':winLossRatio!=='—'&&parseFloat(winLossRatio)>=1?'Positive payoff — wins exceed losses':'Losses outsize wins — needs improvement');
+    kpiCard('σ',inR?'R Std Deviation':'P&L Std Deviation',$f(stdDevOv),'hi','Total volatility of returns',stdDevOv<avgPnlOv*2?'Low volatility relative to avg — consistent results':'High variance — results unpredictable')+
+    kpiCard('↓','Downside Std Dev',$f(downsideStdOv),'warn','Volatility of losing trades only',downsideStdOv<stdDevOv*0.7?'Losses tighter than wins — great asymmetry':'Downside as volatile as upside')+
+    kpiCard('◉',inR?'Avg R Per Trade':'Avg P&L Per Trade',$f(avgPnlOv,1),avgPnlOv>=0?'pos':'neg','Expected value each time you trade',avgPnlOv>0?`Positive expectancy — keep executing`:`Negative expectancy — review your edge`)+
+    kpiCard('▲','Largest Win',$f(largestWin),'pos','Single best trade result',`Your best single trade returned ${$f(largestWin)}`)+
+    kpiCard('▼','Largest Loss',$f(largestLoss,1),'neg','Single worst trade result',`Your worst single trade lost ${$f(largestLoss)}`)+
+    kpiCard('÷',inR?'Win/Loss R Ratio':'Win/Loss $ Ratio',winLossRatio==='—'?'—':`${winLossRatio}:1`,winLossRatio!=='—'&&parseFloat(winLossRatio)>=1.5?'pos':winLossRatio!=='—'&&parseFloat(winLossRatio)>=1?'warn':'neg',inR?'Avg win R vs avg loss R (Payoff Ratio)':'Avg win $ vs avg loss $ (Payoff Ratio)',winLossRatio!=='—'&&parseFloat(winLossRatio)>=2?'Excellent payoff ratio — wins are much larger than losses':winLossRatio!=='—'&&parseFloat(winLossRatio)>=1?'Positive payoff — wins exceed losses':'Losses outsize wins — needs improvement');
 
   document.getElementById('kpiDefs').innerHTML=[
     {icon:'◉',c:'rgba(0,229,160,0.15)',t:'Win Rate',d:'% of trades that are profitable. Above 50% is solid, but a low win rate with high R:R can still be profitable.'},
@@ -3099,8 +3135,8 @@ function renderEquityTab(s, filteredArr){
   window._costsArr = arr;
   document.getElementById('kpiEquity').innerHTML=
     kpiCard('$','Total Commission',`$${Math.abs(totalComm).toFixed(2)}`,totalComm<=0?'neg':'pos',`${s.total} trades`,totalComm<0?'Costs eating into profits — factor into edge calculation':'No commission recorded')+
-    kpiCard('↺','Total Swap',`$${totalSwap>=0?'+':'−'}${totalSwap.toFixed(2)}`,totalSwap>=0?'pos':'neg','Overnight financing',totalSwap<0?'Negative swap — avoid holding overnight where possible':'Positive swap — carry trade benefit')+
-    kpiCard('◈','Total Costs',`${totalCosts>=0?'+':'−'}$${totalCosts.toFixed(2)}`,totalCosts>=0?'pos':'neg',`${costsPct !== '—' ? costsPct+'% of net P&L' : 'No P&L yet'}`,`Comm + Swap · Net P&L ${pnlEq>=0?'+':'−'}$${pnlEq.toFixed(2)}`);
+    kpiCard('↺','Total Swap',`${totalSwap>=0?'+':'−'}$${Math.abs(totalSwap).toFixed(2)}`,totalSwap>=0?'pos':'neg','Overnight financing',totalSwap<0?'Negative swap — avoid holding overnight where possible':'Positive swap — carry trade benefit')+
+    kpiCard('◈','Total Costs',`${totalCosts>=0?'+':'−'}$${Math.abs(totalCosts).toFixed(2)}`,totalCosts>=0?'pos':'neg',`${costsPct !== '—' ? costsPct+'% of net P&L' : 'No P&L yet'}`,`Comm + Swap · Net P&L ${pnlEq>=0?'+':'−'}$${Math.abs(pnlEq).toFixed(2)}`);
   // make the three cost cards open the per-trade breakdown
   const costCards = document.querySelectorAll('#kpiEquity .kpi-card');
   ['comm','swap','all'].forEach((k, n) => {
@@ -3807,8 +3843,9 @@ function renderReviewList() {
         <span class="rv-card-pair">${t.pair||'—'}</span>
         <span style="flex-shrink:0;width:46px;display:inline-flex;justify-content:center"><span class="badge badge-${t.direction||'buy'}" style="font-size:0.9rem;min-width:36px;text-align:center">${(t.direction||'').toUpperCase()}</span></span>
         <span style="flex-shrink:0;width:50px;display:inline-flex;justify-content:center">${resBadge}</span>
-        ${showPnlLots ? `<span class="rv-card-pnl" style="color:${pnlCol}">${pnl>=0?'+':'−'}$${Math.abs(pnl).toFixed(2)}</span>` : ''}
-        ${showPnlLots ? `<span class="rv-card-meta">${t.lots||''} lots${Array.isArray(t.partials)&&t.partials.length>1?` · ${t.partials.length} closes`:''}</span>` : ''}
+        <span class="rv-card-pnl" style="color:${pnlCol}" title="${pnl>=0?'+':'−'}$${Math.abs(pnl).toFixed(2)}">${(()=>{ const r = mgR(t); return r === null ? (pnl>=0?'+':'−')+'$'+Math.abs(pnl).toFixed(0) : _fmtR(r); })()}</span>
+        ${Array.isArray(t.partials)&&t.partials.length>1?`<span class="rv-card-meta">${t.partials.length} closes</span>`:''}
+        <span style="flex-shrink:0;width:108px;display:inline-flex;justify-content:center">${t.outcome && OUTCOME_COLORS[t.outcome] ? `<span style="font-family:'EB Garamond',serif;font-size:0.8rem;letter-spacing:0.04em;padding:2px 8px;border-radius:3px;border:1px solid ${OUTCOME_COLORS[t.outcome]};color:${OUTCOME_COLORS[t.outcome]};white-space:nowrap">${t.outcome}</span>` : ''}</span>
         <span style="flex-shrink:0;width:24px;display:inline-flex;justify-content:center" id="rv_gbadge_${i}">${t.entryRating ? `<span class="grade-badge grade-active-${t.entryRating}">${t.entryRating}</span>` : ''}</span>
         <span style="flex-shrink:0;width:28px;display:inline-flex;justify-content:center" id="rv_sbadge_${i}">${(()=>{ const sc=calcTradeScore(t); if(!sc) return ''; const col=sc>=70?'#6dbf9e':sc>=45?'#7bafd4':'#e85555'; return `<span class="grade-badge" style="background:${col};color:#0a1220;font-size:0.9rem;opacity:0.9">${sc}</span>`; })()}</span>
         <span style="flex-shrink:0;width:16px;text-align:center;color:${planCol};font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700">${planIcon}</span>
@@ -5022,7 +5059,7 @@ function renderMonthlyTab() {
     if (!qd) return '';
     const { trades: qt, yr, q } = qd;
     const qc = countedTrades(qt);
-    const pnl    = qt.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
+    const pnl    = qt.reduce((a,t)=>a+(mgR(t)||0),0);
     const wins   = qc.filter(t=>(parseFloat(t.pnl)||0)>0 && !isBreakEven(t.pnl, undefined, t)).length;
     const losses = qc.filter(t=>(parseFloat(t.pnl)||0)<0 && !isBreakEven(t.pnl, undefined, t)).length;
     const beCount= qc.filter(t=>isBreakEven(parseFloat(t.pnl)||0, undefined, t)).length;
@@ -5032,33 +5069,33 @@ function renderMonthlyTab() {
     const qKey   = `${yr}-Q${q}`;
 
     // Stats
-    const avgWin  = wins   ? qc.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0)/wins : 0;
-    const avgLoss = losses ? Math.abs(qc.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0)/losses) : 0;
+    const avgWin  = wins   ? qc.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(mgR(t)||0),0)/wins : 0;
+    const avgLoss = losses ? Math.abs(qc.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(mgR(t)||0),0)/losses) : 0;
     const rr      = avgLoss > 0 ? (avgWin/avgLoss).toFixed(2) : '—';
-    const exp     = avgLoss > 0 ? ((wins/(denom||1))*avgWin - (losses/(denom||1))*avgLoss).toFixed(0) : '—';
-    const grossWin  = qc.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
-    const grossLoss = Math.abs(qc.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0));
+    const exp     = avgLoss > 0 ? ((wins/(denom||1))*avgWin - (losses/(denom||1))*avgLoss) : '—';
+    const grossWin  = qc.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(mgR(t)||0),0);
+    const grossLoss = Math.abs(qc.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(mgR(t)||0),0));
     const pf        = grossLoss > 0 ? (grossWin/grossLoss).toFixed(2) : '—';
-    const swap      = qt.reduce((a,t)=>a+(parseFloat(t.swap)||0),0);
+    const swap      = qt.reduce((a,t)=>a+(parseFloat(t.swap)||0),0), swapR = qt.reduce((a,t)=>{const u=mgTradeRUnit(t);return a+(u>0?(parseFloat(t.swap)||0)/u:0);},0), commR = qt.reduce((a,t)=>{const u=mgTradeRUnit(t);return a+(u>0?(parseFloat(t.commission)||0)/u:0);},0);
     const comm      = qt.reduce((a,t)=>a+(parseFloat(t.commission)||0),0);
     const scores    = qc.map(t=>calcTradeScore(t)).filter(s=>s!==null);
     const avgScore  = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(0) : '—';
 
     const statsHtml = `
       <div class="kpi-grid" style="margin-bottom:16px">
-        ${kpiCard('◉','Net P&L',`${pnl>=0?'+':'−'}$${Math.abs(pnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`,pnl>=0?'pos':'neg',`${qc.length} trades`,`${wins}W · ${losses}L${beCount>0?` · ${beCount}BE`:''}`)}
+        ${kpiCard('◉','Net R',`${_fmtR(pnl)}`,pnl>=0?'pos':'neg',`${qc.length} trades`,`${wins}W · ${losses}L${beCount>0?` · ${beCount}BE`:''}`)}
         ${kpiCard('◎','Win Rate',`${wr}%`,parseInt(wr)>=50?'pos':'neg',`${wins}W / ${losses}L${beCount>0?` · ${beCount}BE`:''}`,parseInt(wr)>=50?'Strong quarter':'Needs review')}
-        ${kpiCard('⇄','Risk / Reward',rr!=='—'?`${rr}R`:'—',parseFloat(rr)>=1?'pos':'neg',`Avg win $${avgWin.toFixed(0)} · Avg loss $${avgLoss.toFixed(0)}`,'')}
-        ${kpiCard('⚡','Expectancy',exp!=='—'?`$${exp}`:'—',parseFloat(exp)>=0?'pos':'neg','Per trade avg','')}
+        ${kpiCard('⇄','Risk / Reward',rr!=='—'?`${rr}R`:'—',parseFloat(rr)>=1?'pos':'neg',`Avg win ${_fmtR(avgWin)} · Avg loss ${_fmtR(-avgLoss)}`,'')}
+        ${kpiCard('⚡','Expectancy',exp!=='—'?_fmtR(exp):'—',parseFloat(exp)>=0?'pos':'neg','Per trade avg','')}
       </div>
       <div class="kpi-grid" style="margin-bottom:16px">
-        ${kpiCard('▲','Gross Win',`+$${grossWin.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`,'pos',`${wins} winning trades`,'')}
-        ${kpiCard('▼','Gross Loss',`-$${grossLoss.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`,'neg',`${losses} losing trades`,'')}
+        ${kpiCard('▲','Gross Win',_fmtR(grossWin),'pos',`${wins} winning trades`,'')}
+        ${kpiCard('▼','Gross Loss',_fmtR(-grossLoss),'neg',`${losses} losing trades`,'')}
         ${kpiCard('◈','Profit Factor',pf!=='—'?pf:'—',parseFloat(pf)>=1?'pos':'neg','Gross win / Gross loss','')}
         ${kpiCard('★','Avg Score',avgScore!=='—'?avgScore:'—',parseInt(avgScore)>=70?'pos':parseInt(avgScore)>=45?'hi':'neg',`${scores.length} graded trades`,'')}
       </div>
       <div class="kpi-grid" style="margin-bottom:16px">
-        ${kpiCard('⇌','Swap + Comm',`${(swap+comm)>=0?'+':'−'}$${(swap+comm).toFixed(0)}`,swap+comm>=0?'pos':'neg',`Swap $${swap.toFixed(0)} · Comm $${comm.toFixed(0)}`,'')}
+        ${kpiCard('⇌','Swap + Comm',`${(swap+comm)>=0?'+':'−'}$${Math.abs(swap+comm).toFixed(0)}`,swap+comm>=0?'pos':'neg',`Swap $${swap.toFixed(0)} · Comm $${comm.toFixed(0)}`,'')}
       </div>
       ${outcomeStripHtml(qc)}
       <div class="chart-card" style="margin-bottom:0">
@@ -5091,7 +5128,7 @@ function renderMonthlyTab() {
         <span class="rv-card-meta">${qc.length} trades</span>
         <span style="font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700;color:${parseInt(wr)>=50?'var(--green)':'var(--red)'};margin-left:8px">${wr}% WR</span>
         <span class="rv-card-meta" style="margin-left:8px;white-space:nowrap">${wins}W / ${losses}L${beCount>0?` · <span style="color:var(--muted)">${beCount}BE</span>`:''}</span>
-        <span style="font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700;color:${pnlCol};margin-left:auto">${pnl>=0?'+':'−'}$${Math.abs(pnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+        <span style="font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700;color:${pnlCol};margin-left:auto">${_fmtR(pnl)}</span>
         <span class="rv-card-chevron" style="margin-left:12px">▼</span>
       </div>
       <div class="rv-card-body" id="qrb-${qKey}" style="padding:20px">
@@ -5134,7 +5171,7 @@ function renderMonthlyTab() {
       return d && d.startsWith(ym);
     });
     const monthCounted = countedTrades(monthTrades);
-    const netPnl = monthTrades.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
+    const netPnl = monthTrades.reduce((a,t)=>a+(mgR(t)||0),0);
     const wins   = monthCounted.filter(t=>(parseFloat(t.pnl)||0)>0 && !isBreakEven(t.pnl, undefined, t)).length;
     const losses = monthCounted.filter(t=>(parseFloat(t.pnl)||0)<0 && !isBreakEven(t.pnl, undefined, t)).length;
     const beCount= monthCounted.filter(t=>isBreakEven(t.pnl, undefined, t)).length;
@@ -5152,7 +5189,7 @@ function renderMonthlyTab() {
         <span class="rv-card-meta">${monthCounted.length} trades</span>
         <span style="font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700;color:${parseInt(wr)>=50?'var(--green)':'var(--red)'};margin-left:8px">${wr}% WR</span>
         <span class="rv-card-meta" style="margin-left:8px;white-space:nowrap">${wins}W / ${losses}L${beCount>0?` · <span style="color:var(--muted)">${beCount}BE</span>`:''}</span>
-        <span style="font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700;color:${pnlCol};margin-left:auto">${pnlSign}$${Math.abs(netPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+        <span style="font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700;color:${pnlCol};margin-left:auto">${_fmtR(netPnl)}</span>
 
         <span class="rv-card-chevron" style="margin-left:12px">▼</span>
       </div>
@@ -5177,7 +5214,7 @@ function buildMonthBody(ym, yr, mo, monthTrades) {
     if (!closeD) return;
     const day = parseInt(closeD.split('-')[2]);
     if (!dayMap[day]) dayMap[day] = { pnl:0, n:0, trades:[], tradeRefs:[] };
-    dayMap[day].pnl += parseFloat(t.pnl)||0;
+    dayMap[day].pnl += mgR(t)||0;
     { const ref = trades.indexOf(t._src || t); if (!dayMap[day].tradeRefs.includes(ref)) dayMap[day].tradeRefs.push(ref); }
     (dayMap[day].keys = dayMap[day].keys || new Set()).add(tradeGroupKey(t));
     dayMap[day].n = dayMap[day].keys.size;
@@ -5196,7 +5233,7 @@ function buildMonthBody(ym, yr, mo, monthTrades) {
     if (data) {
       const cls = data.pnl>=0?'pos':'neg';
       const sign = data.pnl>=0?'+':'';
-      inner += `<div class="cal-pnl ${cls}">${sign}$${Math.abs(data.pnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`;
+      inner += `<div class="cal-pnl ${cls}">${_fmtR(data.pnl)}</div>`;
       inner += `<div class="cal-trades">Trades: ${data.n}</div>`;
       if (data.trades.length) {
         const maxDays = Math.max(...data.trades);
@@ -5213,7 +5250,7 @@ function buildMonthBody(ym, yr, mo, monthTrades) {
 
   // Stats
   const mc = countedTrades(monthTrades);
-  const netPnl = monthTrades.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
+  const netPnl = monthTrades.reduce((a,t)=>a+(mgR(t)||0),0);
   const wins = mc.filter(t=>(parseFloat(t.pnl)||0)>0 && !isBreakEven(t.pnl, undefined, t)).length;
   const losses = mc.filter(t=>(parseFloat(t.pnl)||0)<0 && !isBreakEven(t.pnl, undefined, t)).length;
   const beCount = mc.filter(t=>isBreakEven(parseFloat(t.pnl)||0, undefined, t)).length;
@@ -5221,14 +5258,14 @@ function buildMonthBody(ym, yr, mo, monthTrades) {
   const tradingDays = Object.keys(dayMap).length;
 
   // Stats panel — mirrors overview KPIs for this month
-  const avgWin  = wins   ? mc.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0)/wins : 0;
-  const avgLoss = losses ? Math.abs(mc.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0)/losses) : 0;
+  const avgWin  = wins   ? mc.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(mgR(t)||0),0)/wins : 0;
+  const avgLoss = losses ? Math.abs(mc.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(mgR(t)||0),0)/losses) : 0;
   const rr      = avgLoss > 0 ? (avgWin/avgLoss).toFixed(2) : '—';
-  const exp     = avgLoss > 0 ? ((wins/(wins+losses||1))*avgWin - (losses/(wins+losses||1))*avgLoss).toFixed(0) : '—';
-  const grossWin  = mc.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
-  const grossLoss = Math.abs(mc.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(parseFloat(t.pnl)||0),0));
+  const exp     = avgLoss > 0 ? ((wins/(wins+losses||1))*avgWin - (losses/(wins+losses||1))*avgLoss) : '—';
+  const grossWin  = mc.filter(t=>(parseFloat(t.pnl)||0)>0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(mgR(t)||0),0);
+  const grossLoss = Math.abs(mc.filter(t=>(parseFloat(t.pnl)||0)<0&&!isBreakEven(t.pnl, undefined, t)).reduce((a,t)=>a+(mgR(t)||0),0));
   const pf = grossLoss > 0 ? (grossWin/grossLoss).toFixed(2) : '—';
-  const swap = monthTrades.reduce((a,t)=>a+(parseFloat(t.swap)||0),0);
+  const swap = monthTrades.reduce((a,t)=>a+(parseFloat(t.swap)||0),0), swapR = monthTrades.reduce((a,t)=>{const u=mgTradeRUnit(t);return a+(u>0?(parseFloat(t.swap)||0)/u:0);},0), commR = monthTrades.reduce((a,t)=>{const u=mgTradeRUnit(t);return a+(u>0?(parseFloat(t.commission)||0)/u:0);},0);
   const comm = monthTrades.reduce((a,t)=>a+(parseFloat(t.commission)||0),0);
   const scores = mc.map(t=>calcTradeScore(t)).filter(s=>s!==null);
   const avgScore = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(0) : '—';
@@ -5240,21 +5277,21 @@ function buildMonthBody(ym, yr, mo, monthTrades) {
 
   const statsHtml = `
     <div class="kpi-grid" style="margin-bottom:16px">
-      ${kpiCard('◉','Net P&L',`${netPnl>=0?'+':'−'}$${Math.abs(netPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`,netPnl>=0?'pos':'neg',`${mc.length} trades · ${tradingDays} days`,netPnl>=0?`Averaging ${mc.length?`$${(netPnl/mc.length).toFixed(0)} per trade`:''}  — keep executing`:'Net negative — review losing setups')}
+      ${kpiCard('◉','Net R',`${_fmtR(netPnl)}`,netPnl>=0?'pos':'neg',`${mc.length} trades · ${tradingDays} days`,netPnl>=0?`Averaging ${mc.length?`${_fmtR(netPnl/mc.length)} per trade`:''}  — keep executing`:'Net negative — review losing setups')}
       ${kpiCard('◎','Win Rate',`${wr}%`,parseInt(wr)>=50?'pos':'neg',`${wins}W / ${losses}L${beCount>0?` · ${beCount}BE`:''}`,getComment('winRate',wr))}
-      ${kpiCard('⇄','Risk / Reward',rr!=='—'?`${rr}R`:'—',parseFloat(rr)>=1?'pos':'neg',`Avg win $${avgWin.toFixed(0)} · Avg loss $${avgLoss.toFixed(0)}`,rr!=='—'?getComment('rr',rr):'No decided trades yet')}
-      ${kpiCard('⚡','Expectancy',exp!=='—'?`${parseFloat(exp)>=0?'+':'−'}$${Math.abs(parseFloat(exp)).toFixed(0)}`:'—',parseFloat(exp)>=0?'pos':'neg','Per trade avg',exp!=='—'?getComment('expectancy',exp):'No decided trades yet')}
+      ${kpiCard('⇄','Risk / Reward',rr!=='—'?`${rr}R`:'—',parseFloat(rr)>=1?'pos':'neg',`Avg win ${_fmtR(avgWin)} · Avg loss ${_fmtR(-avgLoss)}`,rr!=='—'?getComment('rr',rr):'No decided trades yet')}
+      ${kpiCard('⚡','Expectancy',exp!=='—'?_fmtR(exp):'—',parseFloat(exp)>=0?'pos':'neg','Per trade avg',exp!=='—'?(exp>0?`Every trade has a ${_fmtR(exp)} edge — volume amplifies this`:'Negative expectancy — fix your edge first'):'No decided trades yet')}
     </div>
     <div class="kpi-grid" style="margin-bottom:16px">
-      ${kpiCard('▲','Gross Win',`+$${grossWin.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`,'pos',`${wins} winning trades`,wins>0?`Avg $${(grossWin/wins).toFixed(0)} per winner`:'No wins this month')}
-      ${kpiCard('▼','Gross Loss',`−$${grossLoss.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`,'neg',`${losses} losing trades`,losses>0?`Avg $${(grossLoss/losses).toFixed(0)} per loser`:'No losses this month')}
+      ${kpiCard('▲','Gross Win',_fmtR(grossWin),'pos',`${wins} winning trades`,wins>0?`Avg ${_fmtR(grossWin/wins)} per winner`:'No wins this month')}
+      ${kpiCard('▼','Gross Loss',_fmtR(-grossLoss),'neg',`${losses} losing trades`,losses>0?`Avg ${_fmtR(-grossLoss/losses)} per loser`:'No losses this month')}
       ${kpiCard('◈','Profit Factor',pf!=='—'?pf:'—',parseFloat(pf)>=1?'pos':'neg','Gross win / Gross loss',pf!=='—'?getComment('profitFactor',pf):'No decided trades yet')}
       ${kpiCard('★','Avg Score',avgScore!=='—'?avgScore:'—',parseInt(avgScore)>=70?'pos':parseInt(avgScore)>=45?'hi':'neg',`${scores.length} graded trades`,avgScore!=='—'?parseInt(avgScore)>=70?'Strong execution this month':parseInt(avgScore)>=45?'Average — room to improve':'Poor execution — review your process':'No graded trades')}
     </div>
     <div class="kpi-grid" style="margin-bottom:16px">
-      ${kpiCard('$','Avg P&L / Day',tradingDays>0?`${(netPnl/tradingDays)>=0?'+':'−'}$${Math.abs(netPnl/tradingDays).toFixed(0)}`:'—',netPnl>=0?'pos':'neg','Per trading day',tradingDays>0?`Across ${tradingDays} active trading day${tradingDays>1?'s':''}`:'No trading days recorded')}
-      ${kpiCard('☀','Best Day',bestDay?`${bestDay.pnl>=0?'+':'−'}$${Math.abs(bestDay.pnl).toFixed(0)}`:'—','pos',bestDay?`Day ${bestDay.d}`:'',bestDay?bestDay.pnl>0?'Strong day — study what went right':'Best day was still a loss — difficult month':'No data')}
-      ${kpiCard('☁','Worst Day',worstDay?`${worstDay.pnl>=0?'+':'−'}$${Math.abs(worstDay.pnl).toFixed(0)}`:'—','neg',worstDay?`Day ${worstDay.d}`:'',worstDay?worstDay.pnl<0?'Review this day — what happened?':'Worst day was still positive — excellent month':'No data')}
+      ${kpiCard('◑','Avg R / Day',tradingDays>0?_fmtR(netPnl/tradingDays):'—',netPnl>=0?'pos':'neg','Per trading day',tradingDays>0?`Across ${tradingDays} active trading day${tradingDays>1?'s':''}`:'No trading days recorded')}
+      ${kpiCard('☀','Best Day',bestDay?_fmtR(bestDay.pnl):'—','pos',bestDay?`Day ${bestDay.d}`:'',bestDay?bestDay.pnl>0?'Strong day — study what went right':'Best day was still a loss — difficult month':'No data')}
+      ${kpiCard('☁','Worst Day',worstDay?_fmtR(worstDay.pnl):'—','neg',worstDay?`Day ${worstDay.d}`:'',worstDay?worstDay.pnl<0?'Review this day — what happened?':'Worst day was still positive — excellent month':'No data')}
       ${kpiCard('⇌','Swap + Comm',`${(swap+comm)>=0?'+':'−'}$${Math.abs(swap+comm).toFixed(0)}`,swap+comm>=0?'pos':'neg',`Swap $${swap.toFixed(0)} · Comm $${comm.toFixed(0)}`,swap+comm<0?'Trading costs — factor into your edge':'Positive carry — favourable swap conditions')}
     </div>
     ${outcomeStripHtml(mc)}
@@ -5328,7 +5365,7 @@ function openCalDayModal(indices) {
         <span class="rv-card-pair">${t.pair||'—'}</span>
         <span class="badge badge-${t.direction||'buy'}">${(t.direction||'').toUpperCase()}</span>
         ${resBadge}
-        <span class="rv-card-pnl" style="color:${pnlCol}">${pnl>=0?'+':'−'}$${Math.abs(pnl).toFixed(2)}</span>
+        <span class="rv-card-pnl" style="color:${pnlCol}">${_fmtR(mgR(t))}</span>
         <span class="rv-card-meta">${t.lots||''} lots</span>
         ${t.entryRating?`<span class="grade-badge grade-active-${t.entryRating}">${t.entryRating}</span>`:''}
         ${scBadge}
@@ -5737,7 +5774,7 @@ function switchMonthTab(ym, tab) {
     });
     if (!mTrades.length) return;
     let cum = 0;
-    const data   = mTrades.map(t => { cum += parseFloat(t.pnl)||0; return parseFloat(cum.toFixed(2)); });
+    const data   = mTrades.map(t => { cum += mgR(t)||0; return parseFloat(cum.toFixed(2)); });
     const labels = mTrades.map((_,i) => `T${i+1}`);
     const ctx = canvas.getContext('2d');
     const grad = ctx.createLinearGradient(0,0,0,180);
@@ -5753,8 +5790,8 @@ function switchMonthTab(ym, tab) {
       options:{ ...CD, plugins:{ ...CD.plugins, tooltip:{ ...CD.plugins.tooltip, callbacks:{ label: c => {
         const t = mTrades[c.dataIndex]; if (!t) return `$${c.raw}`;
         const p = parseFloat(t.pnl)||0;
-        return [`Equity: $${c.raw}`, `${t.pair||''} ${(t.direction||'').toUpperCase()}`, `P&L: ${p>=0?'+':'−'}$${p.toFixed(2)}`];
-      }}}}, scales:{ ...CD.scales, y:{ ...CD.scales.y, ticks:{ ...CD.scales.y.ticks, callback: v=>`$${v}` }}}}
+        return [`Cumulative: ${_fmtR(c.raw)}`, `${t.pair||''} ${(t.direction||'').toUpperCase()}`, `Trade: ${_fmtR(mgR(t))}`];
+      }}}}, scales:{ ...CD.scales, y:{ ...CD.scales.y, ticks:{ ...CD.scales.y.ticks, callback: v=>`${v}R` }}}}
     });
   }
 }
@@ -5762,7 +5799,7 @@ function switchMonthTab(ym, tab) {
 // ── Quarter summary strip at the top of the Monthly review ──
 let _qsYear = null;
 function quarterStats(qtAll) {
-  const v = t => parseFloat(t.pnl) || 0;
+  const v = t => mgR(t) || 0;
   const qt = countedTrades(qtAll);
   const W = qt.filter(t => v(t) > 0 && !isBreakEven(t.pnl, undefined, t));
   const L = qt.filter(t => v(t) < 0 && !isBreakEven(t.pnl, undefined, t));
@@ -5806,7 +5843,7 @@ function quarterStrip(quarterMap) {
         ${row('Profit factor', fmtV(st.pf, 2), col(st.pf, 1))}
         ${row('R/R', st.rr === null ? '—' : fmtV(st.rr, 2, 'R'), col(st.rr, 1))}
       </ul>
-      <span class="tl-badge" style="background:transparent;color:${acc};border:1px solid ${acc}">${st.pnl >= 0 ? '▲ +' : '▼ −'}$${Math.abs(st.pnl).toLocaleString('en-US', { maximumFractionDigits: 0 })} · ${st.n} trade${st.n === 1 ? '' : 's'}</span>
+      <span class="tl-badge" style="background:transparent;color:${acc};border:1px solid ${acc}">${st.pnl >= 0 ? '▲ ' : '▼ '}${_fmtR(st.pnl)} · ${st.n} trade${st.n === 1 ? '' : 's'}</span>
       ${current ? `<div class="tl-you" style="color:${acc}">▶ THIS QUARTER</div>` : ''}
     </div>`;
   }).join('');
@@ -5860,7 +5897,7 @@ function drawQuarterEquity(qKey) {
   }).slice().sort((a,b) => (a.closeDate||a.date||'').localeCompare(b.closeDate||b.date||''));
   if (!qTrades.length) return;
   let cum = 0;
-  const data   = qTrades.map(t => { cum += parseFloat(t.pnl)||0; return parseFloat(cum.toFixed(2)); });
+  const data   = qTrades.map(t => { cum += mgR(t)||0; return parseFloat(cum.toFixed(2)); });
   const labels = qTrades.map((_,i) => `T${i+1}`);
   const ctx    = canvas.getContext('2d');
   const grad   = ctx.createLinearGradient(0,0,0,180);
@@ -5876,8 +5913,8 @@ function drawQuarterEquity(qKey) {
     options:{ ...CD, plugins:{ ...CD.plugins, tooltip:{ ...CD.plugins.tooltip, callbacks:{ label: c => {
       const t = qTrades[c.dataIndex]; if (!t) return `$${c.raw}`;
       const p = parseFloat(t.pnl)||0;
-      return [`Equity: $${c.raw}`, `${t.pair||''} ${(t.direction||'').toUpperCase()}`, `P&L: ${p>=0?'+':'−'}$${p.toFixed(2)}`];
-    }}}}, scales:{ ...CD.scales, y:{ ...CD.scales.y, ticks:{ ...CD.scales.y.ticks, callback: v=>`$${v}` }}}}
+      return [`Cumulative: ${_fmtR(c.raw)}`, `${t.pair||''} ${(t.direction||'').toUpperCase()}`, `Trade: ${_fmtR(mgR(t))}`];
+    }}}}, scales:{ ...CD.scales, y:{ ...CD.scales.y, ticks:{ ...CD.scales.y.ticks, callback: v=>`${v}R` }}}}
   });
 }
 
