@@ -3843,9 +3843,8 @@ function renderReviewList() {
         <span class="rv-card-pair">${t.pair||'—'}</span>
         <span style="flex-shrink:0;width:46px;display:inline-flex;justify-content:center"><span class="badge badge-${t.direction||'buy'}" style="font-size:0.9rem;min-width:36px;text-align:center">${(t.direction||'').toUpperCase()}</span></span>
         <span style="flex-shrink:0;width:50px;display:inline-flex;justify-content:center">${resBadge}</span>
-        <span class="rv-card-pnl" style="color:${pnlCol}" title="${pnl>=0?'+':'−'}$${Math.abs(pnl).toFixed(2)}">${(()=>{ const r = mgR(t); return r === null ? (pnl>=0?'+':'−')+'$'+Math.abs(pnl).toFixed(0) : _fmtR(r); })()}</span>
-        ${Array.isArray(t.partials)&&t.partials.length>1?`<span class="rv-card-meta">${t.partials.length} closes</span>`:''}
-        <span style="flex-shrink:0;width:108px;display:inline-flex;justify-content:center">${t.outcome && OUTCOME_COLORS[t.outcome] ? `<span style="font-family:'EB Garamond',serif;font-size:0.8rem;letter-spacing:0.04em;padding:2px 8px;border-radius:3px;border:1px solid ${OUTCOME_COLORS[t.outcome]};color:${OUTCOME_COLORS[t.outcome]};white-space:nowrap">${t.outcome}</span>` : ''}</span>
+        <span class="rv-card-pnl" style="color:${pnlCol};flex-shrink:0;width:76px;min-width:76px;text-align:right" title="${pnl>=0?'+':'−'}$${Math.abs(pnl).toFixed(2)}">${(()=>{ const r = mgR(t); return r === null ? (pnl>=0?'+':'−')+'$'+Math.abs(pnl).toFixed(0) : _fmtR(r); })()}</span>
+        <span style="flex-shrink:0;width:118px;margin-left:14px;display:inline-flex;justify-content:flex-start">${t.outcome && OUTCOME_COLORS[t.outcome] ? `<span style="font-family:'EB Garamond',serif;font-size:0.8rem;letter-spacing:0.04em;padding:2px 8px;border-radius:3px;border:1px solid ${OUTCOME_COLORS[t.outcome]};color:${OUTCOME_COLORS[t.outcome]};white-space:nowrap">${t.outcome}</span>` : ''}</span>
         <span style="flex-shrink:0;width:24px;display:inline-flex;justify-content:center" id="rv_gbadge_${i}">${t.entryRating ? `<span class="grade-badge grade-active-${t.entryRating}">${t.entryRating}</span>` : ''}</span>
         <span style="flex-shrink:0;width:28px;display:inline-flex;justify-content:center" id="rv_sbadge_${i}">${(()=>{ const sc=calcTradeScore(t); if(!sc) return ''; const col=sc>=70?'#6dbf9e':sc>=45?'#7bafd4':'#e85555'; return `<span class="grade-badge" style="background:${col};color:#0a1220;font-size:0.9rem;opacity:0.9">${sc}</span>`; })()}</span>
         <span style="flex-shrink:0;width:16px;text-align:center;color:${planCol};font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700">${planIcon}</span>
@@ -7692,7 +7691,7 @@ function outcomeHtml(t, i) {
 }
 
 // Outcome bar chart (Strategy tab, below Overview)
-const OUTCOME_COLORS = { 'Deserved Win':'#36a372', 'Bad Luck':'#8f86e0', 'Dumb Luck':'#b18a2a', 'Deserved Loss':'#df4f6a' };
+const OUTCOME_COLORS = { 'Deserved Win':'#36a372', 'Bad Luck':'#6dbf9e', 'Dumb Luck':'#e8776a', 'Deserved Loss':'#df4f6a' };
 // Outcome counts for a month / quarter card in the Monthly review
 function outcomeStripHtml(list) {
   const F = "font-family:'EB Garamond',serif";
