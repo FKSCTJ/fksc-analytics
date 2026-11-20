@@ -504,7 +504,7 @@
   .qs-nav { background:none; border:1px solid var(--border); color:var(--text); border-radius:3px; width:24px; height:22px; cursor:pointer; font-size:0.9rem; line-height:1; }
   .qs-nav:disabled { opacity:.35; cursor:default; }
   .qs-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; padding-top:4px; }
-  .qs-tl:not(.tl-active):not(.qs-ytd):hover { border-color:var(--accent) !important; }
+  .qs-tl:not(.tl-active):hover { border-color:var(--accent) !important; }
   .qs-stats li { display:flex; justify-content:space-between; align-items:baseline; padding-left:10px; margin-bottom:5px; }
   .qs-stats li::before { content:none; }
   .qs-stats li { padding-left:0 !important; }
@@ -1978,10 +1978,15 @@ function renderDashboard(){
 
 // ── Shared analysis period (same as the Overview period) for Strategy, Mental Game and Trade Quality ──
 const STATS_PERIODS = [['all','All Time'],['current_month','Current Month'],['last_month','Last Month'],['current_year','Current Year'],['custom','Select Period…']];
-function statsPeriodBarHtml() {
+function stratUnit() { try { return localStorage.getItem('fx_strat_unit') || 'R'; } catch (e) { return 'R'; } }
+function setStratUnit(u) { try { localStorage.setItem('fx_strat_unit', u); } catch (e) {} renderStrategy(); }
+function stratUnitSwitch() { return `<span class="ov-unit">${['R','$'].map(u => `<button class="${stratUnit()===u?'on':''}" onclick="setStratUnit('${u}')">${u}</button>`).join('')}</span>`; }
+const sv = t => stratUnit() === 'R' ? (mgR(t) || 0) : (parseFloat(t.pnl) || 0);
+const sMoney = v => stratUnit() === 'R' ? _fmtR(v) : `${v>=0?'+':'−'}$${Math.abs(v).toLocaleString('en-US',{maximumFractionDigits:0})}`;
+function statsPeriodBarHtml(extra) {
   const n = getFilteredTrades().length;
   const label = currentPeriod === 'custom' ? 'Custom' : (STATS_PERIODS.find(p => p[0] === currentPeriod) || STATS_PERIODS[0])[1];
-  return `<div class="sp-bar">
+  return `<div class="sp-bar">${extra || ''}
     ${currentPeriod === 'custom' ? `<span class="sp-dates"><input type="date" value="${ovPeriodFrom}" onchange="setStatsDate('from',this.value)" title="From"> → <input type="date" value="${ovPeriodTo}" onchange="setStatsDate('to',this.value)" title="To"></span>` : ''}
     <div class="multi-select sp-drop" style="position:relative;width:fit-content">
       <div class="ms-trigger" onclick="event.stopPropagation();const d=this.parentElement;const o=d.classList.contains('open');document.querySelectorAll('.multi-select.open').forEach(x=>x.classList.remove('open'));if(!o)d.classList.add('open')" style="min-width:unset" title="${n} trade${n === 1 ? '' : 's'} in this period">
@@ -4468,7 +4473,7 @@ function renderStrategy() {
     const wins   = arr.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl, undefined, t));
     const losses = arr.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl, undefined, t));
     const be     = arr.filter(t => isBreakEven(t.pnl, undefined, t));
-    const total  = arr.reduce((a,t) => a + (parseFloat(t.pnl)||0), 0);
+    const total  = arr.reduce((a,t)=>a+sv(t),0);
     const denom  = wins.length + losses.length;
     const wr     = denom > 0 ? Math.round((wins.length / denom) * 100) : null;
     return { n: arr.length, wins: wins.length, losses: losses.length, be: be.length, wr, total };
@@ -4491,7 +4496,7 @@ function renderStrategy() {
         <td style="padding:8px;color:var(--muted);text-align:center;font-size:0.88rem">${s.n}</td>
         <td style="padding:8px;text-align:center;font-size:0.88rem;color:var(--muted)">${s.wins}W/${s.losses}L${beTxt}</td>
         <td style="padding:8px;text-align:center;font-size:0.88rem;color:var(--text)">${wrStr}</td>
-        <td style="padding:8px;text-align:right;font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:${pnlCol}">${s.total>=0?'+':'−'}$${Math.abs(s.total).toFixed(0)}</td>
+        <td style="padding:8px;text-align:right;font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:${pnlCol}">${sMoney(s.total)}</td>
         <td style="padding:8px 0 8px 12px;width:120px">
           <div style="background:var(--surface2);border-radius:2px;height:6px;overflow:hidden">
             <div style="height:100%;width:${barW}%;background:${barCol};border-radius:2px;transition:width 0.4s"></div>
@@ -4535,11 +4540,11 @@ function renderStrategy() {
     const wins   = arr.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl, undefined, t));
     const losses = arr.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl, undefined, t));
     const be     = arr.filter(t => isBreakEven(t.pnl, undefined, t));
-    const total  = arr.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
+    const total  = arr.reduce((a,t)=>a+sv(t),0);
     const denom  = wins.length + losses.length;
     const wr     = denom > 0 ? (wins.length / denom) * 100 : 0;
-    const avgWin = wins.length   ? wins.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0)/wins.length   : 0;
-    const avgLoss= losses.length ? Math.abs(losses.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0)/losses.length) : 0;
+    const avgWin = wins.length   ? wins.reduce((a,t)=>a+sv(t),0)/wins.length   : 0;
+    const avgLoss= losses.length ? Math.abs(losses.reduce((a,t)=>a+sv(t),0)/losses.length) : 0;
     const rr     = avgLoss > 0 ? (avgWin/avgLoss) : null;
     const exp    = avgLoss > 0 ? (wr/100)*avgWin - (1-wr/100)*avgLoss : total/arr.length;
     return { n: arr.length, wins: wins.length, losses: losses.length, be: be.length, wr, total, avgWin, avgLoss, rr, exp };
@@ -4551,7 +4556,7 @@ function renderStrategy() {
     const beTxt = s.be > 0 ? ` · ${s.be}BE` : '';
     return kpiCard(icon, type,
       `${s.wr.toFixed(0)}% WR`, s.wr >= 50 ? 'pos' : 'neg',
-      `${s.n} trades · ${s.total>=0?'+':'−'}$${Math.abs(s.total).toFixed(0)} P&L`,
+      `${s.n} trades · ${sMoney(s.total)} `,
       `${s.wins}W / ${s.losses}L${beTxt} · ${wrTxt}`
     );
   }
@@ -4578,7 +4583,7 @@ function renderStrategy() {
       </div></div>`;
       const ws  = sub.filter(t => (parseFloat(t.pnl)||0) > 0).length;
       const wr  = (ws / sub.length) * 100;
-      const pnl = sub.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
+      const pnl = sub.reduce((a,t)=>a+sv(t),0);
       const wrTxt = wr >= 60 ? 'strong edge' : wr >= 50 ? 'solid' : 'needs review';
       return `<div style="${animDelay}"><div class="kpi-card" style="display:flex;flex-direction:column;gap:0;padding:18px 20px">
         <div style="display:flex;align-items:center;gap:4px;margin-bottom:8px">
@@ -4586,7 +4591,7 @@ function renderStrategy() {
           ${arrowSvg}
         </div>
         <div style="font-family:'EB Garamond',serif;font-size:1rem;font-weight:700;color:${wr>=50?'#6dbf9e':'#e85555'};margin-bottom:4px">${wr.toFixed(0)}% WR</div>
-        <div class="kpi-card-sub">${sub.length} trades · ${pnl>=0?'+':'−'}$${Math.abs(pnl).toFixed(0)} P&L</div>
+        <div class="kpi-card-sub">${sub.length} trades · ${sMoney(pnl)}</div>
         <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:#7a93ae;border-top:1px solid var(--border);padding-top:8px">${ws}W / ${sub.length-ws}L · ${wrTxt}</div>
       </div></div>`;
     }).join('');
@@ -4638,7 +4643,7 @@ function renderStrategy() {
       const wl  = sub.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl, undefined, t)).length;
       const wbe = sub.filter(t => isBreakEven(t.pnl, undefined, t)).length;
       const wr  = (ws + wl) > 0 ? (ws / (ws + wl)) * 100 : 0;
-      const pnl = sub.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0);
+      const pnl = sub.reduce((a,t)=>a+sv(t),0);
       const wrTxt = wr >= 60 ? 'strong edge' : wr >= 50 ? 'solid' : 'needs review';
       const beTxt = wbe > 0 ? ` · ${wbe}BE` : '';
       return `<div style="${anim}"><div class="kpi-card" style="display:flex;flex-direction:column;gap:0;padding:18px 20px">
@@ -4646,7 +4651,7 @@ function renderStrategy() {
           <span style="font-family:'EB Garamond',serif;font-size:1.7rem;font-weight:700;color:var(--text);line-height:1">${b}</span>${arrowSvg}
         </div>
         <div style="font-family:'EB Garamond',serif;font-size:1rem;font-weight:700;color:${wr>=50?'#6dbf9e':'#e85555'};margin-bottom:4px">${wr.toFixed(0)}% WR</div>
-        <div class="kpi-card-sub">${sub.length} trades · ${pnl>=0?'+':'−'}$${Math.abs(pnl).toFixed(0)} P&L</div>
+        <div class="kpi-card-sub">${sub.length} trades · ${sMoney(pnl)}</div>
         <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:#7a93ae;border-top:1px solid var(--border);padding-top:8px">${ws}W / ${wl}L${beTxt} · ${wrTxt}</div>
       </div></div>`;
     }).join('');
@@ -4682,7 +4687,7 @@ function renderStrategy() {
       return stratCard('◈', b,
         `${s.wr.toFixed(0)}% WR`,
         s.wr >= 50 ? 'pos' : 'neg',
-        `${s.n} trades · ${s.total>=0?'+':'−'}$${Math.abs(s.total).toFixed(0)} P&L`,
+        `${s.n} trades · ${sMoney(s.total)} `,
         `${s.wins}W / ${s.losses}L${beTxt} · ${wrTxt}`
       );
     }).join('');
@@ -4710,7 +4715,7 @@ function renderStrategy() {
       return stratCard('◈', tf,
         `${s.wr.toFixed(0)}% WR`,
         s.wr >= 50 ? 'pos' : 'neg',
-        `${s.n} trades · ${s.total>=0?'+':'−'}$${Math.abs(s.total).toFixed(0)} P&L`,
+        `${s.n} trades · ${sMoney(s.total)} `,
         `${s.wins}W / ${s.losses}L${beTxt} · ${wrTxt}`
       );
     }).join('');
@@ -4728,7 +4733,7 @@ function renderStrategy() {
   const sl033Wins   = sl033Trades.filter(t => (parseFloat(t.pnl)||0) > 0).length;
   const sl033Losses = sl033Trades.filter(t => (parseFloat(t.pnl)||0) < 0).length;
   const sl033Be     = sl033Trades.filter(t => isBreakEven(t.pnl, undefined, t)).length;
-  const sl033Pnl    = sl033Trades.reduce((a,t) => a + (parseFloat(t.pnl)||0), 0);
+  const sl033Pnl    = sl033Trades.reduce((a,t)=>a+sv(t),0);
 
   const sl033Section = `
     <div style="margin-bottom:20px">
@@ -4736,7 +4741,7 @@ function renderStrategy() {
       ${!sl033Trades.length ? `<div class="chart-card" style="padding:16px"><span style="font-family:'EB Garamond',serif;font-size:0.95rem;color:var(--muted)">No trades tagged yet. Mark trades in Trade Review → 0.33% Stop Loss.</span></div>` : `
       <div class="kpi-grid">
         ${kpiCard('◎', 'Would Benefit', `${sl033Trades.length}`, 'pos', `${sl033Pct}% of all trades`, `${sl033Wins}W · ${sl033Losses}L${sl033Be ? ` · ${sl033Be}BE` : ''}`)}
-        ${kpiCard('◉', 'P&L on Those Trades', `${sl033Pnl>=0?'+':'−'}$${Math.abs(sl033Pnl).toFixed(0)}`, sl033Pnl>=0?'pos':'neg', `Actual outcome`, `Result without 0.33% SL applied`)}
+        ${kpiCard('◉', 'P&L on Those Trades', `${sMoney(sl033Pnl)}`, sl033Pnl>=0?'pos':'neg', `Actual outcome`, `Result without 0.33% SL applied`)}
 
         ${kpiCard('%', 'Of All Trades', `${sl033Pct}%`, parseInt(sl033Pct)>30?'warn':'hi', `${sl033Trades.length} / ${sl033Total} trades`, parseInt(sl033Pct)>30?'High frequency — consider rule change':'Occasional occurrence')}
       </div>`}
@@ -4746,13 +4751,13 @@ function renderStrategy() {
   const MISTAKE_TYPES = ['Impatience','Moved SL','Forced Setup','Closed Early','Emotional'];
   const mistakeStats = MISTAKE_TYPES.map(m => {
     const tagged = trades.filter(t => (t.mistakes||[]).includes(m));
-    const pnl    = tagged.reduce((a,t) => a+(parseFloat(t.pnl)||0), 0);
+    const pnl    = tagged.reduce((a,t)=>a+sv(t),0);
     const wins   = tagged.filter(t => (parseFloat(t.pnl)||0) > 0).length;
     const losses = tagged.filter(t => (parseFloat(t.pnl)||0) < 0).length;
     return { m, n: tagged.length, pnl, wins, losses };
   });
   const totalMistakeTrades = trades.filter(t => (t.mistakes||[]).length > 0).length;
-  const totalMistakePnl    = trades.filter(t => (t.mistakes||[]).length > 0).reduce((a,t) => a+(parseFloat(t.pnl)||0), 0);
+  const totalMistakePnl    = trades.filter(t => (t.mistakes||[]).length > 0).reduce((a,t)=>a+sv(t),0);
 
   const mistakesSection = `
     <div style="margin-bottom:20px">
@@ -4765,7 +4770,7 @@ function renderStrategy() {
           <div class="kpi-card-sub">${(totalMistakeTrades/trades.length*100).toFixed(0)}% of all trades</div>
           <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
             <div style="font-family:'EB Garamond',serif;font-size:0.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">P&L Impact</div>
-            <div style="font-family:'EB Garamond',serif;font-size:1.6rem;font-weight:700;color:${totalMistakePnl>=0?'#6dbf9e':'#e85555'}">${totalMistakePnl>=0?'+':'−'}$${Math.abs(totalMistakePnl).toFixed(0)}</div>
+            <div style="font-family:'EB Garamond',serif;font-size:1.6rem;font-weight:700;color:${totalMistakePnl>=0?'#6dbf9e':'#e85555'}">${sMoney(totalMistakePnl)}</div>
           </div>
         </div>
         ${mistakeStats.map(({m, n, pnl, wins, losses}) => n > 0
@@ -4775,7 +4780,7 @@ function renderStrategy() {
               <div class="kpi-card-sub">${wins}W · ${losses}L</div>
               <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
                 <div style="font-family:'EB Garamond',serif;font-size:0.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">P&L Impact</div>
-                <div style="font-family:'EB Garamond',serif;font-size:1.6rem;font-weight:700;color:${pnl>=0?'#6dbf9e':'#e85555'}">${pnl>=0?'+':'−'}$${Math.abs(pnl).toFixed(0)}</div>
+                <div style="font-family:'EB Garamond',serif;font-size:1.6rem;font-weight:700;color:${pnl>=0?'#6dbf9e':'#e85555'}">${sMoney(pnl)}</div>
               </div>
             </div>`
           : kpiCard('✕', m, '0', 'hi', 'No occurrences', 'Clean')
@@ -4797,7 +4802,7 @@ function renderStrategy() {
           </div>
         </div>
       </div>
-      ${statsPeriodBarHtml()}
+      ${statsPeriodBarHtml(stratUnitSwitch())}
       ${renderStrategyCards(allStratTrades)}
       ${isNoneView ? '' : `
       <div id="strat-static" class="${(isFvView || currentStratAsset === 'AV')?'fv-overview':''}" style="margin-bottom:20px">
@@ -4820,21 +4825,21 @@ function renderStrategy() {
     const stWins   = st.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl, undefined, t));
     const stLosses = st.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl, undefined, t));
     const stBe     = st.filter(t => isBreakEven(t.pnl, undefined, t));
-    const stNet    = st.reduce((a,t) => a + (parseFloat(t.pnl)||0), 0);
+    const stNet    = st.reduce((a,t)=>a+sv(t),0);
     const stDenom  = stWins.length + stLosses.length;
     const stWR     = stDenom > 0 ? (stWins.length / stDenom) * 100 : 0;
-    const stAvgWin = stWins.length ? stWins.reduce((a,t) => a + (parseFloat(t.pnl)||0), 0) / stWins.length : 0;
-    const stAvgLoss= stLosses.length ? Math.abs(stLosses.reduce((a,t) => a + (parseFloat(t.pnl)||0), 0) / stLosses.length) : 0;
+    const stAvgWin = stWins.length ? stWins.reduce((a,t)=>a+sv(t),0) / stWins.length : 0;
+    const stAvgLoss= stLosses.length ? Math.abs(stLosses.reduce((a,t)=>a+sv(t),0) / stLosses.length) : 0;
     const stRR     = stAvgLoss > 0 ? stAvgWin / stAvgLoss : null;
     const stExp    = stAvgLoss > 0 ? (stWR/100)*stAvgWin - (1-stWR/100)*stAvgLoss : (st.length ? stNet/st.length : 0);
-    const stPF     = stLosses.length ? (stWins.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0) / Math.abs(stLosses.reduce((a,t)=>a+(parseFloat(t.pnl)||0),0))) : null;
+    const stPF     = stLosses.length ? (stWins.reduce((a,t)=>a+sv(t),0) / Math.abs(stLosses.reduce((a,t)=>a+sv(t),0))) : null;
 
     const wrCls    = stWR >= 55 ? 'pos' : stWR >= 45 ? 'warn' : 'neg';
     const wrCmt    = stWR >= 60 ? 'Elite win rate' : stWR >= 50 ? 'Solid — sustainable' : 'Needs higher R:R to compensate';
     const rrCls    = stRR === null ? '' : stRR >= 2 ? 'pos' : stRR >= 1.5 ? 'warn' : stRR >= 1 ? 'hi' : 'neg';
     const rrCmt    = stRR === null ? 'Not enough data' : stRR >= 2 ? 'Excellent — low WR still profitable' : stRR >= 1.5 ? 'Good — aim for 2.0+' : stRR >= 1 ? 'Decent — needs higher WR' : 'Below 1:1 — unfavourable';
     const expCls   = stExp >= 0 ? 'pos' : 'neg';
-    const expCmt   = stExp >= 0 ? `+$${stExp.toFixed(0)} expected per trade` : `Negative edge — fix criteria`;
+    const expCmt   = stExp >= 0 ? `${sMoney(stExp)} expected per trade` : `Negative edge — fix criteria`;
     const pfCls    = stPF === null ? '' : stPF >= 2 ? 'pos' : stPF >= 1.5 ? 'warn' : stPF >= 1 ? 'hi' : 'neg';
     const pfCmt    = stPF === null ? 'Not enough data' : stPF >= 2 ? 'Elite — above 2.0' : stPF >= 1.5 ? 'Good — aim for 2.0+' : stPF >= 1 ? 'Marginal edge' : 'Losing system';
     const netCls   = stNet >= 0 ? 'pos' : 'neg';
@@ -4843,10 +4848,10 @@ function renderStrategy() {
       <div class="chart-card-title" style="margin-bottom:12px">&#9632; OVERVIEW <span style="font-family:'EB Garamond',serif;font-size:0.85rem;color:var(--muted);font-weight:400;margin-left:8px;letter-spacing:0.03em">${st.length} trade${st.length!==1?'s':''} · ${stWins.length}W / ${stLosses.length}L${stBe.length?` / ${stBe.length}BE`:''}</span></div>
       <div class="kpi-grid">
         <div class="kpi-card" onclick="openReviewForAsset('${currentStratAsset}')" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'" style="cursor:pointer;transition:border-color 0.15s" title="View ${currentStratAsset} trade reviews">
-          <div class="kpi-card-icon">◉&nbsp;NET P&amp;L</div>
-          <div class="kpi-card-value ${netCls}">${stNet>=0?'+':'−'}$${Math.abs(stNet).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+          <div class="kpi-card-icon">◉&nbsp;${stratUnit()==='R'?'NET R':'NET P&amp;L'}</div>
+          <div class="kpi-card-value ${netCls}">${sMoney(stNet)}</div>
           <div class="kpi-card-sub">${st.length} trades logged</div>
-          <div class="kpi-card-comment">${stNet >= 0 ? `Avg $${st.length?(stNet/st.length).toFixed(0):0} per trade` : 'Net negative — review losing setups'} · <span style="text-decoration:underline">view reviews →</span></div>
+          <div class="kpi-card-comment">${stNet >= 0 ? `Avg ${sMoney(st.length?stNet/st.length:0)} per trade` : 'Net negative — review losing setups'} · <span style="text-decoration:underline">view reviews →</span></div>
         </div>
         ${kpiCard('◈', 'Win Rate',
           stDenom > 0 ? `${stWR.toFixed(0)}%` : '—',
@@ -4855,25 +4860,25 @@ function renderStrategy() {
           wrCmt
         )}
         ${kpiCard('↗', 'Avg Win',
-          stWins.length ? `+$${stAvgWin.toFixed(0)}` : '—',
+          stWins.length ? sMoney(stAvgWin) : '—',
           stWins.length ? 'pos' : '',
           `${stWins.length} winning trade${stWins.length!==1?'s':''}`,
-          stWins.length ? `Best: +$${Math.max(...stWins.map(t=>parseFloat(t.pnl)||0)).toFixed(0)}` : 'No wins yet'
+          stWins.length ? `Best: ${sMoney(Math.max(...stWins.map(sv)))}` : 'No wins yet'
         )}
         ${kpiCard('↘', 'Avg Loss',
-          stLosses.length ? `−$${stAvgLoss.toFixed(0)}` : '—',
+          stLosses.length ? sMoney(-stAvgLoss) : '—',
           stLosses.length ? 'neg' : '',
           `${stLosses.length} losing trade${stLosses.length!==1?'s':''}`,
-          stLosses.length ? `Worst: −$${Math.max(...stLosses.map(t=>Math.abs(parseFloat(t.pnl)||0))).toFixed(0)}` : 'No losses'
+          stLosses.length ? `Worst: ${sMoney(Math.min(...stLosses.map(sv)))}` : 'No losses'
         )}
         ${kpiCard('⇌', 'Risk:Reward',
           stRR !== null ? `${stRR.toFixed(2)}R` : '—',
           rrCls,
-          stAvgLoss > 0 ? `$${stAvgWin.toFixed(0)} vs $${stAvgLoss.toFixed(0)}` : 'Insufficient data',
+          stAvgLoss > 0 ? `${sMoney(stAvgWin)} vs ${sMoney(-stAvgLoss)}` : 'Insufficient data',
           rrCmt
         )}
         ${kpiCard('∑', 'Expectancy',
-          stExp !== null ? `${stExp>=0?'+':'−'}$${Math.abs(stExp).toFixed(0)}` : '—',
+          stExp !== null ? `${sMoney(stExp)}` : '—',
           expCls,
           'Per trade, risk-adjusted',
           expCmt
@@ -5051,6 +5056,9 @@ function renderMonthlyTab() {
     const key = `${yr}-Q${q}`;
     if (!quarterMap[key]) quarterMap[key] = { trades:[], yr, q };
     quarterMap[key].trades.push(t);
+    const yKey = `${yr}-QY`;
+    if (!quarterMap[yKey]) quarterMap[yKey] = { trades:[], yr, q:'Y' };
+    quarterMap[yKey].trades.push(t);
   });
 
   function quarterRow(key) {
@@ -5083,7 +5091,7 @@ function renderMonthlyTab() {
     const statsHtml = `
       <div class="kpi-grid" style="margin-bottom:16px">
         ${kpiCard('◉','Net R',`${_fmtR(pnl)}`,pnl>=0?'pos':'neg',`${qc.length} trades`,`${wins}W · ${losses}L${beCount>0?` · ${beCount}BE`:''}`)}
-        ${kpiCard('◎','Win Rate',`${wr}%`,parseInt(wr)>=50?'pos':'neg',`${wins}W / ${losses}L${beCount>0?` · ${beCount}BE`:''}`,parseInt(wr)>=50?'Strong quarter':'Needs review')}
+        ${kpiCard('◎','Win Rate',`${wr}%`,parseInt(wr)>=50?'pos':'neg',`${wins}W / ${losses}L${beCount>0?` · ${beCount}BE`:''}`,parseInt(wr)>=50?(q==='Y'?'Strong year':'Strong quarter'):'Needs review')}
         ${kpiCard('⇄','Risk / Reward',rr!=='—'?`${rr}R`:'—',parseFloat(rr)>=1?'pos':'neg',`Avg win ${_fmtR(avgWin)} · Avg loss ${_fmtR(-avgLoss)}`,'')}
         ${kpiCard('⚡','Expectancy',exp!=='—'?_fmtR(exp):'—',parseFloat(exp)>=0?'pos':'neg','Per trade avg','')}
       </div>
@@ -5102,11 +5110,12 @@ function renderMonthlyTab() {
         <canvas id="qeq-${qKey}" height="180"></canvas>
       </div>`;
 
+    const _per = q === 'Y' ? 'YEAR' : 'QUARTER';
     const QUARTER_QUESTIONS = [
-      { key:'lessons',  label:'MAJOR TRADING LESSONS THIS QUARTER' },
+      { key:'lessons',  label:`MAJOR TRADING LESSONS THIS ${_per}` },
       { key:'barriers', label:'BARRIERS & PLAN TO OVERCOME THEM' },
-      { key:'wins',     label:'WINS OBTAINED THIS QUARTER' },
-      { key:'goals',    label:'GOALS FOR NEXT QUARTER' },
+      { key:'wins',     label:`WINS OBTAINED THIS ${_per}` },
+      { key:'goals',    label:`GOALS FOR NEXT ${_per}` },
       { key:'mindset',  label:'MINDSET & DISCIPLINE' },
     ];
     const qReviewKey = `fx_quarterly_review_${yr}_Q${q}`;
@@ -5120,10 +5129,10 @@ function renderMonthlyTab() {
     const hasReview = QUARTER_QUESTIONS.some(rq => qSaved[rq.key] && qSaved[rq.key].trim());
 
     return `
-    <div class="rv-card" id="qrc-${qKey}" style="margin:4px 0 8px;border-left:3px solid var(--accent)">
+    <div class="rv-card" id="qrc-${qKey}" style="margin:4px 0 8px;border-left:3px solid var(--accent)${q==='Y'?';background:var(--surface2)':''}">
       <div class="rv-card-header" onclick="toggleQuarterCard('${qKey}')" style="cursor:pointer">
         <div class="rv-reviewed-dot ${hasReview?'':'empty'}" title="${hasReview?'Reviewed':'Not reviewed'}"></div>
-        <span class="rv-card-date" style="color:var(--accent);font-weight:700;letter-spacing:0.08em">${yr} Q${q}</span>
+        <span class="rv-card-date" style="color:var(--accent);font-weight:700;letter-spacing:0.08em;white-space:nowrap">${q==='Y'?`${yr} · FULL YEAR`:`${yr} Q${q}`}</span>
         <span class="rv-card-meta">${qc.length} trades</span>
         <span style="font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700;color:${parseInt(wr)>=50?'var(--green)':'var(--red)'};margin-left:8px">${wr}% WR</span>
         <span class="rv-card-meta" style="margin-left:8px;white-space:nowrap">${wins}W / ${losses}L${beCount>0?` · <span style="color:var(--muted)">${beCount}BE</span>`:''}</span>
@@ -5140,7 +5149,7 @@ function renderMonthlyTab() {
         <div id="qpane-review-${qKey}" style="display:none">
           <div style="display:grid;gap:12px;margin-bottom:16px">${reviewHtml}</div>
           <div style="display:flex;justify-content:flex-end">
-            <button class="btn btn-primary" onclick="saveQuarterlyReview('${qKey}','${yr}',${q})">Save Review</button>
+            <button class="btn btn-primary" onclick="saveQuarterlyReview('${qKey}','${yr}','${q}')">Save Review</button>
           </div>
         </div>
         <div id="qpane-ai-${qKey}" style="display:none">
@@ -5152,12 +5161,13 @@ function renderMonthlyTab() {
 
   const list = document.getElementById('monthlyList');
   let html = quarterStrip(quarterMap);
-  let lastQuarter = null;
+  let lastQuarter = null, lastYear = null;
 
   months.forEach(ym => {
     const [yr, mo] = ym.split('-').map(Number);
     const q = Math.ceil(mo / 3);
     const qKey = `${yr}-Q${q}`;
+    if (yr !== lastYear) { html += quarterRow(`${yr}-QY`); lastYear = yr; }
 
     // Insert quarter row when we enter a new quarter
     if (qKey !== lastQuarter) {
@@ -5426,7 +5436,7 @@ function buildAiReviewPane(type, key, tradesArr) {
         <div style="text-align:center;padding:48px 20px">
           <div style="font-family:'EB Garamond',serif;font-size:2rem;color:var(--accent);margin-bottom:12px">✦</div>
           <div style="font-family:'EB Garamond',serif;font-size:1.1rem;color:var(--text);margin-bottom:6px">AI Trading Coach</div>
-          <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted);margin-bottom:24px;max-width:400px;margin-left:auto;margin-right:auto">Analyse your ${type === 'month' ? 'monthly' : 'quarterly'} performance — strengths, weaknesses, and actionable improvements.</div>
+          <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted);margin-bottom:24px;max-width:400px;margin-left:auto;margin-right:auto">Analyse your ${type === 'month' ? 'monthly' : String(key).endsWith('QY') ? 'yearly' : 'quarterly'} performance — strengths, weaknesses, and actionable improvements.</div>
           <button class="btn btn-primary" onclick="generateAiReview('${type}','${key}')" style="font-size:0.95rem;padding:10px 28px">✦ Generate AI Review</button>
         </div>
       `}
@@ -5501,7 +5511,7 @@ function generateAiReview(type, key) {
   } else {
     const [yr, qStr] = key.split('-Q');
     const qNum = parseInt(qStr);
-    const months = [1,2,3].map(i => { const m = (qNum-1)*3+i; return `${yr}-${String(m).padStart(2,'0')}`; });
+    const months = qStr === 'Y' ? [yr] : [1,2,3].map(i => { const m = (qNum-1)*3+i; return `${yr}-${String(m).padStart(2,'0')}`; });
     periodTrades = trades.filter(t => { const d = t.closeDate||t.date; return d && months.some(m => d.startsWith(m)); });
   }
 
@@ -5626,7 +5636,7 @@ function generateAiReview(type, key) {
   const avgWinR = winsR.length ? winsR.reduce((a, b) => a + b, 0) / winsR.length : null;
   const avgLossR = lossR.length ? Math.abs(lossR.reduce((a, b) => a + b, 0) / lossR.length) : null;
   const netR = periodTrades.map(Rof).filter(v => v !== null).reduce((a, b) => a + b, 0);
-  const label = type === 'month' ? 'month' : 'quarter';
+  const label = type === 'month' ? 'month' : String(key).endsWith('QY') ? 'year' : 'quarter';
 
   // Result
   if (netPnl > 0) findings.strengths.push(`Positive ${label}: <strong>${fmt$(netPnl)}</strong> (${fR(netR)}) across ${periodTrades.length} trade${periodTrades.length === 1 ? '' : 's'}.`);
@@ -5854,7 +5864,7 @@ function quarterStrip(quarterMap) {
     const acc = st.pnl >= 0 ? 'var(--green)' : 'var(--red)';
     const col = (x, good) => x === null ? 'var(--muted)' : x >= good ? 'var(--green)' : 'var(--red)';
     const row = (label, val, c) => `<li><span>${label}</span><b style="color:${c}">${val}</b></li>`;
-    return `<div class="tl-card qs-tl qs-ytd" style="cursor:default;opacity:1;background:var(--surface2);border-color:var(--accent)">
+    return `<div class="tl-card qs-tl qs-ytd" onclick="openQuarterFromStrip('${_qsYear}-QY')" title="Open ${_qsYear} full-year review" style="cursor:pointer;opacity:1;background:var(--surface2);border-color:var(--accent)">
       <div class="tl-level" style="color:var(--accent)">YEAR TO DATE</div>
       <div class="tl-name" style="color:${acc}">${_qsYear}</div>
       <ul class="tl-traits qs-stats">
@@ -5904,9 +5914,9 @@ function drawQuarterEquity(qKey) {
   const canvas = document.getElementById(`qeq-${qKey}`);
   if (!canvas || canvas.dataset.drawn) return;
   canvas.dataset.drawn = '1';
-  const [yr, qNum] = qKey.split('-Q').map(Number);
-  const months = [1,2,3].map(i => {
-    const m = (qNum-1)*3 + i;
+  const [yr, qStr] = qKey.split('-Q');
+  const months = qStr === 'Y' ? [yr] : [1,2,3].map(i => {
+    const m = (parseInt(qStr)-1)*3 + i;
     return `${yr}-${String(m).padStart(2,'0')}`;
   });
   const qTrades = trades.filter(t => {
@@ -8576,7 +8586,7 @@ function strategyEquityHtml(arr, s) {
       <span style="${F};font-size:0.85rem;font-weight:700;letter-spacing:0.12em;color:var(--muted)">EQUITY CURVE</span>${extra}</div>`;
   if (tr.length < 2) return head() + `<div style="${F};color:var(--muted);font-size:0.95rem;padding:30px 0;text-align:center">Not enough ${s.name} trades yet — the curve appears from 2 trades.</div>`;
   let eq = 0, peak = 0, dd = 0;
-  const pts = [0, ...tr.map(t => { eq += parseFloat(t.pnl)||0; peak = Math.max(peak, eq); dd = Math.max(dd, peak - eq); return eq; })];
+  const pts = [0, ...tr.map(t => { eq += sv(t); peak = Math.max(peak, eq); dd = Math.max(dd, peak - eq); return eq; })];
   const W = 1000, H = 200, pad = 10;
   const mn = Math.min(0, ...pts), mx = Math.max(0, ...pts), rng = (mx - mn) || 1;
   const x = i => (i / (pts.length - 1)) * W;
@@ -8584,7 +8594,7 @@ function strategyEquityHtml(arr, s) {
   const line = pts.map((v,i) => `${i?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
   const area = `${line} L${W},${y(mn).toFixed(1)} L0,${y(mn).toFixed(1)} Z`;
   const up = eq >= 0, col = up ? '#6dbf9e' : '#e85555';
-  const money = v => `${v>=0?'+':'−'}$${Math.abs(v).toLocaleString('en-US',{maximumFractionDigits:0})}`;
+  const money = sMoney;
   return head(`<span style="${F};font-size:1.5rem;font-weight:700;color:${col}">${money(eq)}</span>
       <span style="${F};font-size:0.85rem;color:var(--muted)">${tr.length} trades · max drawdown ${money(-dd)}</span>`) +
     `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:150px;display:block">
@@ -8731,7 +8741,7 @@ function renderIsStrategySections(tr) {
   const st = arr => { const w=arr.filter(t=>pnl(t)>0&&!isBreakEven(t.pnl, undefined, t)).length, l=arr.filter(t=>pnl(t)<0&&!isBreakEven(t.pnl, undefined, t)).length; return { n:arr.length, wr:(w+l)?Math.round(100*w/(w+l)):null }; };
   const wrCol = wr => wr===null?'var(--muted)':wr>=50?'var(--green)':'var(--red)';
   const LBL = t => `<span style="${F};font-size:0.8rem;color:var(--muted);letter-spacing:0.08em">${t}</span>`;
-  const money = v => `${v>=0?'+':'−'}$${Math.abs(v).toLocaleString('en-US',{maximumFractionDigits:0})}`;
+  const money = sMoney;
   const card = (name, arr, style='') => { const s=st(arr); return `<div class="kpi-card" style="display:flex;flex-direction:column;gap:0;padding:18px 20px${style}">
       <div style="${F};font-size:1.3rem;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div>
       <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px"><span style="${F};font-size:2.6rem;font-weight:700;color:${wrCol(s.wr)};line-height:1">${s.wr===null?'—':s.wr+'%'}</span>${LBL('WIN RATE')}</div>
@@ -8746,7 +8756,7 @@ function renderIsStrategySections(tr) {
   const tmCards = IS_TM_OPTIONS.map(o => {
     const a = tr.filter(t => Array.isArray(t.fvTradeMgmt) && t.fvTradeMgmt.includes(o));
     const pct = tr.length ? Math.round(100*a.length/tr.length) : 0;
-    const vals = a.map(pnl), net = vals.reduce((x,y)=>x+y,0);
+    const vals = a.map(sv), net = vals.reduce((x,y)=>x+y,0);
     const tile = (lab, v) => `<div style="background:rgba(10,18,32,0.35);border:1px solid var(--border);border-radius:4px;padding:10px 12px"><div style="${F};font-size:0.72rem;letter-spacing:0.08em;color:var(--muted);margin-bottom:2px">${lab}</div><div style="${F};font-size:1.35rem;font-weight:700;color:${v===null?'var(--muted)':v>=0?'var(--green)':'var(--red)'}">${v===null?'—':money(v)}</div></div>`;
     return `<div class="kpi-card" style="display:flex;flex-direction:column;gap:0;padding:18px 20px;cursor:pointer" onclick="toggleFvBreak(this)">
       <div style="${F};font-size:1.3rem;font-weight:700;color:var(--text);line-height:1.15;margin-bottom:8px">${o}</div>
@@ -8795,7 +8805,7 @@ function renderFvStrategySections(tr, variant) {
   const st = arr => { const w=arr.filter(t=>pnl(t)>0&&!isBreakEven(t.pnl, undefined, t)).length, l=arr.filter(t=>pnl(t)<0&&!isBreakEven(t.pnl, undefined, t)).length; return { n:arr.length, wr: (w+l)?Math.round(100*w/(w+l)):null }; };
   const wrCol = wr => wr===null?'var(--muted)':wr>=50?'var(--green)':'var(--red)';
   const LBL = t => `<span style="${F};font-size:0.8rem;color:var(--muted);letter-spacing:0.08em">${t}</span>`;
-  const money = v => `${v>=0?'+':'−'}$${Math.abs(v).toLocaleString('en-US',{maximumFractionDigits:0})}`;
+  const money = sMoney;
   const card = (name, arr, opts={}) => {
     const s = st(arr);
     return `<div class="kpi-card${opts.cls||''}" style="display:flex;flex-direction:column;gap:0;padding:18px 20px${opts.style||''}"${opts.click?` onclick="toggleFvBreak(this)"`:''}>
@@ -8836,7 +8846,7 @@ function renderFvStrategySections(tr, variant) {
   const tmCards = FV_TM_OPTIONS.map(o => {
     const a = tr.filter(t => Array.isArray(t.fvTradeMgmt) && t.fvTradeMgmt.includes(o));
     const pct = tr.length ? Math.round(100*a.length/tr.length) : 0;
-    const vals = a.map(pnl);
+    const vals = a.map(sv);
     const net = vals.reduce((x,y)=>x+y,0);
     const tile = (lab, v) => `<div style="background:rgba(10,18,32,0.35);border:1px solid var(--border);border-radius:4px;padding:10px 12px"><div style="${F};font-size:0.72rem;letter-spacing:0.08em;color:var(--muted);margin-bottom:2px">${lab}</div><div style="${F};font-size:1.35rem;font-weight:700;color:${v===null?'var(--muted)':v>=0?'var(--green)':'var(--red)'}">${v===null?'—':money(v)}</div></div>`;
     return `<div class="kpi-card" style="display:flex;flex-direction:column;gap:0;padding:18px 20px;cursor:pointer" onclick="toggleFvBreak(this)">
