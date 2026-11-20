@@ -537,6 +537,12 @@
   .mg-tbl td { text-align:right; padding:9px 12px; border-bottom:1px solid var(--border); }
   .mg-tbl th:first-child, .mg-tbl td:first-child { text-align:left; }
   .mg-tbl .pos { color:var(--green); } .mg-tbl .neg { color:var(--red); }
+  .mg-rbox { background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:12px 14px; }
+  .mg-rbox-tot { font-family:'EB Garamond',serif; font-size:1.6rem; font-weight:700; font-variant-numeric:tabular-nums; }
+  .mg-rbox-tot small { font-size:0.85rem; color:var(--muted); font-weight:400; }
+  .mg-rbox-parts { margin-top:6px; font-family:'EB Garamond',serif; font-size:0.95rem; }
+  .mg-rbox-parts div { display:flex; justify-content:space-between; gap:10px; padding:3px 0; border-bottom:1px dashed var(--border); color:var(--muted); }
+  .mg-rbox-parts b { font-variant-numeric:tabular-nums; }
   .mg-focus { background:var(--surface2); border:1px solid var(--accent); border-radius:6px; padding:16px 18px; }
   .mg-focus-t { font-family:'EB Garamond',serif; font-size:1.45rem; font-weight:700; margin:4px 0 6px; }
   .mg-words { display:grid; gap:8px; }
@@ -1729,7 +1735,7 @@ function switchAccount(acct, el) {
 }
 
 // SYNC: fields copied across accounts on review save
-const SYNC_FIELDS = ['mgState','mgFelt','mgExit','mgMaxR','mgRevenge','entryRating','execRating','followedPlan','beOutcome','sl033','session','phase','mistakes','emotions','emotionNote','timeframeReview','setup','trendDir','reviewNotes',
+const SYNC_FIELDS = ['mgState','mgFelt','mgExit','mgMaxR','mgRevenge','mgRunning','mgRiskPct','entryRating','execRating','followedPlan','beOutcome','sl033','session','phase','mistakes','emotions','emotionNote','timeframeReview','setup','trendDir','reviewNotes',
   // Forex Valuation review fields
   'strategy','fvDirection','fvDirTags','fvValuation','fvLeftSweep','fvCleanBase','fvIndecision','fvTradeMgmt','fvProfitEmotion','fvFollowUp',
   // Index Strength review fields
@@ -3806,6 +3812,7 @@ function renderReviewList() {
         <span style="flex-shrink:0;width:24px;display:inline-flex;justify-content:center" id="rv_gbadge_${i}">${t.entryRating ? `<span class="grade-badge grade-active-${t.entryRating}">${t.entryRating}</span>` : ''}</span>
         <span style="flex-shrink:0;width:28px;display:inline-flex;justify-content:center" id="rv_sbadge_${i}">${(()=>{ const sc=calcTradeScore(t); if(!sc) return ''; const col=sc>=70?'#6dbf9e':sc>=45?'#7bafd4':'#e85555'; return `<span class="grade-badge" style="background:${col};color:#0a1220;font-size:0.9rem;opacity:0.9">${sc}</span>`; })()}</span>
         <span style="flex-shrink:0;width:16px;text-align:center;color:${planCol};font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700">${planIcon}</span>
+        ${t.mgRunning === 'yes' ? `<span style="flex-shrink:0;font-family:'EB Garamond',serif;font-size:0.8rem;padding:2px 8px;border-radius:3px;border:1px solid var(--accent);color:var(--accent);white-space:nowrap">⏳ Running</span>` : ''}
         ${isAnyFollowUpDue(t) ? `<span style="flex-shrink:0;font-family:'EB Garamond',serif;font-size:0.8rem;padding:2px 8px;border-radius:3px;border:1px solid #e0b85a;color:#e0b85a;white-space:nowrap">⏰ Follow-up due</span>` : ''}
         ${acctBadges}
         <span class="rv-card-chevron">▼</span>
@@ -7995,11 +8002,58 @@ function mgRUnit(acct) {
   return start > 0 ? start * pct / 100 : 0;
 }
 function mgSaveRiskPct(acct, v) { const p = mgPlan(); p.riskPct = p.riskPct || {}; if (parseFloat(v) > 0) p.riskPct[acct] = parseFloat(v); else delete p.riskPct[acct]; localStorage.setItem(MG_PLAN_KEY, JSON.stringify(p)); renderMentalGame(); }
-const mgR = t => { const u = mgRUnit(t._account || currentAccount); return u > 0 ? _mgNum(t.pnl) / u : null; };
+// Balance when the trade was opened = starting balance + every close (partials included) before the opening day
+function mgBalanceAtOpen(t) {
+  const acct = t._account || currentAccount;
+  const src = allTrades[acct] || trades;
+  const start = getStartingBalance(acct, src) || 0;
+  if (!(start > 0)) return 0;
+  const open = (t.date || t.closeDate || '').slice(0, 10);
+  const isSelf = x => x === t || (t._account && x.date === t.date && x.pair === t.pair && x.pnl === t.pnl);
+  let bal = start;
+  src.forEach(x => {
+    if (isSelf(x)) return;
+    const closes = Array.isArray(x.partials) && x.partials.length ? x.partials : [x];
+    closes.forEach(c => { const d = (c.closeDate || x.closeDate || x.date || '').slice(0, 10); if (d && d < open) bal += _mgNum(c.pnl); });
+  });
+  return bal;
+}
+const mgTradeRiskPct = t => { const v = parseFloat(t.mgRiskPct); if (v > 0) return v; const p = mgPlan(); return parseFloat((p.riskPct || {})[t._account || currentAccount]) || 0.25; };
+function mgTradeRUnit(t) {
+  if (!t) return 0;
+  if (!(parseFloat(t.mgRiskPct) > 0)) { const fixed = parseFloat((mgPlan().rUnit || {})[t._account || currentAccount]); if (fixed > 0) return fixed; }
+  const bal = mgBalanceAtOpen(t);
+  return bal > 0 ? bal * mgTradeRiskPct(t) / 100 : mgRUnit(t._account || currentAccount);
+}
+const mgR = t => { const u = mgTradeRUnit(t); return u > 0 ? _mgNum(t.pnl) / u : null; };
+const _fmtR = v => v === null || !isFinite(v) ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + 'R';
+function setMgRisk(idx, val) { const t = trades[idx]; if (!t) return; const v = parseFloat(val); t.mgRiskPct = v > 0 ? String(v) : ''; _fvPersist(idx, ['mgRiskPct']); renderReviewList(); setTimeout(() => { const c = document.getElementById(`rvc-${idx}`); if (c) c.classList.add('open'); }, 10); }
+function mgRBoxHtml(t, i) {
+  const unit = mgTradeRUnit(t), bal = mgBalanceAtOpen(t), pctV = mgTradeRiskPct(t);
+  const own = parseFloat(t.mgRiskPct) > 0, fixed = !own && parseFloat((mgPlan().rUnit || {})[t._account || currentAccount]) > 0;
+  const rc = v => v === null ? 'var(--muted)' : v >= 0 ? 'var(--green)' : 'var(--red)';
+  // closes of this position: merged partials, or separate rows of the same position
+  let closes = Array.isArray(t.partials) && t.partials.length > 1 ? t.partials.map(p => ({ d: p.closeDate, lots: p.lots, pnl: _mgNum(p.pnl) })) : [];
+  if (!closes.length) { const sib = findPartialSiblings(i); if (sib.length) closes = [i, ...sib].map(k => trades[k]).sort((a, b) => (a.closeDate || '').localeCompare(b.closeDate || '')).map(x => ({ d: x.closeDate, lots: x.lots, pnl: _mgNum(x.pnl) })); }
+  const totPnl = closes.length ? closes.reduce((a, c) => a + c.pnl, 0) : _mgNum(t.pnl);
+  const R = v => unit > 0 ? v / unit : null;
+  const running = t.mgRunning === 'yes';
+  return `<div class="form-group">
+      <label>R on this trade ${_mgSub(running ? '— still running · taken so far' : '— from the balance at opening')}</label>
+      <div class="mg-rbox">
+        <div class="mg-rbox-tot" style="color:${rc(R(totPnl))}">${_fmtR(R(totPnl))}${running ? ' <small>so far</small>' : ''}</div>
+        ${closes.length ? `<div class="mg-rbox-parts">${closes.map((c, k) => `<div><span>Partial ${k + 1} · ${fmtDate(c.d)} · ${c.lots} lots</span><b style="color:${rc(R(c.pnl))}">${_fmtR(R(c.pnl))}</b></div>`).join('')}</div>` : ''}
+        <div class="mg-hint" style="margin-top:8px">Balance at opening <b>$${bal.toLocaleString('en-US', { maximumFractionDigits: 0 })}</b> · risk
+          <input type="number" step="0.05" min="0.05" class="mg-in" style="width:70px;display:inline-block;padding:2px 6px" value="${own ? _mgEsc(t.mgRiskPct) : ''}" placeholder="${pctV}" onclick="event.stopPropagation()" onchange="setMgRisk(${i},this.value)">%
+          → 1R = <b>$${unit > 0 ? unit.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—'}</b>${fixed ? ' (fixed amount from Mental Game)' : ''}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${_mgBtn(i, 'mgRunning', 'yes', '⏳ Still running', running)}${_mgBtn(i, 'mgRunning', 'closed', '✓ Closed', t.mgRunning === 'closed')}</div>
+    </div>`;
+}
 // Max R after exit is only asked when profit was taken before the opposing zone
 const mgAsksMaxR = t => !!t && t.mgExit === 'before' && _mgNum(t.pnl) > 0;
 function isMaxRDue(t) {
-  if (!mgAsksMaxR(t) || (t.mgMaxR !== undefined && t.mgMaxR !== '')) return false;
+  if (!mgAsksMaxR(t) || t.mgRunning === 'yes' || (t.mgMaxR !== undefined && t.mgMaxR !== '')) return false;
   const c = t.closeDate || t.date; if (!c) return false;
   return (Date.now() - new Date(c).getTime()) >= MG_FOLLOWUP_DAYS * 86400000;
 }
@@ -8054,7 +8108,7 @@ function mgExitHtml(t, i) {
         ${!filled && dueDate ? `<div class="mg-due">⏰ ${due ? 'Follow-up due' : 'Follow-up'} ${dueDate.toLocaleDateString('en-GB')} — one month after close</div>` : ''}
       </div>`;
   }
-  return `<div class="form-group">
+  return `${mgRBoxHtml(t, i)}<div class="form-group">
         <label>Partial / Exit ${_mgSub('— leave empty if stopped out')}</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap">${MG_EXIT_OPTIONS.map(([v, l]) => _mgBtn(i, 'mgExit', v, l, t.mgExit === v)).join('')}</div>
       </div>
