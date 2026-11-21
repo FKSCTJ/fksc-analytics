@@ -557,10 +557,11 @@
   .mg-values { background:var(--surface); border:2px solid var(--border); border-left:3px solid var(--green); border-radius:6px; padding:22px 26px; }
   .mg-values-t { font-family:'EB Garamond',serif; font-style:italic; font-size:1.35rem; line-height:1.45; color:var(--text); }
   .mg-values-t + .mg-values-t { margin-top:8px; }
-  .mg-vals { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; }
+  .mg-vals { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:14px; }
   .mg-val { background:var(--surface); border:2px solid var(--border); border-radius:6px; padding:20px 20px 22px; }
   .mg-val-h { font-family:'EB Garamond',serif; font-size:1.6rem; font-weight:700; color:var(--text); margin-bottom:10px; }
-  @media (max-width:900px){ .mg-vals { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:1100px){ .mg-vals { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+  @media (max-width:760px){ .mg-vals { grid-template-columns:repeat(2,minmax(0,1fr)); } }
   @media (max-width:520px){ .mg-vals { grid-template-columns:1fr; } }
   .mg-tab .kpi-card { border-width:2px; border-radius:6px; background:var(--surface); }
   .mg-exit { background:var(--surface); border:2px solid var(--border); border-radius:6px; padding:22px 20px; }
@@ -8323,8 +8324,8 @@ function mgExitHtml(t, i) {
 // ── plan & weekly review storage ──
 const MG_PLAN_KEY = 'fx_mg_plan', MG_WEEK_KEY = 'fx_mg_weekly';
 const MG_PLAN_DEFAULT = {
-  top1: 'Fear', top1Desc: 'Giving back profits — taking profits too early, protecting too fast, trailing too tight',
-  top2: 'Lack of discipline', top2Desc: 'Taking entries that do not meet every criterion of an A setup',
+  top1: 'Fear', top1Desc: 'Giving back profits — taking profits too early, protecting too fast, trailing too tight. Also fear of entering a new position after a good winning run, afraid to give it back.',
+  top2: 'Lack of discipline', top2Desc: 'Taking entries that do not meet every criterion of an A setup. Also passing on valid setups that do meet them.',
   commitment: 'Entries and exits taken only on my checklist',
   exits: 'Take 50% minimum (or 66%) at the first quality opposing zone. Run the rest to the next opposing zone or extreme valuation. Break-even only at a structural level that protects the entry, at true 0 when possible. An exit before the opposing zone, other than the stop, is a rule break.',
   breakers: "Triggers: a loss, an open profit I'm scared to give back, or a FOMO urge to enter a trade or modify a position. Signal: I keep checking my P&L, or I feel rushed and want to act fast. Correlated trades count as one risk.",
@@ -8335,11 +8336,13 @@ const MG_PLAN_DEFAULT = {
   sizeUpTarget: 25, rUnit: {}, riskPct: {}
 };
 function mgPlan() { try { const p = Object.assign({}, MG_PLAN_DEFAULT, JSON.parse(localStorage.getItem(MG_PLAN_KEY) || '{}'));
-  if (!p._brkV5 && typeof p.breakers === 'string') { // one-time rewording of the symptom lines
+  if (!p._brkV7 && typeof p.breakers === 'string') { // one-time rewording of the symptom lines
     if (!/fomo/i.test(p.breakers)) p.breakers = p.breakers.replace(/Triggers?:[^\n]*?giv(?:e|ing) back\.?/i, "Triggers: a loss, an open profit I'm scared to give back, or a FOMO urge to enter a trade or modify a position.").replace(/Signal:\s*checking my P&L too often\.?/i, 'Signal: I keep checking my P&L.');
     if (!/modify a position/i.test(p.breakers)) p.breakers = p.breakers.replace(/a FOMO urge to enter a trade\.?/i, 'a FOMO urge to enter a trade or modify a position.');
     if (!/rushed/i.test(p.breakers)) p.breakers = p.breakers.replace(/Signal:\s*I keep checking my P&L\.?/i, "Signal: I keep checking my P&L, or I feel rushed and want to act fast.");
-    p._brkV5 = 1; try { localStorage.setItem(MG_PLAN_KEY, JSON.stringify(p)); } catch (e) {} }
+    if (p.top1Desc && !/winning run/i.test(p.top1Desc) && /giving back profits/i.test(p.top1Desc)) p.top1Desc = p.top1Desc.replace(/\.?\s*$/, '.') + ' Also fear of entering a new position after a good winning run, afraid to give it back.';
+    if (p.top2Desc && !/passing on valid/i.test(p.top2Desc) && /criterion of an A setup/i.test(p.top2Desc)) p.top2Desc = p.top2Desc.replace(/\.?\s*$/, '.') + ' Also passing on valid setups that do meet them.';
+    p._brkV7 = 1; try { localStorage.setItem(MG_PLAN_KEY, JSON.stringify(p)); } catch (e) {} }
   return p; } catch (e) { return { ...MG_PLAN_DEFAULT }; } }
 function mgSavePlanField(f, v) { const p = mgPlan(); p[f] = f === 'sizeUpTarget' ? (parseInt(v) || 25) : v; localStorage.setItem(MG_PLAN_KEY, JSON.stringify(p)); toast('Plan saved'); if (f === 'sizeUpTarget' || /^top[12]|^breakers$|^values$/.test(f)) renderMentalGame(); }
 function mgSaveRUnit(acct, v) { const p = mgPlan(); p.rUnit = p.rUnit || {}; if (parseFloat(v) > 0) p.rUnit[acct] = parseFloat(v); else delete p.rUnit[acct]; localStorage.setItem(MG_PLAN_KEY, JSON.stringify(p)); renderMentalGame(); }
@@ -8567,7 +8570,8 @@ function renderMentalGame() {
       ${[['Confidence','Confident in my data, built trade by trade in this journal. Every decision comes from process, strategy and data analysis, not from a feeling.'],
          ['Honesty','Always honest with myself. Highly aware of my destructive behaviours. I name them and monitor them.'],
          ['Patience','Wait for the A setup. Let the trade reach the opposing zone. No rushing to reach goals or outcomes: the timeline is not mine to decide.'],
-         ['Process focused','Focus on executing the tasks, day after day. Done right, they add up to a positive edge.']]
+         ['Process focused','Focus on executing the tasks, day after day. Done right, they add up to a positive edge.'],
+         ['Consistency','Same process every time: repeat it, journal it, improve it.']]
         .map(([h, d]) => `<div class="mg-val"><div class="mg-val-h">${h}</div><div class="mg-exit-d">${d}</div></div>`).join('')}
     </div>
     <details class="mg-more" style="margin-top:26px"><summary>&#9632; MY PLAN <span class="mg-subt">edit any line · saved automatically</span><button class="btn" style="margin-left:auto;padding:5px 14px" onclick="event.preventDefault();mgPrintPlan()">Print</button></summary>
