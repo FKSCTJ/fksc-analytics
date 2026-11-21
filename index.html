@@ -547,31 +547,53 @@
   .ov-unit button { font-family:'EB Garamond',serif; font-size:0.85rem; padding:3px 12px; background:none; border:none; color:var(--muted); cursor:pointer; }
   .ov-unit button.on { background:var(--surface2); color:var(--text); }
   .mg-exit4 { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; }
-  .mg-exit { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:22px 20px; }
-  .mg-exit-n { font-family:'EB Garamond',serif; font-size:2.6rem; font-weight:700; line-height:1; color:#d4b06a; margin-bottom:14px; }
+  .mg-leaks-l { font-family:'EB Garamond',serif; font-size:0.95rem; letter-spacing:0.1em; color:var(--text); margin:4px 0 12px; }
+  .mg-leaks { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-bottom:22px; }
+  .mg-leak { display:flex; gap:18px; align-items:flex-start; background:var(--surface); border:2px solid var(--border); border-left:3px solid var(--red); border-radius:6px; padding:18px 20px; }
+  .mg-leak-n { font-family:'EB Garamond',serif; font-size:2.4rem; font-weight:700; line-height:1; color:var(--red); }
+  .mg-leak-h { font-family:'EB Garamond',serif; font-size:1.45rem; font-weight:700; line-height:1.2; color:var(--text); margin-bottom:6px; }
+  .mg-leak-d { font-size:0.95rem; line-height:1.5; color:var(--text); opacity:0.85; }
+  @media (max-width:760px){ .mg-leaks { grid-template-columns:1fr; } }
+  .mg-values { background:var(--surface); border:2px solid var(--border); border-left:3px solid var(--green); border-radius:6px; padding:22px 26px; }
+  .mg-values-t { font-family:'EB Garamond',serif; font-style:italic; font-size:1.35rem; line-height:1.45; color:var(--text); }
+  .mg-values-t + .mg-values-t { margin-top:8px; }
+  .mg-vals { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; }
+  .mg-val { background:var(--surface); border:2px solid var(--border); border-radius:6px; padding:20px 20px 22px; }
+  .mg-val-h { font-family:'EB Garamond',serif; font-size:1.6rem; font-weight:700; color:var(--text); margin-bottom:10px; }
+  @media (max-width:900px){ .mg-vals { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:520px){ .mg-vals { grid-template-columns:1fr; } }
+  .mg-tab .kpi-card { border-width:2px; border-radius:6px; background:var(--surface); }
+  .mg-exit { background:var(--surface); border:2px solid var(--border); border-radius:6px; padding:22px 20px; }
+  .mg-exit-n { font-family:'EB Garamond',serif; font-size:2.6rem; font-weight:700; line-height:1; color:var(--accent); margin-bottom:14px; }
   .mg-exit-h { font-family:'EB Garamond',serif; font-size:1.3rem; font-weight:700; line-height:1.2; color:var(--text); margin-bottom:12px; }
   .mg-exit-d { font-size:0.95rem; line-height:1.5; color:var(--text); opacity:0.85; }
   @media (max-width:900px){ .mg-exit4 { grid-template-columns:repeat(2,minmax(0,1fr)); } }
   @media (max-width:520px){ .mg-exit4 { grid-template-columns:1fr; } }
-  .mg-limit { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:18px 20px 14px; text-align:center; max-width:460px; }
-  .mg-limit-big { font-family:'EB Garamond',serif; font-size:2.6rem; font-weight:700; line-height:1; color:#7f9cc4; }
+  .mg-limit-row { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; align-items:stretch; }
+  @media (max-width:900px){ .mg-limit-row { grid-template-columns:1fr; } }
+  .mg-brk { margin:0; padding-left:18px; font-size:0.95rem; line-height:1.5; color:var(--text); opacity:0.85; }
+  .mg-brk li { margin-bottom:4px; }
+  .mg-brk-l { font-family:'EB Garamond',serif; font-size:0.78rem; letter-spacing:0.14em; text-transform:uppercase; font-weight:700; margin:10px 0 6px; }
+  .mg-brk-l:first-of-type { margin-top:0; }
+  .mg-limit { background:var(--surface); border:2px solid var(--border); border-radius:6px; padding:18px 20px 14px; text-align:center; }
+  .mg-limit-big { font-family:'EB Garamond',serif; font-size:2.6rem; font-weight:700; line-height:1; color:var(--accent); }
   .mg-limit-d { font-size:0.95rem; margin:10px auto 12px; line-height:1.5; }
   .mg-limit-st { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; text-align:left; border:1px solid var(--border); border-radius:6px; padding:10px 14px; margin-top:8px; font-family:'EB Garamond',serif; font-size:0.98rem; }
   .mg-entry-q { margin:4px 0 10px; padding-left:20px; font-family:'EB Garamond',serif; font-size:1.08rem; line-height:1.6; }
-  .mg-quote { position:relative; overflow:hidden; text-align:center; padding:34px 24px 28px; margin-top:6px; border-radius:10px; border:1px solid rgba(212,176,106,0.28); background:radial-gradient(ellipse at 50% 0%, rgba(212,176,106,0.10), transparent 70%), var(--surface2); }
-  .mg-quote-m { position:absolute; left:28px; top:-18px; font-family:'EB Garamond',serif; font-size:11rem; line-height:1; color:#d4b06a; opacity:0.4; pointer-events:none; }
+  .mg-quote { position:relative; overflow:hidden; text-align:center; padding:34px 24px 28px; margin-top:6px; border-radius:6px; border:2px solid var(--border); border-left:3px solid var(--accent); background:var(--surface); }
+  .mg-quote-m { position:absolute; left:28px; top:-18px; font-family:'EB Garamond',serif; font-size:11rem; line-height:1; color:var(--accent); opacity:0.25; pointer-events:none; }
   .mg-quote-t { position:relative; font-family:'EB Garamond',serif; font-size:2rem; font-weight:600; font-style:italic; line-height:1.25; letter-spacing:0.01em; color:var(--text); }
-  .mg-quote-rule { width:56px; height:2px; background:#d4b06a; margin:18px auto 0; opacity:0.8; }
+  .mg-quote-rule { width:56px; height:2px; background:var(--accent); margin:18px auto 0; opacity:0.8; }
   @media (max-width:600px){ .mg-quote-t { font-size:1.5rem; } .mg-quote-m { font-size:8rem; } }
-  .mg-pre-l { font-family:'EB Garamond',serif; font-style:italic; font-size:1.08rem; color:#d4b06a; margin:18px 0 10px; }
+  .mg-pre-l { font-family:'EB Garamond',serif; font-style:italic; font-size:1.08rem; color:var(--accent); margin:18px 0 10px; }
   .mg-pre { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
-  .mg-pre-c { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:22px 20px; }
+  .mg-pre-c { background:var(--surface); border:2px solid var(--border); border-radius:6px; padding:22px 20px; }
   .mg-pre-i { width:58px; height:58px; border-radius:50%; border:2px solid; display:flex; align-items:center; justify-content:center; margin-bottom:16px; }
   @media (max-width:760px){ .mg-pre { grid-template-columns:1fr; } }
-  .mg-focus { background:var(--surface2); border:1px solid var(--accent); border-radius:6px; padding:16px 18px; }
+  .mg-focus { background:var(--surface); border:1px solid var(--accent); border-radius:6px; padding:16px 18px; }
   .mg-focus-t { font-family:'EB Garamond',serif; font-size:1.45rem; font-weight:700; margin:4px 0 6px; }
   .mg-words { display:grid; gap:8px; }
-  .mg-word { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:10px 14px; cursor:pointer; font-family:'EB Garamond',serif; }
+  .mg-word { background:var(--surface); border:2px solid var(--border); border-radius:6px; padding:10px 14px; cursor:pointer; font-family:'EB Garamond',serif; }
   .mg-word:hover { border-color:var(--accent); }
   .mg-word-h { display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:0.95rem; }
   .mg-word-q { margin-top:6px; font-size:1.02rem; line-height:1.5; white-space:pre-wrap; }
@@ -5242,7 +5264,7 @@ function renderMonthlyTab() {
     <div class="rv-card" id="qrc-${qKey}" style="margin:4px 0 8px;border-left:3px solid var(--accent)${q==='Y'?';background:var(--surface2)':''}">
       <div class="rv-card-header" onclick="toggleQuarterCard('${qKey}')" style="cursor:pointer">
         <div class="rv-reviewed-dot ${hasReview?'':'empty'}" title="${hasReview?'Reviewed':'Not reviewed'}"></div>
-        <span class="rv-card-date" style="color:var(--accent);font-weight:700;letter-spacing:0.08em;white-space:nowrap">${q==='Y'?`${yr} · FULL YEAR`:`${yr} Q${q}`}</span>
+        <span class="rv-card-date" style="color:var(--accent);font-weight:700;letter-spacing:0.08em;white-space:nowrap">${q==='Y'?`${yr} · YEAR`:`${yr} Q${q}`}</span>
         <span class="rv-card-meta">${qc.length} trades</span>
         <span style="font-family:'EB Garamond',serif;font-size:0.95rem;font-weight:700;color:${parseInt(wr)>=50?'var(--green)':'var(--red)'};margin-left:8px">${wr}% WR</span>
         <span class="rv-card-meta" style="margin-left:8px;white-space:nowrap">${wins}W / ${losses}L${beCount>0?` · <span style="color:var(--muted)">${beCount}BE</span>`:''}</span>
@@ -8305,15 +8327,21 @@ const MG_PLAN_DEFAULT = {
   top2: 'Lack of discipline', top2Desc: 'Taking entries that do not meet every criterion of an A setup',
   commitment: 'Entries and exits taken only on my checklist',
   exits: 'Take 50% minimum (or 66%) at the first quality opposing zone. Run the rest to the next opposing zone or extreme valuation. Break-even only at a structural level that protects the entry, at true 0 when possible. An exit before the opposing zone, other than the stop, is a rule break.',
-  breakers: 'Triggers: a loss, fear of giving back. Signal: checking my P&L too often. Correlated trades count as one risk.',
+  breakers: "Triggers: a loss, an open profit I'm scared to give back, or a FOMO urge to enter a trade or modify a position. Signal: I keep checking my P&L, or I feel rushed and want to act fast. Correlated trades count as one risk.",
   checkin: 'Before every trade: run the idea through the deserved win / bad luck test and every confluence of the strategy. State 1–5 and main emotion. Setup or feeling? Weekend review.',
   size: 'Risk linked to account balance and trade quality (currently 0.25% per entry).',
   premortem: 'Not respecting the entry rules · not journaling entries and attitudes · fear of failing.',
   values: 'A trader confident in his data, highly aware of his destructive behaviours — decisions by process and strategy, always honest with himself.',
   sizeUpTarget: 25, rUnit: {}, riskPct: {}
 };
-function mgPlan() { try { return Object.assign({}, MG_PLAN_DEFAULT, JSON.parse(localStorage.getItem(MG_PLAN_KEY) || '{}')); } catch (e) { return { ...MG_PLAN_DEFAULT }; } }
-function mgSavePlanField(f, v) { const p = mgPlan(); p[f] = f === 'sizeUpTarget' ? (parseInt(v) || 25) : v; localStorage.setItem(MG_PLAN_KEY, JSON.stringify(p)); toast('Plan saved'); if (f === 'sizeUpTarget') renderMentalGame(); }
+function mgPlan() { try { const p = Object.assign({}, MG_PLAN_DEFAULT, JSON.parse(localStorage.getItem(MG_PLAN_KEY) || '{}'));
+  if (!p._brkV5 && typeof p.breakers === 'string') { // one-time rewording of the symptom lines
+    if (!/fomo/i.test(p.breakers)) p.breakers = p.breakers.replace(/Triggers?:[^\n]*?giv(?:e|ing) back\.?/i, "Triggers: a loss, an open profit I'm scared to give back, or a FOMO urge to enter a trade or modify a position.").replace(/Signal:\s*checking my P&L too often\.?/i, 'Signal: I keep checking my P&L.');
+    if (!/modify a position/i.test(p.breakers)) p.breakers = p.breakers.replace(/a FOMO urge to enter a trade\.?/i, 'a FOMO urge to enter a trade or modify a position.');
+    if (!/rushed/i.test(p.breakers)) p.breakers = p.breakers.replace(/Signal:\s*I keep checking my P&L\.?/i, "Signal: I keep checking my P&L, or I feel rushed and want to act fast.");
+    p._brkV5 = 1; try { localStorage.setItem(MG_PLAN_KEY, JSON.stringify(p)); } catch (e) {} }
+  return p; } catch (e) { return { ...MG_PLAN_DEFAULT }; } }
+function mgSavePlanField(f, v) { const p = mgPlan(); p[f] = f === 'sizeUpTarget' ? (parseInt(v) || 25) : v; localStorage.setItem(MG_PLAN_KEY, JSON.stringify(p)); toast('Plan saved'); if (f === 'sizeUpTarget' || /^top[12]|^breakers$|^values$/.test(f)) renderMentalGame(); }
 function mgSaveRUnit(acct, v) { const p = mgPlan(); p.rUnit = p.rUnit || {}; if (parseFloat(v) > 0) p.rUnit[acct] = parseFloat(v); else delete p.rUnit[acct]; localStorage.setItem(MG_PLAN_KEY, JSON.stringify(p)); renderMentalGame(); }
 function mgWeekKey(d) { const x = new Date(d || Date.now()); const day = (x.getDay() + 6) % 7; x.setDate(x.getDate() - day); return x.toISOString().slice(0, 10); }
 function mgWeekly() { try { return JSON.parse(localStorage.getItem(MG_WEEK_KEY) || '{}'); } catch (e) { return {}; } }
@@ -8372,9 +8400,9 @@ function mgRiskSettingsHtml() {
       ${hist.map((r, k) => `<tr><td>${k === 0 ? '<span class="mg-d">first trade</span>' : `<input type="date" class="mg-in" style="padding:2px 6px;width:150px" value="${r.from}" onchange="mgRiskRowEdit('${a}',${k},'from',this.value)">`}</td>
         <td><input type="number" step="0.05" min="0.01" class="mg-in" style="width:80px;padding:2px 6px" value="${r.pct}" onchange="mgRiskRowEdit('${a}',${k},'pct',this.value)">%</td>
         <td><b>$${(size * r.pct / 100).toLocaleString('en-US', { maximumFractionDigits: 2 })}</b></td>
-        <td>${k ? `<button class="btn" style="padding:2px 10px" onclick="mgRiskRowEdit('${a}',${k},'del')">✕</button>` : ''}</td></tr>`).join('')}
+        <td>${k ? `<button class="btn btn-ghost" style="padding:2px 10px" onclick="mgRiskRowEdit('${a}',${k},'del')">✕</button>` : ''}</td></tr>`).join('')}
       </tbody></table>
-      <button class="btn" style="margin-top:8px;padding:4px 14px" onclick="mgRiskRowEdit('${a}',0,'add')">+ Risk change</button>
+      <button class="btn btn-ghost" style="margin-top:8px;padding:4px 14px" onclick="mgRiskRowEdit('${a}',0,'add')">+ Risk change</button>
       <div class="mg-d" style="margin-top:12px">${odd.length ? `<b style="color:#e0b85a">Check:</b> ${odd.length} loss${odd.length > 1 ? 'es' : ''} beyond −1.2R — a gap through the stop, or a wrong risk % for that date:` : '✓ Every loss is within −1.2R — the risk history matches your stop-outs.'}</div>
       ${odd.length ? `<ul class="tl-traits mg-stats" style="margin-top:6px">${odd.map(x => `<li><span>${fmtDate(x.t.date)} · ${_mgEsc(x.t.pair)} · ${x.t.pnl < 0 ? '−' : ''}$${Math.abs(_mgNum(x.t.pnl)).toLocaleString('en-US', { maximumFractionDigits: 2 })}</span><b style="color:var(--red)">${_fmtR(x.r)}</b></li>`).join('')}</ul>` : ''}
     </div>`;
@@ -8400,11 +8428,25 @@ function mgWeeklyLimitHtml() {
       <div style="color:${out ? 'var(--red)' : n === LIMIT - 1 ? '#e0b85a' : 'var(--green)'};font-weight:700">${out ? `Week over — next entry from Monday ${next.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}` : n === LIMIT - 1 ? 'One loss left this week — A setups only' : 'Trading allowed'}</div>
     </div>`;
   }).join('');
-  return `<div class="chart-card-title" style="margin:26px 0 12px">&#9632; HARD LIMIT <span class="mg-subt" style="color:#d4b06a;font-style:italic">decided when calm, so you don't have to decide when you're not</span></div>
-    <div class="mg-limit">
-      <div class="mg-limit-big">Weekly</div>
-      <div class="mg-limit-d">3 losses in a week, and the week is over. Wait for next week before considering an entry. It's an emotional reset.</div>
+  return `<div class="chart-card-title" style="margin:26px 0 12px">&#9632; HARD LIMIT <span class="mg-subt" style="color:var(--muted);font-style:italic">decided when calm, so you don't have to decide when you're not</span></div>
+    <div class="mg-limit-row">
+    ${(() => { const br = String(mgPlan().breakers || '').trim(); if (!br) return '';
+      const items = br.split(/\n+|(?<=\.)\s+(?=[A-Z])/).map(x => x.trim()).filter(Boolean);
+      return `<div class="mg-pre-c"><div class="mg-pre-i" style="color:var(--red);border-color:var(--red);background:rgba(232,85,85,0.13)"><svg viewBox="0 0 24 24" width="34" height="34"><path d="M13 3L5 13.5h5.5L9.5 21 18 10h-5.5z" fill="currentColor"/></svg></div>
+      <div class="mg-exit-h">Circuit breakers</div>
+      ${(() => { const li = x => { const m = x.match(/^([^:]{1,24}):\s*(.*)$/); return `<li>${m ? `<b>${_mgEsc(m[1])}:</b> ${_mgEsc(m[2])}` : _mgEsc(x)}</li>`; };
+        const isSym = x => /^(triggers?|signals?|symptoms?|warning)\b/i.test(x);
+        const sym = items.filter(isSym), cure = ["Say it out loud. Name exactly what you're feeling.", ...items.filter(x => !isSym(x))];
+        return `<div class="mg-brk-l" style="color:var(--red)">Symptoms</div><ul class="mg-brk">${sym.map(li).join('') || '<li>—</li>'}</ul>
+        <div class="mg-brk-l" style="color:var(--green)">Cure</div><ul class="mg-brk">${cure.map(li).join('')}</ul>`; })()}</div>`; })()}
+    <div class="mg-pre-c"><div class="mg-pre-i" style="color:var(--accent);border-color:var(--accent);background:rgba(123,175,212,0.13)"><svg viewBox="0 0 24 24" width="34" height="34"><path d="M19 12a7 7 0 1 1-2.05-4.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19.5 4.5v3.8h-3.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="mg-exit-h">Weekly Reset</div>
+      <div class="mg-exit-d" style="margin-bottom:12px">3 losses in a week, and the week is over. Wait for next week before considering an entry. It's an emotional reset.</div>
       ${status}
+    </div>
+    <div class="mg-pre-c"><div class="mg-pre-i" style="color:var(--accent);border-color:var(--accent);background:rgba(123,175,212,0.13)"><svg viewBox="0 0 24 24" width="34" height="34"><path d="M15.5 4.5A8 8 0 1 0 19.5 16 6.5 6.5 0 0 1 15.5 4.5z" fill="currentColor"/></svg></div>
+      <div class="mg-exit-h">After you trade</div>
+      <div class="mg-exit-d">Close the platform. A walk, a reset. Unwind and have fun doing other things. Don't check charts outside your trading slots.<br>Keep the same discipline and consistency in the rest of your life.</div></div>
     </div>`;
 }
 function renderMentalGame() {
@@ -8471,8 +8513,14 @@ function renderMentalGame() {
   const unit = mgRUnit(currentAccount === 'OVERALL' ? null : currentAccount);
   const ta = (f, rows) => `<textarea class="mg-in mg-ta" rows="${rows || 3}" onchange="mgSavePlanField('${f}',this.value)">${_mgEsc(plan[f])}</textarea>`;
 
-  el.innerHTML = `<div class="mg-tab">${statsPeriodBarHtml()}
-    <div class="mg-quote"><div class="mg-quote-m">“</div><div class="mg-quote-t">Your job is to protect yourself<br>from yourself.</div><div class="mg-quote-rule"></div></div>
+  const view = mgView();
+  const subtabs = `<div class="dash-subtabs">${[['rules','Rules'],['data','Data']].map(([k, l]) => `<button class="dash-subtab${view === k ? ' active' : ''}" onclick="setMgView('${k}')">${l}</button>`).join('')}</div>`;
+  const quoteHtml = `<div class="mg-quote"><div class="mg-quote-m">“</div><div class="mg-quote-t">Your job is to protect yourself<br>from yourself.</div><div class="mg-quote-rule"></div></div>`;
+  const leaks = [[plan.top1, plan.top1Desc], [plan.top2, plan.top2Desc]].filter(([h]) => h && String(h).trim());
+  const leaksHtml = leaks.length ? `<div class="mg-leaks-l" style="margin-top:22px">&#9632; MY LEAKS <span class="mg-subt">from My Plan · watch these on every trade</span></div>
+    <div class="mg-leaks">${leaks.map(([h, d], k) => `<div class="mg-leak"><div class="mg-leak-n">${k + 1}</div><div><div class="mg-leak-h">${_mgEsc(h)}</div>${d ? `<div class="mg-leak-d">${_mgEsc(d)}</div>` : ''}</div></div>`).join('')}</div>` : '';
+  el.innerHTML = view === 'rules'
+    ? `<div class="mg-tab">${quoteHtml}${leaksHtml}${subtabs}
 
     <div class="chart-card-title" style="margin:26px 0 12px">&#9632; ENTRY RULES</div>
     <div class="mg-exit4">
@@ -8486,9 +8534,9 @@ function renderMentalGame() {
     <div class="mg-pre-l">Technical analysis first, then a quick personal analysis</div>
     <div class="mg-pre">
       ${[
-        ['#9fc0ad', '<rect x="7" y="5" width="10" height="15" rx="1.5" fill="currentColor" opacity=".9"/><rect x="9.5" y="3" width="5" height="3.2" rx="1" fill="currentColor"/><path d="M9.2 13l1.9 1.9 3.8-4" fill="none" stroke="var(--surface2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>', 'Setup check', 'Does this trade fit my written rules? Entry, stop, target and size decided?'],
-        ['#dc9a9a', '<path d="M12 20s-7-4.4-7-9.6A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 7 2.4C19 15.6 12 20 12 20z" fill="currentColor"/><path d="M6.5 12.5h3l1.2-2.2 1.8 4 1.2-1.8h3.8" fill="none" stroke="var(--surface2)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>', 'State check', 'How do I feel right now, 1 to 5? 1 = calm and clear, 5 = on fire.'],
-        ['#d4b06a', '<circle cx="12" cy="12" r="8" fill="currentColor"/><path d="M9.8 9.6a2.3 2.3 0 1 1 3.2 2.1c-.7.3-1 .8-1 1.5v.4" fill="none" stroke="var(--surface2)" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="16.3" r="1.1" fill="var(--surface2)"/>', 'The honest question', 'Am I taking this because the setup fits, or because of a feeling: boredom, anger, FOMO?']
+        ['var(--green)', '<rect x="7" y="5" width="10" height="15" rx="1.5" fill="currentColor" opacity=".9"/><rect x="9.5" y="3" width="5" height="3.2" rx="1" fill="currentColor"/><path d="M9.2 13l1.9 1.9 3.8-4" fill="none" stroke="var(--surface)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>', 'Setup check', 'Does this trade fit my written rules? Entry, stop, target and size decided?'],
+        ['var(--red)', '<path d="M12 20s-7-4.4-7-9.6A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 7 2.4C19 15.6 12 20 12 20z" fill="currentColor"/><path d="M6.5 12.5h3l1.2-2.2 1.8 4 1.2-1.8h3.8" fill="none" stroke="var(--surface)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>', 'State check', 'How do I feel right now, 1 to 5? 1 = calm and clear, 5 = on fire.'],
+        ['var(--accent)', '<circle cx="12" cy="12" r="8" fill="currentColor"/><path d="M9.8 9.6a2.3 2.3 0 1 1 3.2 2.1c-.7.3-1 .8-1 1.5v.4" fill="none" stroke="var(--surface)" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="16.3" r="1.1" fill="var(--surface2)"/>', 'The honest question', 'Am I taking this because the setup fits, or because of a feeling: boredom, anger, FOMO?']
       ].map(([c, icon, h, d]) => `<div class="mg-pre-c"><div class="mg-pre-i" style="color:${c};border-color:${c};background:${c}22"><svg viewBox="0 0 24 24" width="34" height="34">${icon}</svg></div><div class="mg-exit-h">${h}</div><div class="mg-exit-d">${d}</div></div>`).join('')}
     </div>
     <div class="mg-pre-l" style="margin-top:12px">Twenty seconds. Every trade. It's the cheapest risk management you'll ever do.</div>
@@ -8504,7 +8552,38 @@ function renderMentalGame() {
 
     ${mgWeeklyLimitHtml()}
 
-    <div class="mg-grid2" style="margin-top:14px">
+    <div class="chart-card-title" style="margin:26px 0 12px">&#9632; EARN YOUR SIZE <span class="mg-subt" style="color:var(--muted);font-style:italic">what professional desks do, scaled down</span></div>
+    <div class="mg-exit4">
+      ${[["Start where it doesn't hurt",'A risk per trade you can lose without it changing your behaviour.'],
+         ['Prove the process','20–30 trades where you followed your rules, whatever the outcome.'],
+         ['Step up 10–20%','Never double. Pros increase size in small steps once goals are hit.'],
+         ['Step back if you derail','Size down without shame, rebuild, then try again.']]
+        .map(([h, d], k) => `<div class="mg-exit"><div class="mg-exit-n">${k + 1}</div><div class="mg-exit-h">${h}</div><div class="mg-exit-d">${d}</div></div>`).join('')}
+    </div>
+    <div class="mg-pre-l" style="margin-top:12px">Wall Street prop traders get 10–20% more risk at most, and only when they've earned it.</div>
+
+    <div class="chart-card-title" style="margin:26px 0 12px">&#9632; MY VALUES <span class="mg-subt">who I am as a trader</span></div>
+    <div class="mg-vals">
+      ${[['Confidence','Confident in my data, built trade by trade in this journal. Every decision comes from process, strategy and data analysis, not from a feeling.'],
+         ['Honesty','Always honest with myself. Highly aware of my destructive behaviours. I name them and monitor them.'],
+         ['Patience','Wait for the A setup. Let the trade reach the opposing zone. No rushing to reach goals or outcomes: the timeline is not mine to decide.'],
+         ['Process focused','Focus on executing the tasks, day after day. Done right, they add up to a positive edge.']]
+        .map(([h, d]) => `<div class="mg-val"><div class="mg-val-h">${h}</div><div class="mg-exit-d">${d}</div></div>`).join('')}
+    </div>
+    <details class="mg-more" style="margin-top:26px"><summary>&#9632; MY PLAN <span class="mg-subt">edit any line · saved automatically</span><button class="btn" style="margin-left:auto;padding:5px 14px" onclick="event.preventDefault();mgPrintPlan()">Print</button></summary>
+    <div class="mg-plan" id="mgPlanBox" style="margin-top:12px">
+      <div><b>My leaks</b><div class="mg-two"><input class="mg-in" value="${_mgEsc(plan.top1)}" onchange="mgSavePlanField('top1',this.value)"><input class="mg-in" value="${_mgEsc(plan.top2)}" onchange="mgSavePlanField('top2',this.value)"></div>
+        <div class="mg-two" style="margin-top:6px"><textarea class="mg-in mg-ta" rows="3" onchange="mgSavePlanField('top1Desc',this.value)">${_mgEsc(plan.top1Desc)}</textarea><textarea class="mg-in mg-ta" rows="3" onchange="mgSavePlanField('top2Desc',this.value)">${_mgEsc(plan.top2Desc)}</textarea></div></div>
+      <div><b>Commitment this month</b>${ta('commitment', 2)}<b style="margin-top:10px">Values</b>${ta('values', 3)}</div>
+      <div><b>Exit rules</b>${ta('exits', 5)}</div>
+      <div><b>Circuit breakers</b>${ta('breakers', 5)}</div>
+      <div><b>Check-in routine</b>${ta('checkin', 5)}</div>
+      <div><b>Size &amp; recovery</b>${ta('size', 2)}<b style="margin-top:10px">If I fail this year, the most likely reason is…</b>${ta('premortem', 2)}</div>
+    </div>
+    </details>
+  </div>`
+    : `<div class="mg-tab">${quoteHtml}${leaksHtml}${subtabs}${statsPeriodBarHtml()}
+    <div class="mg-grid2">
       ${compare('PARTIALS', 'var(--red)', pRules, '✓ Following rules', pFear, '✕ Impatient / fear',
         '')}
       ${compare('SETUPS', 'var(--accent)', isA, 'A setups', notA, 'Not A',
@@ -8536,19 +8615,11 @@ function renderMentalGame() {
     ${past.length ? `<table class="mg-tbl" style="margin-top:10px"><thead><tr><th>Week of</th><th>Kept</th><th>Broke</th><th>Pattern</th></tr></thead><tbody>${past.map(([k, v]) => `<tr><td>${wkLabel(k)}</td><td>${_mgEsc(v.kept || '—')}</td><td>${_mgEsc(v.broken || '—')}</td><td>${_mgEsc(v.pattern || '—')}</td></tr>`).join('')}</tbody></table>` : ''}
     </details>
 
-    <details class="mg-more" style="margin-top:14px"><summary>&#9632; MY PLAN <span class="mg-subt">edit any line · saved automatically</span><button class="btn" style="margin-left:auto;padding:5px 14px" onclick="event.preventDefault();mgPrintPlan()">Print</button></summary>
-    <div class="mg-plan" id="mgPlanBox" style="margin-top:12px">
-      <div><b>My leaks</b><div class="mg-two"><input class="mg-in" value="${_mgEsc(plan.top1)}" onchange="mgSavePlanField('top1',this.value)"><input class="mg-in" value="${_mgEsc(plan.top2)}" onchange="mgSavePlanField('top2',this.value)"></div>
-        <div class="mg-two" style="margin-top:6px"><textarea class="mg-in mg-ta" rows="3" onchange="mgSavePlanField('top1Desc',this.value)">${_mgEsc(plan.top1Desc)}</textarea><textarea class="mg-in mg-ta" rows="3" onchange="mgSavePlanField('top2Desc',this.value)">${_mgEsc(plan.top2Desc)}</textarea></div></div>
-      <div><b>Commitment this month</b>${ta('commitment', 2)}<b style="margin-top:10px">Values</b>${ta('values', 3)}</div>
-      <div><b>Exit rules</b>${ta('exits', 5)}</div>
-      <div><b>Circuit breakers</b>${ta('breakers', 5)}</div>
-      <div><b>Check-in routine</b>${ta('checkin', 5)}</div>
-      <div><b>Size &amp; recovery</b>${ta('size', 2)}<b style="margin-top:10px">If I fail this year, the most likely reason is…</b>${ta('premortem', 2)}</div>
-    </div>
-    </details>
   </div>`;
 }
+
+function mgView() { try { return localStorage.getItem('fx_mg_view') || 'rules'; } catch (e) { return 'rules'; } }
+function setMgView(v) { try { localStorage.setItem('fx_mg_view', v); } catch (e) {} renderMentalGame(); }
 
 function isFollowUpDue(t) {
   if (!t || (t.strategy !== FV_STRATEGY && t.strategy !== AV_STRATEGY) || t.fvValuation !== 'Extreme' || t.fvFollowUp) return false;
