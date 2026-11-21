@@ -5498,7 +5498,7 @@ function closeCalDayModal() {
 }
 
 function buildAiReviewPane(type, key, tradesArr) {
-  const storageKey = `fx_ai_review_v3_${type}_${key}`;
+  const storageKey = `fx_ai_review_v4_${type}_${key}`;
   const saved = localStorage.getItem(storageKey);
   let savedHtml = saved ? JSON.parse(saved) : null;
   // Invalidate stale cache from old API-based versions
@@ -5592,252 +5592,233 @@ function generateAiReview(type, key) {
   const pane = document.getElementById(`ai-pane-${type}-${key}`);
   if (!pane) return;
 
-  // Gather trades
-  // same rules as the Monthly review header: every close counts in its own period (cash result),
-  // and a trade counts once (win / loss / BE) in the period of its final close
-  let periodTrades;
-  const _all = splitTradesByClose(trades);
-  if (type === 'month') {
-    periodTrades = _all.filter(t => { const d = t.closeDate||t.date; return d && d.startsWith(key); });
-  } else {
+  // ── Period ──────────────────────────────────────────────────────────────────
+  // every close counts in its own period (cash result); a trade counts once, in the period of its final close
+  const months = (() => {
+    if (type === 'month') return [key];
     const [yr, qStr] = key.split('-Q');
-    const qNum = parseInt(qStr);
-    const months = qStr === 'Y' ? [yr] : [1,2,3].map(i => { const m = (qNum-1)*3+i; return `${yr}-${String(m).padStart(2,'0')}`; });
-    periodTrades = _all.filter(t => { const d = t.closeDate||t.date; return d && months.some(m => d.startsWith(m)); });
-  }
-  const periodPieces = periodTrades;
-  periodTrades = countedTrades(periodTrades);
-  if (!periodTrades.length) {
+    if (qStr === 'Y') return Array.from({ length: 12 }, (_, i) => `${yr}-${String(i + 1).padStart(2, '0')}`);
+    const q = parseInt(qStr); return [1, 2, 3].map(i => `${yr}-${String((q - 1) * 3 + i).padStart(2, '0')}`);
+  })();
+  const label = type === 'month' ? 'month' : String(key).endsWith('QY') ? 'year' : 'quarter';
+  const inMonths = (d, ms) => !!d && ms.some(m => d.startsWith(m));
+  const shiftMonth = (ym, n) => { const [y, m] = ym.split('-').map(Number); const d = new Date(Date.UTC(y, m - 1 + n, 1)); return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`; };
+  const prevMonths = months.map(m => shiftMonth(m, -months.length));
+
+  const allPieces = splitTradesByClose(trades);
+  const allPos = countedTrades(allPieces).filter(t => t.date || t.closeDate);
+  const pieces = allPieces.filter(t => inMonths(t.closeDate || t.date, months));
+  const P = allPos.filter(t => inMonths(t.closeDate || t.date, months)).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  if (!P.length) {
     pane.innerHTML = `<div style="text-align:center;padding:40px;font-family:'EB Garamond',serif;color:var(--muted)">No trades found for this period.</div>`;
     return;
   }
 
-  // ── Core stats ──────────────────────────────────────────────────────────────
-  const trueWins   = periodTrades.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl, undefined, t));
-  const trueLosses = periodTrades.filter(t => (parseFloat(t.pnl)||0) < 0 && !isBreakEven(t.pnl, undefined, t));
-  const besTrades  = periodTrades.filter(t => isBreakEven(t.pnl, undefined, t));
-  const besSaved   = besTrades.filter(t => t.beOutcome === 'saved');
-  const besStopped = besTrades.filter(t => t.beOutcome === 'stopped');
-  const netPnl     = periodPieces.reduce((a,t) => a+(parseFloat(t.pnl)||0), 0);
-  const grossWin   = trueWins.reduce((a,t) => a+(parseFloat(t.pnl)||0), 0);
-  const grossLoss  = Math.abs(trueLosses.reduce((a,t) => a+(parseFloat(t.pnl)||0), 0));
-  const avgWin     = trueWins.length ? grossWin/trueWins.length : 0;
-  const avgLoss    = trueLosses.length ? grossLoss/trueLosses.length : 0;
-  const wr         = (trueWins.length+trueLosses.length) > 0 ? (trueWins.length/(trueWins.length+trueLosses.length)*100) : 0;
-  const rr         = avgLoss > 0 ? avgWin/avgLoss : 0;
-  const scores     = periodTrades.map(t => calcTradeScore(t)).filter(s => s !== null);
-  const avgScore   = scores.length ? scores.reduce((a,b)=>a+b,0)/scores.length : null;
-
-  // ── Behaviour flags ─────────────────────────────────────────────────────────
-  const getMistakes = t => Array.isArray(t.mistakes) ? t.mistakes : [];
-  const closedEarly  = periodTrades.filter(t => getMistakes(t).includes('Closed Early'));
-  const movedSL      = periodTrades.filter(t => getMistakes(t).includes('Moved SL'));
-  const forcedSetups   = periodTrades.filter(t => getMistakes(t).includes('Forced Setup'));
-
-  const emotional    = periodTrades.filter(t => getMistakes(t).includes('Emotional'));
-  const impatient    = periodTrades.filter(t => getMistakes(t).includes('Impatience'));
-  const brokeplan    = periodTrades.filter(t => t.followedPlan === 'no');
-  const followedplan = periodTrades.filter(t => t.followedPlan === 'yes');
-  const sl033        = periodTrades.filter(t => t.sl033 === 'yes');
-
-  // ── Dimension breakdown helper ───────────────────────────────────────────────
-  function dimBreak(keyFn) {
-    const map = {};
-    periodTrades.forEach(t => {
-      const keys = [].concat(keyFn(t)).filter(k => k && k !== '?' && k !== '');
-      keys.forEach(k => {
-        if (!map[k]) map[k] = { trades:[], pnl:0, wins:0, losses:0, bes:0 };
-        const p = parseFloat(t.pnl)||0;
-        map[k].trades.push(t);
-        map[k].pnl += p;
-        if (isBreakEven(p, undefined, t)) map[k].bes++;
-        else if (p > 0) map[k].wins++;
-        else map[k].losses++;
-      });
-    });
-    return Object.entries(map)
-      .filter(([,v]) => v.trades.length > 0)
-      .sort((a,b) => b[1].pnl - a[1].pnl)
-      .map(([k,v]) => ({
-        label: k, n: v.trades.length, wins: v.wins, losses: v.losses, bes: v.bes,
-        pnl: v.pnl, wr: (v.wins+v.losses)>0 ? Math.round(v.wins/(v.wins+v.losses)*100) : null,
-        avgPnl: v.pnl / v.trades.length
-      }));
-  }
-
-  const bySetup  = dimBreak(t => (t.setup||'').split(',').map(s=>s.trim()).filter(Boolean));
-  const byTf     = dimBreak(t => t.timeframeReview || '?');
-  const byTrend  = dimBreak(t => t.trendDir || '?');
-  const byGrade  = dimBreak(t => t.entryRating || '?');
-  const byPair   = dimBreak(t => t.pair || '?');
-  const DOW      = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const byDow    = dimBreak(t => { const d=t.closeDate||t.date; return d ? DOW[new Date(d).getDay()] : '?'; });
-  const byPlan    = dimBreak(t => t.followedPlan==='yes'?'Followed Plan':t.followedPlan==='no'?'Broke Plan':t.followedPlan==='partial'?'Partial':'?');
-  const SESSION_LABELS = { Forex:'Forex', Indices:'Indices', Stocks:'Stocks', Commodity:'Commodity' };
-  const bySession = dimBreak(t => assetClassOf(t));
-
-  // ── Render helpers ───────────────────────────────────────────────────────────
-  const fmt$ = v => (v>=0?'+':'−')+`$${Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
-  const pnlCol = v => v > 0 ? 'var(--green)' : v < 0 ? 'var(--red)' : 'var(--muted)';
-  const signal = (row, minTrades=2) => {
-    if (row.n < minTrades) return { icon:'○', col:'var(--muted)', label:'Too few trades' };
-    if (row.pnl > 0 && (row.wr === null || row.wr >= 50)) return { icon:'●', col:'var(--green)', label:'Edge' };
-    if (row.pnl < 0) return { icon:'●', col:'var(--red)', label:'Drag' };
-    return { icon:'◐', col:'#ffd166', label:'Neutral' };
-  };
-
-  function dimTable(rows, title, minTrades=2) {
-    if (!rows.length) return '';
-    const rowsHtml = rows.map(r => {
-      const s = signal(r, minTrades);
-      const wrStr = r.wr !== null ? `${r.wr}% WR` : '—';
-      return `<tr>
-        <td style="padding:5px 10px 5px 0;font-weight:600;color:var(--text)">${r.label}</td>
-        <td style="padding:5px 8px;color:var(--muted);text-align:center">${r.n}</td>
-        <td style="padding:5px 8px;text-align:center;color:var(--muted)">${r.wins}W/${r.losses}L${r.bes?'/'+r.bes+'BE':''}</td>
-        <td style="padding:5px 8px;text-align:right;color:${pnlCol(r.pnl)};font-weight:600">${fmt$(r.pnl)}</td>
-        <td style="padding:5px 8px;text-align:center;color:var(--muted)">${wrStr}</td>
-        <td style="padding:5px 8px 5px 10px;text-align:center"><span style="color:${s.col};font-size:0.75rem;font-weight:700;letter-spacing:0.05em">${s.icon} ${s.label}</span></td>
-      </tr>`;
-    }).join('');
-    return `
-      <div style="margin-bottom:20px">
-        <div style="font-family:'EB Garamond',serif;font-size:0.78rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:8px">${title}</div>
-        <table style="width:100%;border-collapse:collapse;font-family:'EB Garamond',serif;font-size:0.9rem">
-          <thead><tr style="border-bottom:1px solid var(--border)">
-            <th style="padding:4px 10px 6px 0;text-align:left;color:var(--muted);font-weight:400;font-size:0.78rem;letter-spacing:0.06em"></th>
-            <th style="padding:4px 8px 6px;text-align:center;color:var(--muted);font-weight:400;font-size:0.78rem">Trades</th>
-            <th style="padding:4px 8px 6px;text-align:center;color:var(--muted);font-weight:400;font-size:0.78rem">W/L/BE</th>
-            <th style="padding:4px 8px 6px;text-align:right;color:var(--muted);font-weight:400;font-size:0.78rem">P&L</th>
-            <th style="padding:4px 8px 6px;text-align:center;color:var(--muted);font-weight:400;font-size:0.78rem">Win Rate</th>
-            <th style="padding:4px 8px 6px 10px;text-align:center;color:var(--muted);font-weight:400;font-size:0.78rem">Signal</th>
-          </tr></thead>
-          <tbody>${rowsHtml}</tbody>
-        </table>
-      </div>`;
-  }
-
-  // ── Build findings — based on current strategies, exit rules and mental game ──
-  const findings = { strengths:[], weaknesses:[], actions:[], focus:'' };
-  const P = t => parseFloat(t.pnl) || 0;
-  const sum = a => a.reduce((x, t) => x + P(t), 0);
-  const Rof = t => (typeof mgR === 'function' ? mgR(t) : null);
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const R = t => { const v = mgR(t); return v === null || !isFinite(v) ? 0 : v; };
+  const res = t => isBreakEven(t.pnl, undefined, t) ? 'BE' : (parseFloat(t.pnl) || 0) > 0 ? 'W' : 'L';
+  const sumR = L => L.reduce((a, t) => a + R(t), 0);
   const fR = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1) + 'R';
-  const winsR = trueWins.map(Rof).filter(v => v !== null), lossR = trueLosses.map(Rof).filter(v => v !== null);
-  const avgWinR = winsR.length ? winsR.reduce((a, b) => a + b, 0) / winsR.length : null;
-  const avgLossR = lossR.length ? Math.abs(lossR.reduce((a, b) => a + b, 0) / lossR.length) : null;
-  const netR = periodPieces.map(Rof).filter(v => v !== null).reduce((a, b) => a + b, 0);
-  const label = type === 'month' ? 'month' : String(key).endsWith('QY') ? 'year' : 'quarter';
+  const col = v => v > 0.05 ? 'var(--green)' : v < -0.05 ? 'var(--red)' : 'var(--muted)';
+  const cR = v => `<b style="color:${col(v)}">${fR(v)}</b>`;
+  const wl = L => { const w = L.filter(t => res(t) === 'W').length, l = L.filter(t => res(t) === 'L').length, b = L.length - w - l; return { w, l, b, wr: (w + l) ? Math.round(100 * w / (w + l)) : null }; };
+  const tag = t => `${esc(t.pair)} ${fmtDate(t.date).slice(0, 5)}`;
+  const acc = t => t._account || currentAccount;
+  const mis = t => Array.isArray(t.mistakes) ? t.mistakes : [];
+  const emo = t => Array.isArray(t.emotions) ? t.emotions : [];
+  const text = t => [t.mgFelt, t.emotionNote, t.fvProfitEmotion, t.reviewNotes].filter(Boolean).join(' \n ');
+  const quote = (t, rx) => { // the sentence of the notes that matches
+    for (const f of [t.mgFelt, t.emotionNote, t.fvProfitEmotion, t.reviewNotes]) {
+      if (!f) continue;
+      const parts = String(f).split(/(?<=[.!?])\s+|\n+/).map(s => s.trim()).filter(Boolean);
+      const hit = parts.find(s => rx.test(s));
+      if (hit) return hit.length > 170 ? hit.slice(0, 167) + '…' : hit;
+    }
+    return null;
+  };
+  const days = t => tradeDaysOpen(t);
+  const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+  const small = P.length < 5;
 
-  // Result
-  if (netPnl > 0) findings.strengths.push(`Positive ${label}: <strong>${fmt$(netPnl)}</strong> (${fR(netR)}) across ${periodTrades.length} trade${periodTrades.length === 1 ? '' : 's'}.`);
-  else findings.weaknesses.push(`Negative ${label}: <strong>${fmt$(netPnl)}</strong> (${fR(netR)}) across ${periodTrades.length} trade${periodTrades.length === 1 ? '' : 's'}.`);
-  if (avgWinR !== null && avgLossR) {
-    if (avgWinR / avgLossR >= 2) findings.strengths.push(`Winners average <strong>${fR(avgWinR)}</strong> against <strong>−${avgLossR.toFixed(1)}R</strong> losers — exits are paying.`);
-    else if (avgWinR / avgLossR < 1.2 && trueWins.length >= 2) findings.weaknesses.push(`Winners average only <strong>${fR(avgWinR)}</strong> against <strong>−${avgLossR.toFixed(1)}R</strong> losers — winners are being cut short.`);
-  }
+  // history context (same account): what happened just before each trade
+  const dt = s => Date.parse(String(s).slice(0, 10) + 'T00:00:00Z');
+  P.forEach(t => {
+    const before = allPos.filter(x => x !== t && acc(x) === acc(t) && x.closeDate && String(x.closeDate) <= String(t.date) && String(x.date) < String(t.date));
+    const last = before.sort((a, b) => String(b.closeDate).localeCompare(String(a.closeDate)))[0];
+    t._prev = last ? res(last) : null;
+    t._gap = last ? Math.round((dt(t.date) - dt(last.closeDate)) / 86400000) : null;
+    t._l7 = before.filter(x => res(x) === 'L' && (dt(t.date) - dt(x.closeDate)) / 86400000 <= 7).length;
+    t._open = allPos.filter(x => x !== t && acc(x) === acc(t) && String(x.date) <= String(t.date) && String(x.closeDate || '9') >= String(t.date) && !(x.date === t.date && x.pair === t.pair)).length;
+  });
 
-  // By strategy
-  const byStrategy = dimBreak(t => t.strategy || 'Standard review');
-  const bestS = byStrategy.filter(r => r.n >= 2 && r.pnl > 0)[0], worstS = byStrategy.filter(r => r.n >= 2 && r.pnl < 0).slice(-1)[0];
-  if (bestS) findings.strengths.push(`<strong>${bestS.label}</strong> is carrying the ${label}: ${fmt$(bestS.pnl)} on ${bestS.n} trades${bestS.wr !== null ? `, ${bestS.wr}% WR` : ''}.`);
-  if (worstS) findings.weaknesses.push(`<strong>${worstS.label}</strong> lost ${fmt$(worstS.pnl)} on ${worstS.n} trades${worstS.wr !== null ? ` (${worstS.wr}% WR)` : ''} — check whether those entries met every confluence.`);
+  // ── Headline ────────────────────────────────────────────────────────────────
+  const netR = pieces.reduce((a, t) => a + R(t), 0);
+  const k = wl(P), gw = sumR(P.filter(t => res(t) === 'W')), gl = -sumR(P.filter(t => res(t) === 'L'));
+  const prevPieces = allPieces.filter(t => inMonths(t.closeDate || t.date, prevMonths));
+  const prevPos = allPos.filter(t => inMonths(t.closeDate || t.date, prevMonths));
+  const prevNet = prevPieces.reduce((a, t) => a + R(t), 0), pk = wl(prevPos);
 
-  // Outcome — judge the decision, not the result
-  const oc = o => periodTrades.filter(t => t.outcome === o);
-  const dWin = oc('Deserved Win'), bLuck = oc('Bad Luck'), dLuck = oc('Dumb Luck'), dLoss = oc('Deserved Loss');
-  const tagged = dWin.length + bLuck.length + dLuck.length + dLoss.length;
-  if (dWin.length + bLuck.length && tagged) findings.strengths.push(`<strong>${dWin.length + bLuck.length} of ${tagged}</strong> tagged trades were good decisions (Deserved Win or Bad Luck)${bLuck.length ? ` — the ${bLuck.length} Bad Luck loss${bLuck.length > 1 ? 'es are' : ' is'} part of the plan, not a mistake` : ''}.`);
-  if (dLoss.length) { findings.weaknesses.push(`<strong>${dLoss.length} Deserved Loss${dLoss.length > 1 ? 'es' : ''}</strong> (${dLoss.map(t => t.pair).join(', ')}) cost <strong>${fmt$(sum(dLoss))}</strong> — rule breaks, not market.`); }
-  if (dLuck.length) findings.weaknesses.push(`<strong>${dLuck.length} Dumb Luck</strong> win${dLuck.length > 1 ? 's' : ''} (${dLuck.map(t => t.pair).join(', ')}) — a broken rule that paid. Treat it as a rule break.`);
+  // ── Findings, ranked by their weight in R ───────────────────────────────────
+  const F = []; // {w: weight, kind: 'edge'|'leak', html}
+  const add = (kind, w, html) => F.push({ kind, w: Math.abs(w), html });
 
-  // Fear of giving back — exits vs the opposing zone
-  const exitTagged = periodTrades.filter(t => t.mgExit === 'zone' || t.mgExit === 'extreme' || t.mgExit === 'before');
-  const early = periodTrades.filter(t => t.mgExit === 'before');
-  const closedEarlyTm = periodTrades.filter(t => (t.fvTradeMgmt || []).includes('Fully closed early') || getMistakes(t).includes('Closed Early') || getMistakes(t).includes('Exit before zone'));
-  const leftR = early.filter(t => parseFloat(t.mgMaxR) > 0).reduce((a, t) => { const r = Rof(t); return a + (r === null ? 0 : Math.max(0, parseFloat(t.mgMaxR) - r)); }, 0);
-  if (early.length || closedEarlyTm.length) {
-    const n = Math.max(early.length, closedEarlyTm.length);
-    findings.weaknesses.push(`<strong>${n} partial${n > 1 ? 's' : ''} taken out of impatience / fear</strong>${exitTagged.length ? ` (${early.length} of ${exitTagged.length} tagged partials)` : ''}. This is your Fear leak.`);
-    findings.actions.push('Take 50–66% at the first quality opposing zone, then let the rest run to the next zone or extreme valuation. No exit before the zone except the stop.');
-  } else if (exitTagged.length) findings.strengths.push(`Every tagged partial followed the rules (${exitTagged.length} trade${exitTagged.length > 1 ? 's' : ''}).`);
+  const A = P.filter(t => t.entryRating === 'A'), BC = P.filter(t => t.entryRating && t.entryRating !== 'A');
+  if (A.length) add(sumR(A) >= 0 ? 'edge' : 'leak', sumR(A), `<strong>A setups</strong>: ${A.length} trade${A.length > 1 ? 's' : ''}, ${wl(A).w} won, ${cR(sumR(A))}.`);
+  if (BC.length) add(sumR(BC) < 0 ? 'leak' : 'edge', sumR(BC), `<strong>B / C setups</strong>: ${BC.length} trade${BC.length > 1 ? 's' : ''}, ${wl(BC).w} won, ${cR(sumR(BC))}. ${sumR(BC) < 0 ? 'Your edge is not in them.' : ''}`);
+  const noStrat = P.filter(t => !t.strategy);
+  if (noStrat.length && P.some(t => t.strategy)) add(sumR(noStrat) < 0 ? 'leak' : 'edge', sumR(noStrat), `<strong>Trades outside a defined strategy</strong>: ${noStrat.length}, ${cR(sumR(noStrat))}${sumR(noStrat) < 0 ? '' : ''}.`);
+  const forced = P.filter(t => mis(t).includes('Forced Setup'));
+  if (forced.length) add('leak', sumR(forced), `<strong>Forced setups</strong>: ${forced.length}, ${wl(forced).w} won, ${cR(sumR(forced))}.`);
+  const fomo = P.filter(t => emo(t).some(e => e === 'FOMO' || e === 'Distracted'));
+  if (fomo.length) add('leak', sumR(fomo), `<strong>FOMO / Distracted at entry</strong>: ${fomo.length} trade${fomo.length > 1 ? 's' : ''}, ${wl(fomo).w} won, ${cR(sumR(fomo))}.`);
+  const afterLoss = P.filter(t => t._prev === 'L' && t._gap !== null && t._gap <= 2);
+  if (afterLoss.length) add(sumR(afterLoss) < 0 ? 'leak' : 'edge', sumR(afterLoss), `<strong>Opened within 48 h of a loss</strong>: ${afterLoss.length}, ${wl(afterLoss).w} won, ${cR(sumR(afterLoss))}.`);
+  const ctNoStrat = P.filter(t => t.trendDir === 'Countertrend' && !t.strategy);
+  if (ctNoStrat.length) add(sumR(ctNoStrat) < 0 ? 'leak' : 'edge', sumR(ctNoStrat), `<strong>Countertrend outside a strategy</strong>: ${ctNoStrat.length}, ${cR(sumR(ctNoStrat))}.`);
+  const gaps = P.filter(t => R(t) < -1.2);
+  if (gaps.length) add('leak', gaps.reduce((a, t) => a + R(t) + 1, 0), `<strong>Losses beyond −1.2R</strong> (gaps, slippage, swap): ${gaps.map(t => `${tag(t)} ${fR(R(t))}`).join(', ')} — ${fR(gaps.reduce((a, t) => a + R(t) + 1, 0))} more than the stops.`);
+  const zone = P.filter(t => t.mgExit === 'zone' || t.mgExit === 'extreme');
+  if (zone.length) add('edge', sumR(zone), `<strong>Partial taken by the rules</strong>: ${zone.length} trade${zone.length > 1 ? 's' : ''}, ${cR(sumR(zone))}.`);
+  const RX_FEAR = /fear|scared|concerned|give back|giving it back|nervous/i;
+  const fearExit = P.filter(t => t.mgExit === 'before' || mis(t).includes('Closed Early') || mis(t).includes('Moved SL') || RX_FEAR.test([t.fvProfitEmotion, t.emotionNote, t.mgFelt].join(' ')));
+  if (fearExit.length) add('leak', 0.3 * fearExit.length, `<strong>Exits or stops driven by fear</strong>: ${fearExit.length} trade${fearExit.length > 1 ? 's' : ''} (${fearExit.map(tag).join(', ')}).`);
+  const RX_DOUBT = /wasn.?t convinc|not (so )?sold|despite question|didn.?t really want|not sure about the|wasn.?t sure/i;
+  const doubt = P.filter(t => RX_DOUBT.test(text(t)));
+  if (doubt.length) add('leak', sumR(doubt), `<strong>Taken despite doubt</strong>: ${doubt.length}, ${wl(doubt).w} won, ${cR(sumR(doubt))}. Your doubt was right.`);
+  const RX_ACTION = /wanted to (be in|jump|score|get in)|be in a trade|get things moving|eager to (catch|be in|get in|jump)|impatient to get|push (the )?stats|get back (on|in) the green|catch up|recover the/i;
+  const action = P.filter(t => RX_ACTION.test(text(t)));
+  if (action.length) add('leak', sumR(action), `<strong>Taken to be in a trade</strong> (to recover, catch a move or lift the stats): ${action.length}, ${cR(sumR(action))}.`);
 
-  // Discipline — A setups only, plan, revenge, mistakes
-  const graded = periodTrades.filter(t => t.entryRating);
-  const notA = graded.filter(t => t.entryRating !== 'A');
-  if (notA.length) {
-    findings.weaknesses.push(`<strong>${notA.length} of ${graded.length}</strong> graded trades were not A setups — result <strong style="color:${pnlCol(sum(notA))}">${fmt$(sum(notA))}</strong>.`);
-    findings.actions.push('A setups only: if a confluence of the strategy is missing, there is no trade.');
-  } else if (graded.length) findings.strengths.push(`Only A setups taken (${graded.length} graded trade${graded.length > 1 ? 's' : ''}).`);
-  if (brokeplan.length) findings.weaknesses.push(`Plan broken on <strong>${brokeplan.length}/${periodTrades.length}</strong> trades — P&L <strong style="color:${pnlCol(sum(brokeplan))}">${fmt$(sum(brokeplan))}</strong>${followedplan.length ? ` vs ${fmt$(sum(followedplan))} when followed` : ''}.`);
-  else if (followedplan.length) findings.strengths.push(`Plan followed on every reviewed trade (${followedplan.length}).`);
-  const revenge = periodTrades.filter(t => t.mgRevenge === 'yes' || getMistakes(t).includes('Revenge'));
-  if (revenge.length) { findings.weaknesses.push(`<strong>${revenge.length} revenge trade${revenge.length > 1 ? 's' : ''}</strong> (${revenge.map(t => t.pair).join(', ')}) — ${fmt$(sum(revenge))}.`); findings.actions.push('After a loss: stop, name it, step away. Only a valid setup from the plan gets the next click.'); }
-  const mCount = {}; periodTrades.forEach(t => getMistakes(t).forEach(x => { mCount[x] = (mCount[x] || 0) + 1; }));
-  const topM = Object.entries(mCount).sort((a, b) => b[1] - a[1]).slice(0, 3);
-  if (topM.length) findings.weaknesses.push(`Most frequent mistake tags: ${topM.map(([k, v]) => `<strong>${k}</strong> ×${v}`).join(', ')}.`);
+  const edges = F.filter(f => f.kind === 'edge').sort((a, b) => b.w - a.w);
+  const leaks = F.filter(f => f.kind === 'leak').sort((a, b) => b.w - a.w);
 
-  // State before entry
-  const tense = periodTrades.filter(t => parseInt(t.mgState) >= 3), calm = periodTrades.filter(t => t.mgState && parseInt(t.mgState) <= 2);
-  if (tense.length) findings.weaknesses.push(`<strong>${tense.length} trade${tense.length > 1 ? 's' : ''}</strong> taken at state 3 or higher — ${fmt$(sum(tense))}${calm.length ? ` vs ${fmt$(sum(calm))} when calm` : ''}.`);
-  else if (calm.length) findings.strengths.push(`Every scored trade was taken calm (state 1–2): ${fmt$(sum(calm))}.`);
+  // ── Tables ──────────────────────────────────────────────────────────────────
+  const tbl = (title, rows) => {
+    const rs = rows.filter(r => r.L.length);
+    if (!rs.length) return '';
+    return `<div style="margin:6px 0 16px"><div style="font-family:'EB Garamond',serif;font-size:0.8rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">${title}</div>
+      <table class="mg-tbl" style="width:100%"><thead><tr><th style="text-align:left"></th><th>Trades</th><th>W / L / BE</th><th>Win rate</th><th>Net R</th><th>Avg R</th></tr></thead><tbody>
+      ${rs.map(r => { const s = wl(r.L), n = sumR(r.L); return `<tr><td style="text-align:left">${r.name}</td><td>${r.L.length}</td><td>${s.w} / ${s.l} / ${s.b}</td><td>${s.wr === null ? '—' : s.wr + '%'}</td><td style="color:${col(n)}">${fR(n)}</td><td style="color:${col(n)}">${fR(n / r.L.length)}</td></tr>`; }).join('')}
+      </tbody></table></div>`;
+  };
+  const groupBy = fn => { const m = {}; P.forEach(t => { const kk = fn(t); if (kk) (m[kk] = m[kk] || []).push(t); }); return Object.entries(m).sort((a, b) => sumR(b[1]) - sumR(a[1])).map(([name, L]) => ({ name: esc(name), L })); };
 
-  // Review completeness
-  const noOutcome = periodTrades.length - tagged, noState = periodTrades.filter(t => !t.mgState).length;
-  if (noOutcome || noState) findings.actions.push(`Complete the reviews: ${noOutcome ? `${noOutcome} trade${noOutcome > 1 ? 's' : ''} without an Outcome` : ''}${noOutcome && noState ? ', ' : ''}${noState ? `${noState} without a state score` : ''}.`);
+  // exits
+  const dW = P.filter(t => res(t) === 'W' && t.mgRunning !== 'yes').map(days).filter(v => v !== null);
+  const dL = P.filter(t => res(t) === 'L').map(days).filter(v => v !== null);
+  const fearQuotes = fearExit.map(t => ({ t, q: quote(t, RX_FEAR) }));
 
-  // Single focus — follows the two leaks in My Plan
-  if (early.length || closedEarlyTm.length) findings.focus = 'Hold to the opposing zone: partial there, not before.';
-  else if (notA.length) findings.focus = 'A setups only — every confluence, or no trade.';
-  else if (revenge.length) findings.focus = 'No trade after a loss unless the plan gives a valid setup.';
-  else if (dLoss.length) findings.focus = 'Follow the checklist on entries and exits — every Deserved Loss was avoidable.';
-  else findings.focus = 'Keep executing the checklist — judge decisions, not outcomes.';
+  // discipline
+  const maxOpen = Math.max(0, ...P.map(t => t._open + 1));
+  const crowded = P.filter(t => t._open >= 3);
+  const sizeOff = P.filter(t => parseFloat(t.mgRiskPct) > 0 && Math.abs(parseFloat(t.mgRiskPct) - mgRiskPctOn(acc(t), t.date)) > 1e-9);
 
-  // ── Build HTML output ──
-  const sectionStyle = `margin-bottom:28px`;
-  const h3Style = `font-family:'EB Garamond',serif;font-size:1.05rem;letter-spacing:0.06em;text-transform:uppercase;color:var(--accent);margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)`;
-  const liStyle = `margin-bottom:7px;line-height:1.6`;
-  const strengthsHtml = findings.strengths.length ? `<ul style="margin:0;padding-left:18px">${findings.strengths.map(s=>`<li style="${liStyle}">${s}</li>`).join('')}</ul>` : `<p style="color:var(--muted);font-style:italic">No clear strengths this period.</p>`;
-  const weaknessesHtml = findings.weaknesses.length ? `<ul style="margin:0;padding-left:18px">${findings.weaknesses.map(s=>`<li style="${liStyle}">${s}</li>`).join('')}</ul>` : `<p style="color:var(--muted);font-style:italic">No major weaknesses flagged — clean period.</p>`;
-  const actionsHtml = findings.actions.length ? `<ul style="margin:0;padding-left:18px">${findings.actions.map(s=>`<li style="${liStyle}">${s}</li>`).join('')}</ul>` : `<p style="color:var(--muted);font-style:italic">Keep doing what you're doing.</p>`;
-  const byOutcome = dimBreak(t => t.outcome || null);
-  const EXIT_L = { zone:'Following rules', before:'Impatient / fear', extreme:'Following rules' };
-  const byExit = dimBreak(t => EXIT_L[t.mgExit] || null);
-  const byState = dimBreak(t => t.mgState ? (parseInt(t.mgState) <= 2 ? 'State 1–2 · calm' : parseInt(t.mgState) === 3 ? 'State 3 · tense' : 'State 4–5 · on fire') : null);
-  const statsHtml = `
-    ${dimTable(byStrategy, 'By Strategy', 1)}
-    ${dimTable(byOutcome, 'By Outcome', 1)}
-    ${dimTable(byExit, 'By Partial / Exit', 1)}
-    ${dimTable(byState, 'By State Before Entry', 1)}
-    ${dimTable(bySession, 'By Asset Type', 1)}`;
+  // own words
+  const themes = [
+    { name: 'Wanting to be in a trade', rx: RX_ACTION },
+    { name: 'Doubt before entry', rx: RX_DOUBT },
+    { name: 'Fear of giving back / of the loss', rx: RX_FEAR },
+    { name: 'Calm, patient, cold execution', rx: /calm and cold|kept patient|no emotion|stress free|\bpatient\b/i },
+  ].map(th => ({ ...th, L: P.filter(t => th.rx.test(text(t))) })).filter(th => th.L.length);
+  const LESSONS = [
+    { name: 'countertrend', rx: /counter ?trend/i },
+    { name: 'mid-range entries', rx: /mid(dle)? ?range|middle of (a )?range/i },
+    { name: 'news / FOMC / earnings', rx: /fomc|news|earnings|nfp|cpi/i },
+    { name: 'a zone on the left (LOL)', rx: /\bLOL\b|left side|from left/i },
+    { name: 'waiting for confirmation', rx: /confirmation|indecision/i },
+    { name: 'paying yourself on the way', rx: /pay yourself|lock(ed)? in (some )?profit|bank the/i },
+    { name: 'stop management', rx: /moved the s(l|top)|move(d)? sl|stop loss by fear|trail(ed)? the s/i },
+  ];
+  const earlier = allPos.filter(t => String(t.closeDate || t.date) < months[0]);
+  const lessons = LESSONS.map(l => ({ ...l, now: P.filter(t => l.rx.test(t.reviewNotes || '') && /should|lesson|not valid|avoid|must|again|one more time|another/i.test(t.reviewNotes || '')), before: earlier.filter(t => l.rx.test(t.reviewNotes || '') && /should|lesson|not valid|avoid|must|again|one more time|another/i.test(t.reviewNotes || '')) })).filter(l => l.now.length);
+  const calmE = P.filter(t => emo(t).some(e => ['Focused', 'Calm', 'Grounded'].includes(e)) && !emo(t).some(e => ['FOMO', 'Distracted', 'Anxious'].includes(e)));
+  const hotE = P.filter(t => emo(t).some(e => ['FOMO', 'Distracted', 'Anxious'].includes(e)));
+
+  // sequencing
+  const seqRows = [
+    { name: 'Right after a win', L: P.filter(t => t._prev === 'W') },
+    { name: 'Right after a breakeven', L: P.filter(t => t._prev === 'BE') },
+    { name: 'Right after a loss', L: P.filter(t => t._prev === 'L') },
+    { name: 'Within 48 h of a loss', L: afterLoss },
+    { name: '2+ losses in the 7 days before', L: P.filter(t => t._l7 >= 2) },
+    { name: 'No loss in the 7 days before', L: P.filter(t => t._l7 === 0) },
+  ];
+
+  // actions — one rule per leak, biggest first
+  const RULES = [
+    [BC, 'Only A setups of a defined strategy — grade it in FKSC before the order.'],
+    [noStrat, 'No trade outside the four strategies.'],
+    [forced, 'If it needs forcing, it is not a setup: no trade.'],
+    [afterLoss, '48 hours without a new entry after a loss.'],
+    [doubt, 'Doubt cancels the order — limit orders included.'],
+    [action, 'No entry to recover, catch up or be in a trade.'],
+    [ctNoStrat, 'No countertrend without extreme valuation, never on stocks.'],
+    [gaps, 'Stocks: no position held into earnings.'],
+    [fearExit, 'Partial 50–66% at the first opposing zone; the stop only moves behind a real zone.'],
+  ].filter(([L]) => L.length && sumR(L) < 0 || (L === fearExit && L.length)).sort((a, b) => sumR(a[0]) - sumR(b[0])).slice(0, 4);
+  const checks = [
+    ['B / C setups taken', BC.length, 0],
+    ['Trades within 48 h of a loss', afterLoss.length, 0],
+    ['Most positions open at once (risk-free ones included)', maxOpen, 3],
+  ];
+
+  // ── HTML ────────────────────────────────────────────────────────────────────
+  const H = t => `<h3 style="font-family:'EB Garamond',serif;font-size:1.05rem;letter-spacing:0.06em;text-transform:uppercase;color:var(--accent);margin:26px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--border)">${t}</h3>`;
+  const ul = items => items.length ? `<ul style="margin:0;padding-left:18px">${items.map(s => `<li style="margin-bottom:7px;line-height:1.6">${s}</li>`).join('')}</ul>` : '';
+  const muted = s => `<p style="color:var(--muted);font-style:italic;margin:0">${s}</p>`;
 
   const html = `
-    <div style="${sectionStyle}">
-      <h3 style="${h3Style}">💪 Strengths</h3>
-      <div class="ai-review-body">${strengthsHtml}</div>
+    <div class="ai-review-body">
+    <div style="padding:14px 18px;background:var(--surface2);border-left:3px solid var(--accent);border-radius:2px">
+      <div style="font-size:1.08rem"><strong>${label[0].toUpperCase() + label.slice(1)}: ${cR(netR)}</strong> · ${P.length} trade${P.length > 1 ? 's' : ''} · ${k.w}W / ${k.l}L / ${k.b}BE${k.wr !== null ? ` · ${k.wr}% win rate` : ''}${gl > 0 ? ` · profit factor ${(gw / gl).toFixed(2)}` : ''}</div>
+      <div style="color:var(--muted);font-size:0.9rem">Previous ${label}: ${prevPos.length || prevPieces.length ? `${fR(prevNet)} · ${prevPos.length} trades${pk.wr !== null ? ` · ${pk.wr}% win rate` : ''}` : 'no trades'}${small ? ' · small sample: read the patterns, not the percentages' : ''}</div>
     </div>
-    <div style="${sectionStyle}">
-      <h3 style="${h3Style}">⚠️ Weaknesses</h3>
-      <div class="ai-review-body">${weaknessesHtml}</div>
-    </div>
-    <div style="${sectionStyle}">
-      <h3 style="${h3Style}">📈 Improvement Plan</h3>
-      <div class="ai-review-body">${actionsHtml}</div>
-    </div>
-    <div style="margin-bottom:28px;padding:14px 18px;background:var(--surface2);border-left:3px solid var(--accent);border-radius:2px">
-      <div style="font-family:'EB Garamond',serif;font-size:0.78rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:6px">🎯 Single Focus</div>
-      <div class="ai-review-body" style="font-size:1rem"><strong>${findings.focus}</strong></div>
-    </div>
-    <div style="${sectionStyle}">
-      <h3 style="${h3Style}">📊 What's Working / What's Not</h3>
-      <div style="font-family:'EB Garamond',serif;font-size:0.8rem;color:var(--muted);margin-bottom:16px">● Edge &nbsp; ◐ Neutral &nbsp; ○ Too few trades &nbsp; ● Drag<br>Tables list the trades fully closed in this period, each with its full result — a partial closed in an earlier period is included here, so totals can differ from the period's net.</div>
-      ${statsHtml}
+
+    ${H('Key takeaways')}
+    ${ul([...leaks.slice(0, 3).map(f => '<span style="color:var(--red)">▼</span> ' + f.html), ...edges.slice(0, 2).map(f => '<span style="color:var(--green)">▲</span> ' + f.html)]) || muted('Nothing stands out this ' + label + '.')}
+
+    ${H('Where the edge is')}
+    ${tbl('Setup grade and strategy', [{ name: 'A setups', L: A }, { name: 'B setups', L: P.filter(t => t.entryRating === 'B') }, { name: 'C setups', L: P.filter(t => t.entryRating === 'C') }, { name: 'With a strategy', L: P.filter(t => t.strategy) }, { name: 'Without a strategy', L: noStrat }])}
+    ${tbl('By strategy', groupBy(t => t.strategy))}
+    ${tbl('By asset', groupBy(t => assetClassOf(t)))}
+    ${tbl('Trend', groupBy(t => t.trendDir ? `${t.trendDir}${t.strategy ? '' : ' · no strategy'}` : null))}
+
+    ${H('Exits and management')}
+    ${ul([
+      dW.length || dL.length ? `Winners lasted <strong>${dW.length ? avg(dW).toFixed(1) : '—'} days</strong> on average, losers <strong>${dL.length ? avg(dL).toFixed(1) : '—'} days</strong> (first entry to final exit).` : '',
+      zone.length ? `Partial by the rules: ${zone.map(t => `${tag(t)} ${cR(R(t))}`).join(', ')}.` : '',
+      ...fearQuotes.map(x => `${tag(x.t)} ${cR(R(x.t))} — ${x.q ? `<em>“${esc(x.q)}”</em>` : esc([x.t.mgExit === 'before' ? 'partial out of impatience / fear' : '', ...mis(x.t).filter(m => ['Closed Early', 'Moved SL', 'Impatience', 'Emotional'].includes(m))].filter(Boolean).join(', '))}`),
+      gaps.length ? `Beyond the stop: ${gaps.map(t => `${tag(t)} ${cR(R(t))}`).join(', ')}.` : '',
+    ].filter(Boolean)) || muted('No exit issue recorded.')}
+
+    ${H('Discipline')}
+    ${tbl('What the reviews say', [{ name: 'Plan followed', L: P.filter(t => t.followedPlan === 'yes') }, { name: 'Plan partly followed', L: P.filter(t => t.followedPlan === 'partial') }, { name: 'Plan not followed', L: P.filter(t => t.followedPlan === 'no') }, { name: 'No mistake tagged', L: P.filter(t => !mis(t).length && t.entryRating) }, { name: 'At least one mistake', L: P.filter(t => mis(t).length) }, { name: 'Execution 3 stars', L: P.filter(t => String(t.execRating) === '3') }, { name: 'Execution 1 star', L: P.filter(t => String(t.execRating) === '1') }])}
+    ${ul([
+      `Up to <strong>${maxOpen}</strong> position${maxOpen > 1 ? 's' : ''} open at once${crowded.length ? ` · ${crowded.length} trade${crowded.length > 1 ? 's' : ''} opened with 3+ already running (${cR(sumR(crowded))}) — positions already risk-free are counted too` : ''}.`,
+      sizeOff.length ? `Risk different from your plan on ${sizeOff.map(t => `${tag(t)} (${t.mgRiskPct}%)`).join(', ')}.` : '',
+    ].filter(Boolean))}
+
+    ${H('In your own words')}
+    ${themes.length || lessons.length ? '' : muted('No notes match a pattern yet — the “Felt · wanted · did” box is what feeds this part.')}
+    ${themes.map(th => `<p style="margin:10px 0 4px"><strong>${th.name}</strong> — ${th.L.length} trade${th.L.length > 1 ? 's' : ''}, ${cR(sumR(th.L))}</p>${ul(th.L.map(t => ({ t, q: quote(t, th.rx) })).filter(x => x.q).slice(0, 4).map(x => `${tag(x.t)} ${cR(R(x.t))} — <em>“${esc(x.q)}”</em>`))}`).join('')}
+    ${lessons.length ? `<p style="margin:12px 0 4px"><strong>Lessons you wrote this ${label}</strong></p>${ul(lessons.map(l => `On ${l.name}: ${l.now.map(tag).join(', ')}${l.before.length ? ` — <span style="color:#e0b85a">already written ${l.before.length} time${l.before.length > 1 ? 's' : ''} before this ${label}</span>: it needs a pre-trade filter, not another note` : ''}.`))}` : ''}
+    ${calmE.length || hotE.length ? `<p style="margin:12px 0 0">Calm, focused or grounded at entry: ${calmE.length} trade${calmE.length !== 1 ? 's' : ''}, ${cR(sumR(calmE))}. FOMO, distracted or anxious: ${hotE.length} trade${hotE.length !== 1 ? 's' : ''}, ${cR(sumR(hotE))}.</p>` : ''}
+
+    ${H('Sequencing')}
+    ${tbl('Trade opened…', seqRows)}
+
+    ${H('For the next ' + label)}
+    ${ul(RULES.map(([L, r]) => `${r} <span style="color:var(--muted)">(${L.length} trade${L.length > 1 ? 's' : ''} this ${label}, ${fR(sumR(L))})</span>`)) || muted('Same rules, same execution.')}
+    <table class="mg-tbl" style="width:100%;margin-top:10px"><thead><tr><th style="text-align:left">Plan check</th><th>This ${label}</th><th>Target</th></tr></thead><tbody>
+      ${checks.map(([n, v, tg]) => `<tr><td style="text-align:left">${n}</td><td style="color:${v > tg ? 'var(--red)' : 'var(--green)'}">${v}</td><td>${tg === 0 ? '0' : '≤ ' + tg}</td></tr>`).join('')}
+    </tbody></table>
+    <p style="color:var(--muted);font-size:0.85rem;margin-top:14px">Trades are counted in the ${label} of their final close with their full result; the headline R is the cash result of every close in the ${label}. R = account size × risk % on the opening day.</p>
     </div>`;
 
-  // Save and render
-  const storageKey = `fx_ai_review_v3_${type}_${key}`;
-  const saveData = { html, date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) };
-  localStorage.setItem(storageKey, JSON.stringify(saveData));
+  const storageKey = `fx_ai_review_v4_${type}_${key}`;
+  const saveData = { html, date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) };
+  try { localStorage.setItem(storageKey, JSON.stringify(saveData)); } catch (e) {}
 
   pane.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
