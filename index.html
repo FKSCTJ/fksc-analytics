@@ -4903,6 +4903,12 @@ function _renderStrategyInner() {
     const rrCmt    = stRR === null ? 'Not enough data' : stRR >= 2 ? 'Excellent — low WR still profitable' : stRR >= 1.5 ? 'Good — aim for 2.0+' : stRR >= 1 ? 'Decent — needs higher WR' : 'Below 1:1 — unfavourable';
     const expCls   = stExp >= 0 ? 'pos' : 'neg';
     const expCmt   = stExp >= 0 ? `${sMoney(stExp)} expected per trade` : `Negative edge — fix criteria`;
+    // time in trade: closed trades only (a trade still running has no final exit yet)
+    const _days = arr => arr.filter(t => t.mgRunning !== 'yes').map(tradeDaysOpen).filter(v => v !== null);
+    const _avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+    const _med = a => { if (!a.length) return null; const b = [...a].sort((x, y) => x - y), m = Math.floor(b.length / 2); return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+    const dAll = _days(st), dW = _days(stWins), dL = _days(stLosses);
+    const fD = v => v === null ? '—' : `${v.toFixed(1)}d`;
     const pfCls    = stPF === null ? '' : stPF >= 2 ? 'pos' : stPF >= 1.5 ? 'warn' : stPF >= 1 ? 'hi' : 'neg';
     const pfCmt    = stPF === null ? 'Not enough data' : stPF >= 2 ? 'Elite — above 2.0' : stPF >= 1.5 ? 'Good — aim for 2.0+' : stPF >= 1 ? 'Marginal edge' : 'Losing system';
     const netCls   = stNet >= 0 ? 'pos' : 'neg';
@@ -4951,6 +4957,12 @@ function _renderStrategyInner() {
           pfCls,
           'Gross wins ÷ Gross losses',
           pfCmt
+        )}
+        ${kpiCard('◷', 'Avg Days Open',
+          dAll.length ? `${_avg(dAll).toFixed(1)} days` : '—',
+          'hi',
+          `Winners ${fD(_avg(dW))} · Losers ${fD(_avg(dL))}`,
+          dAll.length ? `Median ${_med(dAll).toFixed(1)} days · first entry → final exit, partials don't close the trade` : 'No closed trades'
         )}
       </div>`;
   }
@@ -5074,6 +5086,15 @@ function positionGroups() {
   });
   Object.keys(g).forEach(k => { if (g[k].length < 2) delete g[k]; });
   return g;
+}
+// Calendar days a trade was open: first entry → FINAL exit (a partial close does not end the trade).
+// Call it on countedTrades() records so the parts of one position are already one trade.
+function tradeDaysOpen(t) {
+  const open = String(t.date || '').slice(0, 10);
+  let close = String(t.closeDate || '').slice(0, 10);
+  (Array.isArray(t.partials) ? t.partials : []).forEach(p => { const d = String(p.closeDate || '').slice(0, 10); if (d > close) close = d; });
+  if (!open || !close || close < open) return null;
+  return Math.round((Date.parse(close + 'T00:00:00Z') - Date.parse(open + 'T00:00:00Z')) / 86400000);
 }
 function countedTrades(list) {
   const seen = new Set(), out = [], groups = positionGroups();
