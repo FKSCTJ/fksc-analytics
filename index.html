@@ -1787,7 +1787,7 @@ function switchAccount(acct, el) {
 }
 
 // SYNC: fields copied across accounts on review save
-const SYNC_FIELDS = ['mgState','mgFelt','mgExit','mgMaxR','mgRevenge','mgRunning','entryRating','execRating','followedPlan','beOutcome','sl033','session','phase','mistakes','emotions','emotionNote','timeframeReview','setup','trendDir','reviewNotes',
+const SYNC_FIELDS = ['slPrice','mgState','mgFelt','mgExit','mgMaxR','mgRevenge','mgRunning','entryRating','execRating','followedPlan','beOutcome','sl033','session','phase','mistakes','emotions','emotionNote','timeframeReview','setup','trendDir','reviewNotes',
   // Forex Valuation review fields
   'strategy','fvDirection','fvDirTags','fvValuation','fvLeftSweep','fvCleanBase','fvIndecision','fvTradeMgmt','fvProfitEmotion','fvFollowUp',
   // Index Strength review fields
@@ -4132,6 +4132,7 @@ ${(() => {
                 <button class="plan-btn ${t.sl033==='yes'?'active-yes':''}" onclick="event.stopPropagation();setSl033For(${i},'yes')" title="Price entered the extra 0.33% SL zone — the extra room saved this winner">✓ Used it</button>
                 <button class="plan-btn ${t.sl033==='no'?'active-partial':''}" onclick="event.stopPropagation();setSl033For(${i},'no')" title="Price never entered the extra 0.33% SL zone">✕ Didn't use it</button>
               </div>
+              ${sl033ReviewHtml(t, i)}
             </div>` : ''}
             <div class="form-group">
               <label>Mistakes</label>
@@ -4842,6 +4843,10 @@ function _renderStrategyInner() {
   const sl033Tagged = sl033Yes.length + sl033No.length;
   const sl033Pct = sl033Tagged > 0 ? Math.round(sl033Yes.length / sl033Tagged * 100) : 0;
   const sl033Untagged = sl033Winners.length - sl033Tagged;
+  const sl033Gain = sl033No.reduce((acc, t) => { const c = sl033Calc(t); return acc + (c && !c.invalid ? c.delta : 0); }, 0);
+  const sl033Lost = sl033Yes.reduce((acc, t) => { const c = sl033Calc(t); return acc + (c && !c.invalid ? c.lost : 0); }, 0);
+  const sl033Net = sl033Gain - sl033Lost;
+  const sl033Actual = [...sl033Yes, ...sl033No].filter(t => parseFloat(t.slPrice) > 0).length;
 
   const sl033Section = `
     <div style="margin-bottom:20px">
@@ -4850,6 +4855,9 @@ function _renderStrategyInner() {
       <div class="kpi-grid">
         ${kpiCard('✓', 'Used It', `${sl033Yes.length} · ${sl033Pct}%`, 'pos', `${sl033Yes.length} of ${sl033Tagged} winners`, `Price entered the extra 0.33% zone`)}
         ${kpiCard('✕', "Didn't Use It", `${sl033No.length} · ${100 - sl033Pct}%`, 'hi', `${sl033No.length} of ${sl033Tagged} winners`, `Price stayed out of the extra zone`)}
+        ${kpiCard('+', 'R Added Without Buffer', `+${sl033Gain.toFixed(1)}R`, 'pos', `on ${sl033No.length} winner${sl033No.length===1?'':'s'} that didn't use it`, `Bigger position on the same 1R risk`)}
+        ${kpiCard('−', 'R Lost Without Buffer', `−${sl033Lost.toFixed(1)}R`, sl033Lost > 0 ? 'neg' : 'hi', `on ${sl033Yes.length} winner${sl033Yes.length===1?'':'s'} that used it`, `Each would have been −1R`)}
+        ${kpiCard('=', 'Net Without Buffer', `${sl033Net >= 0 ? '+' : '−'}${Math.abs(sl033Net).toFixed(1)}R`, sl033Net >= 0 ? 'pos' : 'neg', sl033Net >= 0 ? 'Removing the buffer would have paid' : 'The buffer is paying for itself', `${sl033Actual} / ${sl033Tagged} with your real SL · rest estimated`)}
         ${kpiCard('◎', 'Winners Tagged', `${sl033Tagged} / ${sl033Winners.length}`, 'hi', sl033Untagged ? `${sl033Untagged} winner${sl033Untagged>1?'s':''} not tagged yet` : 'All winners tagged', sl033Pct >= 50 ? 'The extra 0.33% is saving winners' : 'Extra 0.33% rarely used')}
       </div>`}
     </div>`;
@@ -5157,7 +5165,7 @@ function countedTrades(list) {
     seen.add(k);
     const sum = f => g.reduce((a, x) => a + (parseFloat(x[f])||0), 0);
     const rec = { ...t, pnl: sum('pnl').toFixed(2), commission: sum('commission').toFixed(2), swap: sum('swap').toFixed(2),
-      lots: sum('lots').toFixed(2), date: g.reduce((a, x) => (!a || (x.date||'') < a) ? x.date : a, ''), markBE: g.some(x => x.markBE) || undefined };
+      lots: sum('lots').toFixed(2), date: g.reduce((a, x) => (!a || (x.date||'') < a) ? x.date : a, ''), markBE: g.some(x => x.markBE) || undefined, _pieces: g };
     // the review may have been filled on any of the closes: same rule as merging (fill the gaps from the other closes)
     const empty = v => v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length);
     [...SYNC_FIELDS, 'mgRiskPct', 'notes'].forEach(f => { if (empty(rec[f])) { const src = g.find(x => !empty(x[f])); if (src) rec[f] = src[f]; } });
@@ -8063,6 +8071,64 @@ function setSl033For(idx, val) {
   }
   renderReviewList();
   setTimeout(()=>{ const c=document.getElementById(`rvc-${idx}`); if(c) c.classList.add('open'); },10);
+}
+
+// ── 0.33% SL buffer: stop distance and R with / without the buffer ──────────
+// Stop distance comes from the actual SL price when entered, otherwise it is
+// estimated from the trade itself: 1R ($) ÷ (price P&L per unit of price move).
+const SL033_BUF = 0.0033;
+function sl033Pieces(t) {
+  if (Array.isArray(t._pieces) && t._pieces.length) return t._pieces;
+  if (Array.isArray(t.partials) && t.partials.length) return t.partials.map(p => ({ ...t, ...p }));
+  return [t];
+}
+function sl033Calc(t, pieces) {
+  pieces = pieces && pieces.length ? pieces : sl033Pieces(t);
+  const unit = mgTradeRUnit(t), entry = parseFloat(t.entry);
+  if (!(unit > 0) || !(entry > 0)) return null;
+  const totR = pieces.reduce((a, x) => a + _mgNum(x.pnl), 0) / unit;
+  const totLots = pieces.reduce((a, x) => a + (parseFloat(x.lots) || 0), 0);
+  let D = null, src = 'est';
+  const sl = parseFloat(t.slPrice);
+  if (sl > 0) { D = Math.abs(entry - sl); src = 'actual'; }
+  else {
+    let best = null;
+    pieces.forEach(x => {
+      const ex = parseFloat(x.exit), pp = Math.abs(_mgNum(x.pnl) - _mgNum(x.swap) - _mgNum(x.commission)), mv = Math.abs(ex - entry);
+      const share = totLots > 0 ? (parseFloat(x.lots) || 0) / totLots : 1;
+      if (ex > 0 && mv > 0 && pp > 1 && share > 0 && (!best || pp > best.pp)) best = { pp, mv, share };
+    });
+    if (best) D = best.mv * unit * best.share / best.pp;
+  }
+  if (!(D > 0)) return null;
+  const b = SL033_BUF * entry, S = D - b, buy = String(t.direction || '').toLowerCase().startsWith('b');
+  const out = { D, b, src, totR, sl: buy ? entry - D : entry + D, structural: buy ? entry - S : entry + S, share: b / D };
+  if (S <= 0) return { ...out, invalid: true };
+  const f = D / S;
+  return { ...out, f, newR: totR * f, delta: totR * (f - 1), lost: totR + 1 };
+}
+function setSlPriceFor(idx, val) {
+  const t = trades[idx]; if (!t) return;
+  const v = parseFloat(String(val).replace(',', '.'));
+  t.slPrice = v > 0 ? String(v) : '';
+  findPartialSiblings(idx).forEach(k => { trades[k].slPrice = t.slPrice; });
+  _fvPersist(idx, ['slPrice']);
+  renderReviewList();
+  setTimeout(() => { const c = document.getElementById(`rvc-${idx}`); if (c) c.classList.add('open'); }, 10);
+}
+function sl033ReviewHtml(t, i) {
+  const pieces = Array.isArray(t.partials) && t.partials.length ? sl033Pieces(t) : [t, ...findPartialSiblings(i).map(k => trades[k])];
+  const c = sl033Calc(t, pieces);
+  const dp = v => { const e = parseFloat(t.entry) || 0; const d = e >= 1000 ? 1 : e >= 100 ? 2 : e >= 10 ? 3 : 5; return v.toFixed(d); };
+  const input = `<input type="text" inputmode="decimal" class="mg-in" style="width:110px;display:inline-block;padding:2px 6px" value="${_mgEsc(t.slPrice || '')}" placeholder="${c ? dp(c.sl) : 'SL price'}" onclick="event.stopPropagation()" onchange="setSlPriceFor(${i},this.value)">`;
+  if (!c) return `<div class="mg-hint" style="margin-top:8px">Actual SL price ${input}</div>`;
+  const est = c.src === 'est' ? ' <span style="opacity:0.6">(estimated — enter your real SL to confirm)</span>' : ' <span style="color:var(--green)">(your SL)</span>';
+  let line = '';
+  if (c.invalid) line = `The 0.33% buffer is larger than this stop — can't compute.`;
+  else if (t.sl033 === 'yes') line = `Without the buffer this winner would have been stopped: <b style="color:var(--red)">−1R instead of ${_fmtR(c.totR)}</b> (<b style="color:var(--red)">−${c.lost.toFixed(2)}R</b>)`;
+  else if (t.sl033 === 'no') line = `Without the buffer: <b style="color:var(--green)">${_fmtR(c.newR)}</b> instead of ${_fmtR(c.totR)} (<b style="color:var(--green)">+${c.delta.toFixed(2)}R</b>)`;
+  else line = `Without the buffer: ${_fmtR(c.newR)} if it wasn't used · −1R if it was`;
+  return `<div class="mg-hint" style="margin-top:8px;line-height:1.7">SL ${dp(c.sl)}${est} · buffer ${dp(c.b)} = ${Math.round(c.share * 100)}% of the stop · structural stop ${dp(c.structural)}<br>${line}<br>Actual SL price ${input}</div>`;
 }
 
 
