@@ -8439,7 +8439,7 @@ function mgWeeklyLimitHtml() {
       <div class="mg-exit-h">Circuit breakers</div>
       ${(() => { const li = x => { const m = x.match(/^([^:]{1,24}):\s*(.*)$/); return `<li>${m ? `<b>${_mgEsc(m[1])}:</b> ${_mgEsc(m[2])}` : _mgEsc(x)}</li>`; };
         const isSym = x => /^(triggers?|signals?|symptoms?|warning)\b/i.test(x);
-        const sym = items.filter(isSym), cure = ["Say it out loud. Name exactly what you're feeling.", ...items.filter(x => !isSym(x))];
+        const sym = items.filter(isSym), cure = ["Say it out loud. Name exactly what you're feeling.", "Stand up and stay away for a couple of minutes.", "The TP is set. Don't compromise.", "Don't trail too tight.", ...items.filter(x => !isSym(x) && !/correlated/i.test(x))];
         return `<div class="mg-brk-l" style="color:var(--red)">Symptoms</div><ul class="mg-brk">${sym.map(li).join('') || '<li>—</li>'}</ul>
         <div class="mg-brk-l" style="color:var(--green)">Cure</div><ul class="mg-brk">${cure.map(li).join('')}</ul>`; })()}</div>`; })()}
     <div class="mg-pre-c"><div class="mg-pre-i" style="color:var(--accent);border-color:var(--accent);background:rgba(123,175,212,0.13)"><svg viewBox="0 0 24 24" width="34" height="34"><path d="M19 12a7 7 0 1 1-2.05-4.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19.5 4.5v3.8h-3.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
@@ -8554,6 +8554,7 @@ function renderMentalGame() {
     </div>
 
     ${mgWeeklyLimitHtml()}
+    ${/correlated/i.test(String(mgPlan().breakers || '')) ? '<div class="mg-pre-l" style="margin-top:12px">Correlated trades count as one risk.</div>' : ''}
 
     <div class="chart-card-title" style="margin:26px 0 12px">&#9632; EARN YOUR SIZE <span class="mg-subt" style="color:var(--muted);font-style:italic">what professional desks do, scaled down</span></div>
     <div class="mg-exit4">
@@ -9524,15 +9525,9 @@ function renderSystemChallenge() {
   const currentPhase = config ? config.phases[storedPhase] : null;
   const target = currentPhase ? currentPhase.target : 0;
 
-  // Risk level (same tiers, measured from 0%)
-  let riskLevel, riskPct, riskColor;
-  if (pnlPct < 0) {
-    riskLevel = 'DEFENSE'; riskPct = '0.25%'; riskColor = 'var(--red)';
-  } else if (pnlPct < 1) {
-    riskLevel = 'BASELINE'; riskPct = '0.5%'; riskColor = 'var(--accent)';
-  } else {
-    riskLevel = 'GROWTH'; riskPct = '1%'; riskColor = 'var(--green)';
-  }
+  // Risk level — per-account plan (0.5% below the 1% line, 1% from it)
+  const tier = sizingTierFor(pnlPct, acct);
+  const riskLevel = tier.name.toUpperCase(), riskPct = tier.risk + '%', riskColor = tier.color;
 
   const pnlCol = totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
   const progress = target > 0 ? Math.min(100, Math.max(0, (pnlPct / target) * 100)) : 0;
@@ -9627,42 +9622,64 @@ function renderSystemChallenge() {
       </div>
     </div>
 
-    <!-- Risk zones -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
-      <div style="background:rgba(232,85,85,0.06);border:1px solid rgba(232,85,85,${riskLevel==='DEFENSE'?'0.5':'0.15'});border-radius:4px;padding:14px">
-        <div style="font-family:'EB Garamond',serif;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--red);margin-bottom:4px">Defense${riskLevel==='DEFENSE'?' ◉':''}</div>
-        <div style="font-family:'EB Garamond',serif;font-size:1.4rem;font-weight:700;color:var(--red)">0.25%</div>
-        <div style="font-family:'EB Garamond',serif;font-size:0.82rem;color:var(--muted);margin-top:4px">Below 0%</div>
-        <div style="font-family:'EB Garamond',serif;font-size:0.82rem;color:var(--muted)">$${(effectiveBase*0.0025).toFixed(0)} / trade</div>
-      </div>
-      <div style="background:rgba(123,175,212,0.06);border:1px solid rgba(123,175,212,${riskLevel==='BASELINE'?'0.5':'0.15'});border-radius:4px;padding:14px">
-        <div style="font-family:'EB Garamond',serif;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:4px">Baseline${riskLevel==='BASELINE'?' ◉':''}</div>
-        <div style="font-family:'EB Garamond',serif;font-size:1.4rem;font-weight:700;color:var(--accent)">0.5%</div>
-        <div style="font-family:'EB Garamond',serif;font-size:0.82rem;color:var(--muted);margin-top:4px">0% to 1%</div>
-        <div style="font-family:'EB Garamond',serif;font-size:0.82rem;color:var(--muted)">$${(effectiveBase*0.005).toFixed(0)} / trade</div>
-      </div>
-      <div style="background:rgba(109,191,158,0.06);border:1px solid rgba(109,191,158,${riskLevel==='GROWTH'?'0.5':'0.15'});border-radius:4px;padding:14px">
-        <div style="font-family:'EB Garamond',serif;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);margin-bottom:4px">Growth${riskLevel==='GROWTH'?' ◉':''}</div>
-        <div style="font-family:'EB Garamond',serif;font-size:1.4rem;font-weight:700;color:var(--green)">1%</div>
-        <div style="font-family:'EB Garamond',serif;font-size:0.82rem;color:var(--muted);margin-top:4px">Above 1%</div>
-        <div style="font-family:'EB Garamond',serif;font-size:0.82rem;color:var(--muted)">$${(effectiveBase*0.01).toFixed(0)} / trade</div>
-      </div>
-    </div>
-
-    <!-- Mandatory rules -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="chart-card" style="padding:16px">
-        <div style="font-family:'EB Garamond',serif;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:6px">◉ Rule 01 — 1R Break Even</div>
-        <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted);line-height:1.5">Move SL to entry once price hits <strong style="color:var(--text)">1:1 (1R)</strong>.</div>
-      </div>
-      <div class="chart-card" style="padding:16px">
-        <div style="font-family:'EB Garamond',serif;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:6px">◉ Rule 02 — 3R Take Profit</div>
-        <div style="font-family:'EB Garamond',serif;font-size:0.9rem;color:var(--muted);line-height:1.5">TP set at <strong style="color:var(--text)">3R</strong> when trade opens.</div>
-      </div>
-    </div>
+    <!-- Risk zones — Option B ladder -->
+    ${sizingLadderHtml(pnlPct, effectiveBase, acct)}
   `;
 }
 
+
+// ── Sizing (per account: 0.33% brake · 0.5% base · 1% full) ─────────────────
+const SIZING_LINE  = { FTMO: 2,  FXIFY: 4 };   // where 1% starts (forward-looking built in)
+const SIZING_BRAKE = { FTMO: -3, FXIFY: 0 };   // 0.33% at or below this level
+const SIZING_FUNDED_NOTE = {
+  FTMO:  'After a payout (back to +2%) → 1% straight away.',
+  FXIFY: 'After a payout (back to +2%) → 0.5% until +4%.',
+};
+function sizingLine(acct)  { return SIZING_LINE[acct]  != null ? SIZING_LINE[acct]  : 2; }
+function sizingBrake(acct) { return SIZING_BRAKE[acct] != null ? SIZING_BRAKE[acct] : 0; }
+const SZ_T = {
+  Brake: { name: 'Brake', risk: 0.33, color: '#e8a87c',       rgb: '232,168,124' },
+  Base:  { name: 'Base',  risk: 0.5,  color: 'var(--accent)', rgb: '123,175,212' },
+  Full:  { name: 'Full',  risk: 1,    color: 'var(--green)',  rgb: '109,191,158' },
+};
+function sizingTierFor(pct, acct) {
+  const L = sizingLine(acct), K = sizingBrake(acct);
+  return pct >= L ? SZ_T.Full : (K < 0 ? pct <= K : pct < K) ? SZ_T.Brake : SZ_T.Base;
+}
+function sizingLadderHtml(pct, base, acct) {
+  const L = sizingLine(acct), K = sizingBrake(acct), cur = sizingTierFor(pct, acct);
+  const money = v => '$' + Math.round(v).toLocaleString('en-US');
+  const g = "font-family:'EB Garamond',serif";
+  const sg = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v) + '%';
+  const where = { Brake: K < 0 ? `From ${sg(K)} and below` : 'Below the start (0%)', Base: K < 0 ? `Above ${sg(K)}, below ${sg(L)}` : `0% to ${sg(L)}`, Full: `From ${sg(L)}` };
+  const zones = ['Brake', 'Base', 'Full'].map(k => { const t = SZ_T[k], on = t === cur; return `<div style="background:rgba(${t.rgb},0.06);border:1px solid rgba(${t.rgb},${on ? '0.5' : '0.15'});border-radius:4px;padding:14px">
+        <div style="${g};font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:${t.color};margin-bottom:4px">${t.name} risk${on ? ' ◉' : ''}</div>
+        <div style="${g};font-size:1.4rem;font-weight:700;color:${t.color}">${t.risk}%</div>
+        <div style="${g};font-size:0.82rem;color:var(--muted);margin-top:4px">${where[k]}</div>
+        <div style="${g};font-size:0.82rem;color:var(--muted)">${money(base * t.risk / 100)} / trade</div>
+      </div>`; }).join('');
+  const rows = [
+    { label: '0.33% level', when: where.Brake.toLowerCase(), trades: 2, exp: 0.66, on: cur === SZ_T.Brake, col: '#e8a87c' },
+    { label: '0.5% level', when: where.Base.toLowerCase(), trades: 2, exp: 1, on: cur === SZ_T.Base, col: 'var(--accent)' },
+    { label: '1 trade at 1%', when: `from ${sg(L)}`, trades: 1, exp: 1, on: pct >= L && pct < L + 1, col: 'var(--green)' },
+    { label: '2 trades at 1%', when: `from ${sg(L + 1)}`, trades: 2, exp: 2, on: pct >= L + 1 && pct < L + 2, col: 'var(--green)' },
+    { label: '3 trades at 1%', when: `from ${sg(L + 2)}`, trades: 3, exp: 3, on: pct >= L + 2, col: 'var(--green)' },
+  ].map(r => `<tr style="${r.on ? 'background:rgba(123,175,212,0.08)' : ''}"><td style="padding:7px 10px;${r.on ? 'font-weight:700;color:var(--text)' : ''}">${r.label}${r.on ? ' ◉' : ''}</td><td style="padding:7px 10px">${r.when}</td><td style="padding:7px 10px;text-align:center">${r.trades}</td><td style="padding:7px 10px;text-align:right;color:${r.col}">${r.exp}%</td></tr>`).join('');
+  const th = `padding:7px 10px;${g};font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border)`;
+  const note = SIZING_FUNDED_NOTE[acct] || '';
+  return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px">${zones}</div>
+    <div class="chart-card" style="padding:16px 18px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+        <div style="${g};font-size:1rem;font-weight:700;color:var(--text)">Trades by level</div>
+        <div style="${g};font-size:0.85rem;color:var(--muted)">Account vs start · now ${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%</div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;${g};font-size:0.92rem;color:var(--muted)">
+        <thead><tr><th style="${th};text-align:left">Level</th><th style="${th};text-align:left">Account</th><th style="${th};text-align:center">Max trades</th><th style="${th};text-align:right">Max exposure</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="${g};font-size:0.85rem;color:var(--muted);margin-top:10px;font-style:italic">At 1%: if every open trade lost, the account must stay at or above ${sg(L - 1)}. Positions at BE don't count. Pairs ≥85% correlated = one exposure.${note ? '<br>Funded: ' + note : ''}</div>
+    </div>`;
+}
 function setChallPhase(idx) {
   const acct = currentAccount;
   const configs = {
@@ -9818,17 +9835,6 @@ function renderSystemFunded() {
       </div>
     </div>
 
-    <!-- Mandatory rules -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="chart-card" style="padding:20px">
-        <div style="font-family:'EB Garamond',serif;font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:8px">◉ Rule 01 — 1R Break Even</div>
-        <div style="font-family:'EB Garamond',serif;font-size:0.95rem;color:var(--muted);line-height:1.6">Move SL to entry once price hits <strong style="color:var(--text)">1:1 (1R)</strong>. A proven setup never results in a loss.</div>
-      </div>
-      <div class="chart-card" style="padding:20px">
-        <div style="font-family:'EB Garamond',serif;font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:8px">◉ Rule 02 — 3R Take Profit</div>
-        <div style="font-family:'EB Garamond',serif;font-size:0.95rem;color:var(--muted);line-height:1.6">TP set at <strong style="color:var(--text)">3R</strong> when trade opens. Non-negotiable. Winners pay for losers.</div>
-      </div>
-    </div>
   `;
 }
 
@@ -10269,29 +10275,9 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRMPage(
         <div><div class="rm-section-label">Execution Framework</div><h2 class="rm-section-title">Entries &amp; Exits</h2><div class="rm-section-line"></div></div>
       </div>
       <div class="rm-highlight">By adhering to an automated risk management and exit structure, you detach your self-worth from the trade and save your decision power for new entries.</div>
-      <div class="rm-two-col" style="margin-bottom:24px">
-        <div class="rm-card rm-card-accent">
-          <div class="rm-card-rule green">Rule 01 — Mandatory</div>
-          <div class="rm-card-title green">The 1R Break Even</div>
-          <div class="rm-card-body">Once price hits <strong>1:1 (1R)</strong>, the Stop Loss is automatically moved to Entry.<br><br>The 1R Break Even Rule <strong>prioritises capital preservation</strong> — ensuring a proven entry never results in a loss.</div>
-        </div>
-        <div class="rm-card rm-card-accent">
-          <div class="rm-card-rule green">Rule 02 — Mandatory</div>
-          <div class="rm-card-title green">The 3R Take Profit</div>
-          <div class="rm-card-body">The take profit is set automatically at <strong>3R</strong> as soon as the trade is open.<br><br>By letting the 3R Take Profit rule do the work, you <strong>eliminate self-sabotage</strong> and ensure your winners actually pay for your losers.</div>
-        </div>
-      </div>
-      <div class="rm-two-col">
-        <div class="rm-equilibrium">
-          <div class="rm-equilibrium-num">1/3</div>
-          <div class="rm-equilibrium-label">Equilibrium</div>
-          <div class="rm-equilibrium-desc">The fine balance between playing defensive while also scoring. Capital preservation is the primary objective — profit is simply a byproduct of a protected account.</div>
-        </div>
-        <div class="rm-card" style="display:flex;flex-direction:column;justify-content:center">
-          <div class="rm-card-title gold">Core Principle</div>
-          <div class="rm-card-body" style="font-size:1.05rem;line-height:1.8">Capital preservation is the <strong>primary objective</strong>.<br><br>Profit is simply a byproduct of a protected account.</div>
-          <div class="rm-mandatory">★ These two rules are mandatory</div>
-        </div>
+      <div class="rm-card" style="display:flex;flex-direction:column;justify-content:center">
+        <div class="rm-card-title gold">Core Principle</div>
+        <div class="rm-card-body" style="font-size:1.05rem;line-height:1.8">Capital preservation is the <strong>primary objective</strong>.<br><br>Profit is simply a byproduct of a protected account.</div>
       </div>
     </div>
 
@@ -10303,18 +10289,31 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRMPage(
         <div class="rm-section-number">02</div>
         <div><div class="rm-section-label">Dynamic Sizing</div><h2 class="rm-section-title">Risk Management</h2><div class="rm-section-line"></div></div>
       </div>
-      <div class="rm-highlight">Risk is limited to three options with a de-risking approach if approaching a drawdown. Only the account balance dictates the risk level.</div>
+      <div class="rm-highlight">Three risk levels: <strong>0.33%</strong>, <strong>0.5%</strong> and <strong>1%</strong>. The level depends on the account and where it stands versus its starting balance (or phase start). Only the account balance dictates the risk level.</div>
       <div class="rm-two-col">
         <div class="rm-card">
-          <div class="rm-tier"><div class="rm-tier-pct red">0.25%</div><div><div class="rm-tier-label red">Defense Risk</div><div class="rm-tier-desc">Buffer at or below <strong style="color:#c8d8e8">floor (5%)</strong></div></div></div>
-          <div class="rm-tier"><div class="rm-tier-pct blue">0.5%</div><div><div class="rm-tier-label blue">Baseline Risk</div><div class="rm-tier-desc">Buffer <strong style="color:#c8d8e8">above 5%, below 6%</strong></div></div></div>
-          <div class="rm-tier"><div class="rm-tier-pct green">1%</div><div><div class="rm-tier-label green">Growth Risk</div><div class="rm-tier-desc">Buffer at <strong style="color:#c8d8e8">6% or above</strong></div></div></div>
+          <div class="rm-card-title">Risk by Account</div>
+          <table class="rm-conc-table">
+            <thead><tr><th></th><th>FTMO · 10% limit</th><th>FXIFY · 5% limit</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Challenge</strong><br><span style="opacity:0.55;font-size:0.82rem">each phase restarts at 0%</span></td><td><span style="color:#7bafd4">0.5%</span> below +2%<br><span style="color:#6dbf9e">1%</span> from +2%</td><td><span style="color:#7bafd4">0.5%</span> below +4%<br><span style="color:#6dbf9e">1%</span> from +4%</td></tr>
+              <tr><td><strong>Funded</strong><br><span style="opacity:0.55;font-size:0.82rem">building the 2% buffer</span></td><td><span style="color:#7bafd4">0.5%</span> below +2%<br><span style="color:#6dbf9e">1%</span> from +2%</td><td><span style="color:#7bafd4">0.5%</span> below +4%<br><span style="color:#6dbf9e">1%</span> from +4%</td></tr>
+              <tr><td><strong>After a payout</strong><br><span style="opacity:0.55;font-size:0.82rem">back to +2%</span></td><td><span style="color:#6dbf9e">1%</span> straight away</td><td><span style="color:#7bafd4">0.5%</span> until +4%, then <span style="color:#6dbf9e">1%</span></td></tr>
+              <tr><td><strong>Below 0%</strong><br><span style="opacity:0.55;font-size:0.82rem">funded, under the start</span></td><td><span style="color:#7bafd4">0.5%</span><br><span style="color:#e8a87c">0.33%</span> from −3%</td><td><span style="color:#e8a87c">0.33%</span></td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="rm-card" style="display:flex;flex-direction:column;gap:16px">
-          <div class="rm-card-title">The Mechanical Edge</div>
-          <div class="rm-card-body">This system is a <strong>"self-correcting" algorithm</strong>. It removes the human temptation to "trade your way out of a hole" by forcing a lower risk profile during vulnerability and allowing higher risk only when the market has already paid for it.</div>
-          <div class="rm-highlight" style="margin:0;font-size:0.9rem">Only the account balance dictates the risk level. No emotional override is permitted.</div>
+          <div class="rm-card-title">Why FXIFY Is Slower</div>
+          <div class="rm-card-body">A 5% limit leaves only 5 full losses at 1%. FXIFY earns its 1% further from the limit; FTMO's 10% limit can carry it from +2%.</div>
+          <div class="rm-highlight" style="margin:0;font-size:0.9rem"><strong>Forward-looking, built in:</strong> at these levels a full 1% loss can never take the account below +1% (FTMO) or +3% (FXIFY).</div>
         </div>
+      </div>
+    
+      <div class="rm-card" style="margin-top:24px">
+        <div class="rm-card-title">The Risk Map</div>
+        <div style="display:flex;gap:40px;flex-wrap:wrap;margin-top:14px;align-items:flex-start"><div style="flex:1;min-width:220px"><div style="font-family:'EB Garamond',serif;font-size:0.72rem;letter-spacing:0.16em;text-transform:uppercase;color:rgba(200,216,232,0.55);margin-bottom:10px">FTMO · 10% limit</div><div style="position:relative;height:396px;margin-left:44px;margin-right:110px"><div style="position:absolute;left:0;right:0;top:0px;height:108px;background:rgba(109,191,158,0.10);border-left:3px solid #6dbf9e;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;box-sizing:border-box;font-family:'EB Garamond',serif;font-size:1.15rem;font-weight:700;color:#6dbf9e">1%</div><div style="position:absolute;left:0;right:0;top:108px;height:120px;background:rgba(123,175,212,0.10);border-left:3px solid #7bafd4;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;box-sizing:border-box;font-family:'EB Garamond',serif;font-size:1.15rem;font-weight:700;color:#7bafd4">0.5%</div><div style="position:absolute;left:0;right:0;top:228px;height:168px;background:rgba(232,168,124,0.10);border-left:3px solid #e8a87c;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;box-sizing:border-box;font-family:'EB Garamond',serif;font-size:1.15rem;font-weight:700;color:#e8a87c">0.33%</div><div style="position:absolute;left:-44px;right:-110px;top:12px;border-top:1px dashed #ffd166"><span style="position:absolute;left:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:#ffd166;background:#162a45;padding-right:4px">+6%</span><span style="position:absolute;right:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:#ffd166;background:#162a45;padding-left:4px">Payout</span></div><div style="position:absolute;left:-44px;right:-110px;top:108px;border-top:1px solid #ffd166"><span style="position:absolute;left:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:#ffd166;background:#162a45;padding-right:4px">+2%</span><span style="position:absolute;right:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:#ffd166;background:#162a45;padding-left:4px">Buffer</span></div><div style="position:absolute;left:-44px;right:-110px;top:156px;border-top:1px solid rgba(200,216,232,0.5)"><span style="position:absolute;left:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:rgba(200,216,232,0.5);background:#162a45;padding-right:4px">0%</span><span style="position:absolute;right:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:rgba(200,216,232,0.5);background:#162a45;padding-left:4px">Start</span></div><div style="position:absolute;left:-44px;right:-110px;top:228px;border-top:1px dashed #e8a87c"><span style="position:absolute;left:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:#e8a87c;background:#162a45;padding-right:4px">-3%</span><span style="position:absolute;right:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:#e8a87c;background:#162a45;padding-left:4px">Brake</span></div><div style="position:absolute;left:-44px;right:-110px;top:396px;border-top:1px solid #e85555"><span style="position:absolute;left:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:#e85555;background:#162a45;padding-right:4px">-10%</span><span style="position:absolute;right:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:#e85555;background:#162a45;padding-left:4px">Limit</span></div></div></div><div style="flex:1;min-width:220px"><div style="font-family:'EB Garamond',serif;font-size:0.72rem;letter-spacing:0.16em;text-transform:uppercase;color:rgba(200,216,232,0.55);margin-bottom:10px">FXIFY · 5% limit</div><div style="position:relative;height:276px;margin-left:44px;margin-right:110px"><div style="position:absolute;left:0;right:0;top:0px;height:60px;background:rgba(109,191,158,0.10);border-left:3px solid #6dbf9e;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;box-sizing:border-box;font-family:'EB Garamond',serif;font-size:1.15rem;font-weight:700;color:#6dbf9e">1%</div><div style="position:absolute;left:0;right:0;top:60px;height:96px;background:rgba(123,175,212,0.10);border-left:3px solid #7bafd4;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;box-sizing:border-box;font-family:'EB Garamond',serif;font-size:1.15rem;font-weight:700;color:#7bafd4">0.5%</div><div style="position:absolute;left:0;right:0;top:156px;height:120px;background:rgba(232,168,124,0.10);border-left:3px solid #e8a87c;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;box-sizing:border-box;font-family:'EB Garamond',serif;font-size:1.15rem;font-weight:700;color:#e8a87c">0.33%</div><div style="position:absolute;left:-44px;right:-110px;top:12px;border-top:1px dashed #ffd166"><span style="position:absolute;left:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:#ffd166;background:#162a45;padding-right:4px">+6%</span><span style="position:absolute;right:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:#ffd166;background:#162a45;padding-left:4px">Payout</span></div><div style="position:absolute;left:-44px;right:-110px;top:60px;border-top:1px dashed #6dbf9e"><span style="position:absolute;left:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:#6dbf9e;background:#162a45;padding-right:4px">+4%</span><span style="position:absolute;right:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:#6dbf9e;background:#162a45;padding-left:4px">1% line</span></div><div style="position:absolute;left:-44px;right:-110px;top:108px;border-top:1px solid #ffd166"><span style="position:absolute;left:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:#ffd166;background:#162a45;padding-right:4px">+2%</span><span style="position:absolute;right:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:#ffd166;background:#162a45;padding-left:4px">Buffer</span></div><div style="position:absolute;left:-44px;right:-110px;top:156px;border-top:1px solid rgba(200,216,232,0.5)"><span style="position:absolute;left:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:rgba(200,216,232,0.5);background:#162a45;padding-right:4px">0%</span><span style="position:absolute;right:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:rgba(200,216,232,0.5);background:#162a45;padding-left:4px">Start · brake</span></div><div style="position:absolute;left:-44px;right:-110px;top:276px;border-top:1px solid #e85555"><span style="position:absolute;left:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:#e85555;background:#162a45;padding-right:4px">-5%</span><span style="position:absolute;right:0;top:-9px;font-family:'EB Garamond',serif;font-size:0.8rem;color:#e85555;background:#162a45;padding-left:4px">Limit</span></div></div></div></div>
+        <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:rgba(200,216,232,0.5);margin-top:18px">Same scale on both sides. Risk follows the account: up through the zones as it grows, down as it falls. After a payout the account returns to the +2% buffer line.</div>
       </div>
     </div>
 
@@ -10326,20 +10325,20 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRMPage(
         <div class="rm-section-number">03</div>
         <div><div class="rm-section-label">Exposure Control</div><h2 class="rm-section-title">Trades &amp; Correlation</h2><div class="rm-section-line"></div></div>
       </div>
-      <div class="rm-highlight">The number of open positions is governed by the buffer level. Before opening any trade, the worst-case combined loss must not breach the next risk tier threshold. Correlation between assets is an additional constraint — pairs with ≥85% correlation are treated as a single exposure.</div>
+      <div class="rm-highlight">The number of open positions is governed by the distance to the floor. If every open trade lost at once, the account must still be at or above its floor (FTMO +1%, FXIFY +3%). Positions at break-even don't count. Correlation between assets is an additional constraint — pairs with ≥85% correlation are treated as a single exposure.</div>
       <div class="rm-two-col" style="margin-bottom:24px">
         <div class="rm-card">
-          <div class="rm-card-title">Trades by Buffer</div>
+          <div class="rm-card-title">Trades by Level</div>
           <table class="rm-conc-table">
-            <thead><tr><th>Buffer</th><th>Risk</th><th>Max Trades</th><th>Max Exposure</th></tr></thead>
+            <thead><tr><th>Account</th><th>FTMO</th><th>FXIFY</th><th>Max Exposure</th></tr></thead>
             <tbody>
-              <tr><td><strong>≥ 8%</strong></td><td style="color:#6dbf9e">1%</td><td style="text-align:center">3</td><td style="color:#6dbf9e">3%</td></tr>
-              <tr><td><strong>≥ 7%</strong></td><td style="color:#6dbf9e">1%</td><td style="text-align:center">2</td><td style="color:#6dbf9e">2%</td></tr>
-              <tr><td><strong>≥ 6%</strong></td><td style="color:#6dbf9e">1%</td><td style="text-align:center">1</td><td style="color:#6dbf9e">1%</td></tr>
-              <tr><td><strong>&gt;5% &lt;6%</strong></td><td style="color:#7bafd4">0.5%</td><td style="text-align:center">2</td><td style="color:#7bafd4">1%</td></tr>
-              <tr><td><strong>≤ 5%</strong></td><td style="color:#e85555">0.25%</td><td style="text-align:center">2</td><td style="color:#e85555">0.50%</td></tr>
+              <tr><td><strong>0.33% / 0.5% level</strong></td><td style="text-align:center">2</td><td style="text-align:center">2</td><td style="color:#7bafd4">1%</td></tr>
+              <tr><td><strong>1 trade at 1%</strong></td><td>from +2%</td><td>from +4%</td><td style="color:#6dbf9e">1%</td></tr>
+              <tr><td><strong>2 trades at 1%</strong></td><td>from +3%</td><td>from +5%</td><td style="color:#6dbf9e">2%</td></tr>
+              <tr><td><strong>3 trades at 1%</strong></td><td>from +4%</td><td>from +6%</td><td style="color:#6dbf9e">3%</td></tr>
             </tbody>
           </table>
+          <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:rgba(200,216,232,0.5);margin-top:12px">Open risk must never exceed the distance to the floor: <strong style="color:#c8d8e8">FTMO +1%, FXIFY +3%</strong>. Positions at break-even don't count.</div>
         </div>
         <div class="rm-card rm-card-warn">
           <div class="rm-card-title gold">Correlation Rule</div>
@@ -10350,7 +10349,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRMPage(
           </div>
         </div>
       </div>
-      <div class="rm-highlight"><strong>The sizing rule is forward-looking:</strong> before opening a trade, calculate where a full loss would land the buffer. If it breaches the next tier threshold, reduce size or do not take the trade.</div>
+      <div class="rm-highlight"><strong>The sizing rule is forward-looking:</strong> before opening a trade, add its risk to all open risk. If a full loss of everything would land the account below its floor, reduce size or do not take the trade.</div>
     </div>
 
     <hr class="rm-divider">
@@ -10386,79 +10385,47 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRMPage(
         <div class="rm-section-number">05</div>
         <div><div class="rm-section-label">Structural Protection</div><h2 class="rm-section-title">Buffer Built-in System</h2><div class="rm-section-line"></div></div>
       </div>
-      <div class="rm-highlight">Once funded, we build an <strong>8% structural buffer</strong> across two cycles while taking regular cashouts. The total cashout across both cycles is only 4% — the rest stays in the account permanently. The 5% floor never moves; the 8% buffer is the fortress wall built above it.</div>
+      <div class="rm-highlight">Once funded, the first <strong>2% of profit stays in the account permanently</strong> as the buffer — $4k on FTMO, $8k on FXIFY. Big enough to absorb a bad patch without touching the prop firm limit; small enough that a problem with a prop firm is not psychologically damaging.</div>
 
       <div class="rm-two-col" style="margin-bottom:24px">
         <div class="rm-card">
-          <div class="rm-card-title">The Two Cycles</div>
+          <div class="rm-card-title">The Cycle</div>
           <div class="rm-cycle">
-            <div class="rm-cycle-label">Cycle A<br><span style="font-size:0.85rem;color:#ffd166">+4% retained</span></div>
-            <div class="rm-cycle-desc">Hit +6% profit → <span>Cashout 2%</span> / Retain 4% buffer<br><span style="font-size:0.85rem;opacity:0.6">Buffer now at 4% above starting balance</span></div>
+            <div class="rm-cycle-label">Build<br><span style="font-size:0.85rem;color:#ffd166">0% → 2%</span></div>
+            <div class="rm-cycle-desc">From the funded start: <span>0.5%, then 1%</span> (FTMO from +2%, FXIFY from +4%).<br><span style="font-size:0.85rem;opacity:0.6">Buffer complete at +2% — no cashout yet</span></div>
           </div>
           <div class="rm-cycle">
-            <div class="rm-cycle-label">Cycle B<br><span style="font-size:0.85rem;color:#ffd166">+8% retained</span></div>
-            <div class="rm-cycle-desc">Hit +6% again → <span>Cashout 2%</span> / Retain 4% more<br><span style="font-size:0.85rem;opacity:0.6">Buffer now at 8% — Fortress complete</span></div>
+            <div class="rm-cycle-label">Cashout<br><span style="font-size:0.85rem;color:#ffd166">+4% above buffer</span><br><span style="font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:#e0b85a;border:1px solid rgba(224,184,90,0.4);border-radius:3px;padding:1px 5px">Provisional</span></div>
+            <div class="rm-cycle-desc">At +6% → <span>withdraw 4%</span> → back to the 2% buffer<br><span style="font-size:0.85rem;opacity:0.6">$8k FTMO · $16k FXIFY per payout</span><br>Restart: <span>FTMO 1%</span> · <span>FXIFY 0.5% until +4%</span></div>
           </div>
           <div style="margin-top:14px;font-family:'EB Garamond',serif;font-size:0.85rem;color:rgba(200,216,232,0.4);padding:0 2px">
-            Total cashout across both cycles: 4% &nbsp;·&nbsp; 8% permanently retained.
+            Provisional until ~30 trades under the current rules. Both triggers will then be simulated on real data: +6% / withdraw 4% vs +4% / withdraw 2%.
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:16px">
-          <div class="rm-card" style="text-align:center;padding:22px 20px">
-            <div style="font-family:'EB Garamond',serif;font-size:0.68rem;letter-spacing:0.18em;text-transform:uppercase;color:rgba(123,175,212,0.5);margin-bottom:4px">New Zero — Defensive Floor</div>
-            <div style="font-family:'Playfair Display',serif;font-size:3.2rem;font-weight:900;color:#7bafd4;line-height:1">5%</div>
-            <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:rgba(200,216,232,0.45);margin-top:4px">Defense activates here. Never changes.</div>
-          </div>
           <div class="rm-buffer-big" style="padding:22px 20px">
-            <div style="font-family:'EB Garamond',serif;font-size:0.68rem;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,209,102,0.5);margin-bottom:4px">Fortress Wall — Target Buffer</div>
-            <div class="rm-buffer-big-num">8%</div>
-            <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:rgba(200,216,232,0.45);margin-top:4px">3% of room above the floor to operate freely.</div>
+            <div style="font-family:'EB Garamond',serif;font-size:0.68rem;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,209,102,0.5);margin-bottom:4px">New Zero — Permanent Buffer</div>
+            <div class="rm-buffer-big-num">2%</div>
+            <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:rgba(200,216,232,0.45);margin-top:4px">$4k FTMO · $8k FXIFY. Never withdrawn.</div>
           </div>
           <div class="rm-card">
             <div class="rm-card-body" style="font-size:0.88rem">
-              The floor protects the account.<br>The buffer protects the floor.
+              The prop firm limit protects the account.<br>The buffer protects you from the prop firm limit.
             </div>
           </div>
         </div>
       </div>
-      <div class="rm-highlight">Once the 8% buffer is locked, it is no longer profit — it is the <strong>permanent safety margin</strong>. We never trade the floor itself. We trade the distance above it.</div>
+      <div class="rm-highlight">Once the 2% buffer is built, it is no longer profit — it is the <strong>permanent safety margin</strong>. We never trade through it. We trade the distance above it.</div>
 
-      <!-- Temporary Zero Rule -->
-      <div class="rm-card rm-card-warn" style="margin-top:20px;margin-bottom:0">
-        <div class="rm-card-title gold">Building Phase — Temporary Zero</div>
-        <div class="rm-card-body">
-          Between Cycle A and Cycle B, the account sits at <strong>4% buffer</strong> — halfway to the fortress. During this phase, <strong>4% is treated as the temporary zero</strong>.<br><br>
-          It is not profit. It is not tradeable. It carries the same status as the permanent 5% floor — a working baseline that must not be touched. Apply risk tiers normally above it, but never count the 4% as available capital.<br><br>
-          <strong style="color:#ffd166">4% buffer = temporary floor. Trade the distance above it, not through it.</strong>
-        </div>
-      </div>
       <div style="margin-top:20px">
         <div class="rm-two-col">
-          <div style="display:flex;flex-direction:column;gap:0;border:1px solid rgba(0,229,160,0.2);border-radius:4px;overflow:hidden">
-            <div style="background:rgba(0,229,160,0.06);padding:12px 20px;border-bottom:1px solid rgba(0,229,160,0.12)">
-              <div style="font-family:'EB Garamond',serif;font-size:0.68rem;letter-spacing:0.18em;text-transform:uppercase;color:#6dbf9e">The 4% Cashout</div>
-            </div>
-            <div style="padding:24px 20px;text-align:center;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
-              <div style="font-family:'Playfair Display',serif;font-size:4.5rem;font-weight:900;line-height:1;color:#6dbf9e">4%</div>
-              <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:rgba(200,216,232,0.45);letter-spacing:0.06em">profit trigger · withdraw all</div>
-              <div style="margin-top:16px;width:100%;display:flex;flex-direction:column;gap:10px">
-                <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(255,209,102,0.05);border-radius:3px;border:1px solid rgba(255,209,102,0.12)">
-                  <span style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:#ffd166;min-width:36px">All</span>
-                  <span style="font-family:'EB Garamond',serif;font-size:0.88rem;color:rgba(200,216,232,0.55);text-align:left">All profit above 8% withdrawn. Buffer returns to 8%. The fortress wall is both the floor and the reset point — at 12%, the trigger fires and 4% is cashed out. Always back to 8%. Above 14%, the A+ rule takes over.</span>
-                </div>
-              </div>
-            </div>
+          <div class="rm-card rm-card-warn" style="margin:0">
+            <div class="rm-card-title gold">Below the buffer</div>
+            <div class="rm-card-body">Below the 1% line (FTMO +2%, FXIFY +4%), risk drops to <strong>0.5%</strong>. Below the start: FXIFY <strong>0.33%</strong>; FTMO stays at 0.5% and brakes to <strong>0.33% from −3%</strong>. The weekly 3-loss reset still applies on top.</div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:0;border:1px solid rgba(123,175,212,0.12);border-radius:4px;overflow:hidden">
-            <div style="background:rgba(123,175,212,0.04);padding:12px 20px;border-bottom:1px solid rgba(123,175,212,0.1)">
-              <div style="font-family:'EB Garamond',serif;font-size:0.68rem;letter-spacing:0.18em;text-transform:uppercase;color:rgba(123,175,212,0.5)">Why It Works</div>
-            </div>
-            <div style="padding:24px 20px;flex:1">
-              <div style="font-family:'EB Garamond',serif;font-size:0.97rem;color:rgba(200,216,232,0.7);line-height:1.8">
-                By targeting 4% as a cashout trigger, we avoid the risk of seeing the profit going back to the market while trying to bank more, we cashout based on system. Limiting greed and fear and human decisions.<br><br>
-              <strong style="color:#c8d8e8">The system decides, no emotions, no regret.</strong>
-              </div>
-            </div>
+          <div class="rm-card" style="margin:0">
+            <div class="rm-card-title">Why It Works</div>
+            <div class="rm-card-body">Cashing out on a fixed trigger avoids watching profit go back to the market while trying to bank more. Little money sits at the prop firm, and size only grows when the market has already paid for it.<br><br><strong style="color:#c8d8e8">The system decides, no emotions, no regret.</strong></div>
           </div>
         </div>
       </div>
@@ -10466,255 +10433,59 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRMPage(
 
     <hr class="rm-divider">
 
-    <!-- 06 A+ Special Trade -->
+    <!-- 06 Black Swan Simulation -->
     <div class="rm-section">
       <div class="rm-section-header">
         <div class="rm-section-number">06</div>
-        <div><div class="rm-section-label">Controlled Aggression</div><h2 class="rm-section-title">The A+ Special Trade</h2><div class="rm-section-line"></div></div>
+        <div><div class="rm-section-label">Stress Test · Full System · Monte Carlo</div><h2 class="rm-section-title">Black Swan Test</h2><div class="rm-section-line"></div></div>
       </div>
-      <div class="rm-highlight">When the buffer reaches <strong>14% or above</strong><sup style="color:#7bafd4;font-size:0.7rem;cursor:pointer" onclick="this.closest('.rm-highlight').querySelector('.rm-footnote').style.display=this.closest('.rm-highlight').querySelector('.rm-footnote').style.display==='none'?'block':'none'">*</sup>, the system unlocks a single <strong>A+ high-conviction trade</strong> at 2× the normal risk. This is not discretionary — it fires automatically when the threshold is crossed, and it always ends with a compulsory cashout back to the fortress. <strong style="color:#e85555">If no A+ setup is available at that moment, proceed directly to the cashout. The opportunity is the buffer level, not the trade itself — never force an entry to justify the rule.</strong><br><br><span class="rm-footnote" style="display:block;font-size:0.92rem;opacity:0.7">* This can happen in a single cycle — at 8%+ with 3 open positions, three wins in one cycle return +9%, sending the buffer directly from 8% to 17% before the 4% cashout can fire. Two wins and a break-even delivers +6%, landing at 14% exactly. In these cases the A+ opportunity appears within the same sequence, before the standard cashout resets the counter.</span></div>
-
-      <div class="rm-two-col" style="margin-bottom:24px">
-        <div class="rm-card">
-          <div class="rm-card-title">The Rule</div>
-          <div style="margin-top:8px;display:flex;flex-direction:column;gap:10px">
-            <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:rgba(255,209,102,0.05);border:1px solid rgba(255,209,102,0.15);border-radius:3px">
-              <span style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:#ffd166;min-width:44px">14%</span>
-              <span style="font-family:'EB Garamond',serif;font-size:0.9rem;color:rgba(200,216,232,0.6)">Buffer trigger — A+ trade unlocked</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:rgba(0,229,160,0.04);border:1px solid rgba(0,229,160,0.12);border-radius:3px">
-              <span style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:#6dbf9e;min-width:44px">2%</span>
-              <span style="font-family:'EB Garamond',serif;font-size:0.9rem;color:rgba(200,216,232,0.6)">Risk — 1 trade only. Before entering, all other positions must be closed or at break-even. The A+ is a standalone event, not an addition to existing exposure.</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:rgba(123,175,212,0.04);border:1px solid rgba(123,175,212,0.1);border-radius:3px">
-              <span style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:#7bafd4;min-width:44px">A+</span>
-              <span style="font-family:'EB Garamond',serif;font-size:0.9rem;color:rgba(200,216,232,0.6)">Setups only — highest conviction, multiple confirmations</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:rgba(232,85,85,0.04);border:1px solid rgba(232,85,85,0.12);border-radius:3px">
-              <span style="font-family:'Playfair Display',serif;font-size:0.85rem;font-weight:700;color:#e85555;min-width:44px;letter-spacing:0.06em">CASH</span>
-              <span style="font-family:'EB Garamond',serif;font-size:0.9rem;color:rgba(200,216,232,0.6)">Compulsory cashout to 8% after — win or lose</span>
-            </div>
-          </div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:14px">
-          <div class="rm-card rm-card-accent">
-            <div class="rm-card-title green">Win — Buffer at 14%</div>
-            <div style="display:flex;align-items:center;gap:10px;margin:10px 0 4px">
-              <span style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:#c8d8e8">14%</span>
-              <span style="color:rgba(123,175,212,0.4)">→</span>
-              <span style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:#6dbf9e">+6%</span>
-              <span style="color:rgba(123,175,212,0.4)">→</span>
-              <span style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:#ffd166">20%</span>
-              <span style="color:rgba(123,175,212,0.4)">→</span>
-              <span style="font-family:'EB Garamond',serif;font-size:0.85rem;color:#6dbf9e">cashout 12%</span>
-              <span style="color:rgba(123,175,212,0.4)">→</span>
-              <span style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:#7bafd4">8%</span>
-            </div>
-            <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:rgba(200,216,232,0.45)">12% locked in — largest single cashout in the system</div>
-          </div>
-          <div class="rm-card rm-card-warn">
-            <div class="rm-card-title gold">Loss — Buffer at 14%</div>
-            <div style="display:flex;align-items:center;gap:10px;margin:10px 0 4px">
-              <span style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:#c8d8e8">14%</span>
-              <span style="color:rgba(123,175,212,0.4)">→</span>
-              <span style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:#e85555">-2%</span>
-              <span style="color:rgba(123,175,212,0.4)">→</span>
-              <span style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:#ffd166">12%</span>
-              <span style="color:rgba(123,175,212,0.4)">→</span>
-              <span style="font-family:'EB Garamond',serif;font-size:0.85rem;color:#ffd166">cashout 4%</span>
-              <span style="color:rgba(123,175,212,0.4)">→</span>
-              <span style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:#7bafd4">8%</span>
-            </div>
-            <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:rgba(200,216,232,0.45)">4% still locked in — fortress intact, no loss to the system</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="rm-card" style="margin-bottom:0">
-        <div class="rm-card-title">Simulation Results — A+ Rule at 50% WR</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:12px">
-          <div style="text-align:center">
-            <div style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;color:#ffd166;line-height:1">~8</div>
-            <div style="font-family:'EB Garamond',serif;font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(200,216,232,0.35);margin-top:4px">Triggers per year</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;color:#6dbf9e;line-height:1">8%</div>
-            <div style="font-family:'EB Garamond',serif;font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(200,216,232,0.35);margin-top:4px">EV per trigger</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;color:#6dbf9e;line-height:1">80.9%</div>
-            <div style="font-family:'EB Garamond',serif;font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(200,216,232,0.35);margin-top:4px">A+ cashout per year</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;color:#c8d8e8;line-height:1">0</div>
-            <div style="font-family:'EB Garamond',serif;font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(200,216,232,0.35);margin-top:4px">Extra breach risk</div>
-          </div>
-        </div>
-        <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:rgba(200,216,232,0.4);margin-top:14px;line-height:1.6">
-          Both outcomes always return the system to the 8% fortress. The A+ rule adds significant income without adding risk — the compulsory cashout ensures no win is left exposed and no loss compounds.
-        </div>
-      </div>
-    </div>
-
-    <hr class="rm-divider">
-
-    <!-- 07 Black Swan Simulation -->
-    <div class="rm-section">
-      <div class="rm-section-header">
-        <div class="rm-section-number">07</div>
-        <div><div class="rm-section-label">Stress Test · Full System · Monte Carlo</div><h2 class="rm-section-title">Black Swan Proof</h2><div class="rm-section-line"></div></div>
-      </div>
-      <div class="rm-highlight">The complete system — all rules active — stress-tested across 100,000 independent scenarios over 36 months at a <strong>40% win rate</strong>. Dynamic sizing, position limits, 4% cashout, and the A+ rule all applied simultaneously. Breach thresholds set at the actual prop firm limits: <strong>-5% for FXIFY</strong>, <strong>-10% for FTMO</strong>.</div>
+      <div class="rm-highlight">The complete funded system — all rules active — run through <strong>50,000 scenarios over 36 months</strong>, at three win rates. Breach = the real prop firm limit: <strong>−10% FTMO</strong>, <strong>−5% FXIFY</strong>.</div>
 
       <div class="rm-card rm-card-warn" style="margin-bottom:24px">
-        <div class="rm-card-title gold">Full System Parameters</div>
+        <div class="rm-card-title gold">Parameters</div>
         <div class="rm-card-body">
-          Base WR: <strong>40%</strong> + 15% BE &nbsp;·&nbsp; R:R: <strong>1:3</strong> &nbsp;·&nbsp; Start: <strong>8%</strong> &nbsp;·&nbsp; Floor: <strong>5%</strong><br>
-          Cashout: <strong>+4% trigger → withdraw to 8%</strong> &nbsp;·&nbsp; A+: <strong>≥14% → 2% trade → cashout to 8%</strong> at 50% WR<br>
-          Trade limits active &nbsp;·&nbsp; Defense = 2 × 0.25% only<br>
-          Trials: <strong>100,000</strong> &nbsp;·&nbsp; Duration: <strong>36 months · 480 trades (160/yr · 3/week)</strong>
+          Trades: <strong>your record since 28 July</strong> — average win 2.07R (up to 2.56R with 1 winner in 7 at 5–6R), loss −1R, 18% break-even<br>
+          Sizing: <strong>0.33% / 0.5% / 1%</strong> per account · Buffer <strong>2%</strong> · Cashout at <strong>+6% → back to +2%</strong><br>
+          Pace: <strong>4.5 trades/month</strong> (162 over 36 months) · start at +2% · one position at a time
         </div>
       </div>
 
-      <!-- Key stats -->
-      <div class="rm-sim-grid" style="margin-bottom:28px">
-        <div class="rm-sim-stat" style="border-color:rgba(0,229,160,0.3)">
-          <div class="rm-sim-stat-val" style="color:#6dbf9e">99.96%</div>
-          <div class="rm-sim-stat-label">Survived 36 months</div>
-        </div>
-        <div class="rm-sim-stat" style="border-color:rgba(0,229,160,0.3)">
-          <div class="rm-sim-stat-val" style="color:#6dbf9e">0</div>
-          <div class="rm-sim-stat-label">FXIFY limit breached (-5%)</div>
-        </div>
-        <div class="rm-sim-stat" style="border-color:rgba(0,229,160,0.3)">
-          <div class="rm-sim-stat-val" style="color:#6dbf9e">0</div>
-          <div class="rm-sim-stat-label">FTMO limit breached (-10%)</div>
-        </div>
-        <div class="rm-sim-stat">
-          <div class="rm-sim-stat-val" style="color:#ffd166">1.50%</div>
-          <div class="rm-sim-stat-label">Buffer 1st percentile low</div>
-        </div>
-        <div class="rm-sim-stat">
-          <div class="rm-sim-stat-val" style="color:#6dbf9e">113.2%</div>
-          <div class="rm-sim-stat-label">Total cashout per year</div>
-        </div>
-        <div class="rm-sim-stat">
-          <div class="rm-sim-stat-val" style="color:#7bafd4">8.4</div>
-          <div class="rm-sim-stat-label">A+ triggers per year</div>
-        </div>
-      </div>
-
-      <!-- No drawdown policy proof -->
-      <div class="rm-highlight" style="margin-bottom:24px">
-        <strong style="color:#6dbf9e">Zero prop firm breaches across 100,000 trials.</strong> Not a single scenario — at 40% WR, with full cashouts, over 36 months — touched the FXIFY -5% limit or the FTMO -10% limit. The 8% buffer mathematically enforces the no drawdown policy. This is not a target. It is a guarantee.
-      </div>
-
-      <!-- Cashout breakdown -->
       <div class="rm-card" style="margin-bottom:24px">
-        <div class="rm-card-title">Annual Cashout Breakdown</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-top:12px">
-          <div style="text-align:center;padding:16px;border-right:1px solid rgba(123,175,212,0.08)">
-            <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;color:#7bafd4;line-height:1">32.3%</div>
-            <div style="font-family:'EB Garamond',serif;font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(200,216,232,0.35);margin-top:6px">Standard cashouts</div>
-          </div>
-          <div style="text-align:center;padding:16px;border-right:1px solid rgba(123,175,212,0.08)">
-            <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;color:#6dbf9e;line-height:1">80.9%</div>
-            <div style="font-family:'EB Garamond',serif;font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(200,216,232,0.35);margin-top:6px">A+ cashouts</div>
-          </div>
-          <div style="text-align:center;padding:16px">
-            <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;color:#ffd166;line-height:1">113.2%</div>
-            <div style="font-family:'EB Garamond',serif;font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(200,216,232,0.35);margin-top:6px">Total per year</div>
-          </div>
-        </div>
-        <div style="font-family:'EB Garamond',serif;font-size:0.82rem;color:rgba(200,216,232,0.35);margin-top:10px;line-height:1.6">
-          At 160 trades/year, the A+ rule fires ~8 times — driven by 3-win cycles (+9% spike to 17%) and 2-win+BE cycles (+6% to exactly 14%). It remains the dominant income driver despite the realistic trade frequency.
-        </div>
-      </div>
-
-      <!-- 6% vs 8% comparison -->
-      <div class="rm-card" style="margin-bottom:24px">
-        <div class="rm-card-title">Why 8% and Not 6% — The Upside Cost</div>
-        <div style="font-family:'EB Garamond',serif;font-size:0.88rem;color:rgba(200,216,232,0.5);margin-bottom:14px;line-height:1.6">6% buffer never breaches prop firm limits either. The difference is entirely about income capacity.</div>
-        <table style="width:100%;border-collapse:collapse;font-family:'EB Garamond',serif">
-          <thead>
-            <tr style="border-bottom:1px solid rgba(123,175,212,0.1)">
-              <th style="padding:8px 12px;font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(123,175,212,0.4);text-align:left;font-weight:400"></th>
-              <th style="padding:8px 12px;font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(123,175,212,0.4);text-align:center;font-weight:400">6% buffer</th>
-              <th style="padding:8px 12px;font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;color:#6dbf9e;text-align:center;font-weight:400">8% buffer</th>
-              <th style="padding:8px 12px;font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(123,175,212,0.4);text-align:center;font-weight:400">Difference</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style="border-bottom:1px solid rgba(123,175,212,0.06)">
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.7)">Total cashed/yr</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.45);text-align:center">86.5%</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#6dbf9e;text-align:center;font-weight:700">113.2%</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#ffd166;text-align:center">+26.7%</td>
-            </tr>
-            <tr style="border-bottom:1px solid rgba(123,175,212,0.06)">
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.7)">Standard cashouts/yr</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.45);text-align:center">36.2%</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.7);text-align:center;font-weight:700">32.3%</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.35);text-align:center">—</td>
-            </tr>
-            <tr style="border-bottom:1px solid rgba(123,175,212,0.06)">
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.7)">A+ cashouts/yr</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.45);text-align:center">50.3%</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#6dbf9e;text-align:center;font-weight:700">80.9%</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#ffd166;text-align:center">+30.6%</td>
-            </tr>
-            <tr style="border-bottom:1px solid rgba(123,175,212,0.06)">
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.7)">A+ triggers/yr</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.45);text-align:center">4.5</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#6dbf9e;text-align:center;font-weight:700">8.4</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#ffd166;text-align:center">+3.9</td>
-            </tr>
-            <tr style="border-bottom:1px solid rgba(123,175,212,0.06)">
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.7)">FXIFY breached (-5%)</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#6dbf9e;text-align:center">0</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#6dbf9e;text-align:center;font-weight:700">0</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.35);text-align:center">—</td>
-            </tr>
-            <tr>
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.7)">FTMO breached (-10%)</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#6dbf9e;text-align:center">0</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:#6dbf9e;text-align:center;font-weight:700">0</td>
-              <td style="padding:9px 12px;font-size:0.9rem;color:rgba(200,216,232,0.35);text-align:center">—</td>
-            </tr>
-          </tbody>
+        <div class="rm-card-title">Survived 36 Months</div>
+        <table class="rm-conc-table">
+          <thead><tr><th>Win rate</th><th style="text-align:center">FTMO<br><span style="opacity:0.6">closed</span></th><th style="text-align:center">FTMO<br><span style="opacity:0.6">+ runners</span></th><th style="text-align:center">FXIFY<br><span style="opacity:0.6">closed</span></th><th style="text-align:center">FXIFY<br><span style="opacity:0.6">+ runners</span></th></tr></thead>
+          <tbody><tr><td><strong>50%</strong></td><td style="color:#6dbf9e;text-align:center">100%</td><td style="color:#6dbf9e;text-align:center">100%</td><td style="color:#6dbf9e;text-align:center">99.8%</td><td style="color:#6dbf9e;text-align:center">99.9%</td></tr><tr><td><strong>40%</strong></td><td style="color:#6dbf9e;text-align:center">99.2%</td><td style="color:#6dbf9e;text-align:center">99.8%</td><td style="color:#e85555;text-align:center">89.8%</td><td style="color:#ffd166;text-align:center">95.4%</td></tr><tr><td><strong>33%</strong></td><td style="color:#e85555;text-align:center">84.4%</td><td style="color:#e85555;text-align:center">94.5%</td><td style="color:#e85555;text-align:center">49.6%</td><td style="color:#e85555;text-align:center">70.8%</td></tr></tbody>
         </table>
-        <div style="font-family:'EB Garamond',serif;font-size:0.85rem;color:rgba(200,216,232,0.4);margin-top:12px;line-height:1.6">
-          6% keeps you safe. 8% makes it a policy — and generates 31% more income annually. The two buffer-building cycles are not delayed gratification. They are the price of operating at full capacity.
-        </div>
+        <div class="rm-card-body" style="font-size:0.82rem;margin-top:10px;opacity:0.7">50% = your form since 28 July (profit factor ~2). 40% = a weak stretch (PF ~1.4). 33% = edge gone (PF ~1.0). "+ runners" = 1 winner in 7 reaching 5–6R.</div>
       </div>
 
-      <!-- Worst case + why -->
+      <div class="rm-sim-grid" style="margin-bottom:28px">
+        <div class="rm-sim-stat" style="border-color:rgba(109,191,158,0.3)"><div class="rm-sim-stat-val" style="color:#6dbf9e">$32–49k</div><div class="rm-sim-stat-label">FTMO cashout / year · 50% WR</div></div>
+        <div class="rm-sim-stat" style="border-color:rgba(109,191,158,0.3)"><div class="rm-sim-stat-val" style="color:#6dbf9e">$49–75k</div><div class="rm-sim-stat-label">FXIFY cashout / year · 50% WR</div></div>
+        <div class="rm-sim-stat" style="border-color:rgba(255,209,102,0.3)"><div class="rm-sim-stat-val" style="color:#ffd166">$11–35k</div><div class="rm-sim-stat-label">Each account / year · 40% WR</div></div>
+      </div>
+
       <div class="rm-two-col">
         <div class="rm-card">
-          <div class="rm-card-title">Deterministic Worst Case — All Losses from 8%</div>
-          <div style="margin-top:4px">
-            <div class="rm-streak-row"><span class="rm-streak-seq">Loss 1</span><span class="rm-streak-detail">3 × 1% — Growth, 3 positions</span><span class="rm-streak-buf" style="color:#ffd166">5.00% ← Floor</span></div>
-            <div class="rm-streak-row"><span class="rm-streak-seq">Loss 2</span><span class="rm-streak-detail">2 × 0.25% — Defense activates</span><span class="rm-streak-buf" style="color:#e85555">4.50%</span></div>
-            <div class="rm-streak-row"><span class="rm-streak-seq">Loss 5</span><span class="rm-streak-detail">2 × 0.25%</span><span class="rm-streak-buf" style="color:#e85555">3.00%</span></div>
-            <div class="rm-streak-row"><span class="rm-streak-seq">Loss 10</span><span class="rm-streak-detail">2 × 0.25%</span><span class="rm-streak-buf" style="color:#c8d8e8">0.00% ← Starting balance</span></div>
-            <div class="rm-streak-row"><span class="rm-streak-seq">Loss 20</span><span class="rm-streak-detail">2 × 0.25%</span><span class="rm-streak-buf" style="color:#e85555">-5.00% ← FXIFY limit</span></div>
-            <div class="rm-streak-row"><span class="rm-streak-seq">Loss 30</span><span class="rm-streak-detail">2 × 0.25%</span><span class="rm-streak-buf" style="color:#e85555">-10.00% ← FTMO limit</span></div>
+          <div class="rm-card-title">Worst Case — Every Trade a Loss, from +2%</div>
+          <div style="display:grid;grid-template-columns:1fr;gap:16px;margin-top:4px">
+            <div><div style="font-size:0.72rem;letter-spacing:0.16em;text-transform:uppercase;color:#9ec8e0;margin-bottom:4px">FTMO</div><div class="rm-streak-row"><span class="rm-streak-seq">Loss 1</span><span class="rm-streak-detail">1% — from the +2% buffer</span><span class="rm-streak-buf" style="color:#7bafd4">+1.00%</span></div><div class="rm-streak-row"><span class="rm-streak-seq">Loss 3</span><span class="rm-streak-detail">0.5%</span><span class="rm-streak-buf" style="color:#c8d8e8">0.00% ← Start</span></div><div class="rm-streak-row"><span class="rm-streak-seq">Loss 9</span><span class="rm-streak-detail">0.5%</span><span class="rm-streak-buf" style="color:#e8a87c">−3.00% ← Brake</span></div><div class="rm-streak-row"><span class="rm-streak-seq">Loss 30</span><span class="rm-streak-detail">0.33%</span><span class="rm-streak-buf" style="color:#e85555">−9.93%</span></div><div class="rm-streak-row"><span class="rm-streak-seq">Loss 31</span><span class="rm-streak-detail">0.33%</span><span class="rm-streak-buf" style="color:#e85555">−10.26% ← Limit</span></div></div>
+            <div><div style="font-size:0.72rem;letter-spacing:0.16em;text-transform:uppercase;color:#9ec8e0;margin-bottom:4px">FXIFY</div><div class="rm-streak-row"><span class="rm-streak-seq">Loss 1</span><span class="rm-streak-detail">0.5% — from the +2% buffer</span><span class="rm-streak-buf" style="color:#7bafd4">+1.50%</span></div><div class="rm-streak-row"><span class="rm-streak-seq">Loss 4</span><span class="rm-streak-detail">0.5%</span><span class="rm-streak-buf" style="color:#c8d8e8">0.00% ← Start</span></div><div class="rm-streak-row"><span class="rm-streak-seq">Loss 5</span><span class="rm-streak-detail">0.5%, then 0.33%</span><span class="rm-streak-buf" style="color:#e8a87c">−0.50%</span></div><div class="rm-streak-row"><span class="rm-streak-seq">Loss 19</span><span class="rm-streak-detail">0.33%</span><span class="rm-streak-buf" style="color:#e85555">−4.79%</span></div><div class="rm-streak-row"><span class="rm-streak-seq">Loss 20</span><span class="rm-streak-detail">0.33%</span><span class="rm-streak-buf" style="color:#e85555">−5.12% ← Limit</span></div></div>
           </div>
-          <div style="font-family:'EB Garamond',serif;font-size:0.82rem;color:rgba(200,216,232,0.35);margin-top:12px">10 losses to hit starting balance from the floor. 20 to reach FXIFY's limit. 30 to reach FTMO's. All consecutive, all losses. Statistically impossible at any realistic win rate.</div>
+          <div style="font-family:'EB Garamond',serif;font-size:0.82rem;color:rgba(200,216,232,0.45);margin-top:12px">31 straight losses to breach FTMO, 20 to breach FXIFY. A straight run like that is practically impossible — real breaches come from a long grind, not a streak.</div>
         </div>
         <div class="rm-card rm-card-accent">
-          <div class="rm-card-title green">Why the Full System Survives</div>
+          <div class="rm-card-title green">What It Means</div>
           <div class="rm-card-body" style="font-size:0.92rem">
-            Every rule works in the same direction — protect first, profit second.<br><br>
-            The floor triggers defense. Defense crawls at 0.25%. The EV is positive at every tier. The A+ rule fires only from strength and always resets to the fortress.<br><br>
-            The 8% buffer enforces the <strong>no drawdown policy</strong> — not as a target, but as a mathematical guarantee. Zero prop firm breaches across 100,000 trials at 40% WR confirms it.<br><br>
-            <strong>The Fortress holds.</strong>
+            <strong>FTMO is black-swan proof</strong> down to a 40% win rate: 99%+ survival over 3 years. Only a lost edge (33%) puts it at real risk.<br><br>
+            <strong>FXIFY is the weak point.</strong> Its 5% limit can't absorb a long weak stretch: at a 40% win rate, 5–10% of scenarios fail over 3 years — slowly, not in one streak.<br><br>
+            <strong>The real protection is you:</strong> a weak stretch shows in the journal long before the limit. That is what the weekly reset and the circuit breakers are for.
           </div>
         </div>
       </div>
 
       <div class="rm-highlight" style="margin-top:28px">
-        Across 100,000 simulated scenarios with every rule active at 40% WR over 36 months — <strong>not a single prop firm account was ever breached</strong>. The system is mathematically unbreakable under any realistic market condition.
+        <strong>Suggested addition (to decide):</strong> a review trigger on FXIFY — at −3%, stop trading it and review the last 20 trades before the next entry. A grind is only dangerous if it goes unnoticed.
       </div>
     </div>
 
