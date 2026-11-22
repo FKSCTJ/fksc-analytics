@@ -4126,12 +4126,13 @@ ${(() => {
                 <button class="plan-btn ${t.beOutcome==='stopped'?'active-no':''}" onclick="event.stopPropagation();setBeOutcome(${i},'stopped')" title="BE was hit but price would have reached TP">✕ Stopped Before TP</button>
               </div>
             </div>` : ''}
-            <div class="form-group">
+            ${(parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl, undefined, t) ? `<div class="form-group">
               <label>0.33% Stop Loss</label>
               <div style="display:flex;gap:8px">
-                <button class="plan-btn ${t.sl033==='yes'?'active-yes':''}" onclick="event.stopPropagation();setSl033For(${i},'yes')" title="Would have benefited from a 0.33% SL">✓ Would benefit</button>
+                <button class="plan-btn ${t.sl033==='yes'?'active-yes':''}" onclick="event.stopPropagation();setSl033For(${i},'yes')" title="Price entered the extra 0.33% SL zone — the extra room saved this winner">✓ Used it</button>
+                <button class="plan-btn ${t.sl033==='no'?'active-partial':''}" onclick="event.stopPropagation();setSl033For(${i},'no')" title="Price never entered the extra 0.33% SL zone">✕ Didn't use it</button>
               </div>
-            </div>
+            </div>` : ''}
             <div class="form-group">
               <label>Mistakes</label>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -4834,24 +4835,22 @@ function _renderStrategyInner() {
   })();
   const stratEquityId = 'strat-eq-canvas-' + Date.now();
 
-  // ── 0.33% SL section ──
-  const sl033Trades = trades.filter(t => t.sl033 === 'yes');
-  const sl033Total  = trades.length;
-  const sl033Pct    = sl033Total > 0 ? (sl033Trades.length / sl033Total * 100).toFixed(0) : 0;
-  const sl033Wins   = sl033Trades.filter(t => (parseFloat(t.pnl)||0) > 0).length;
-  const sl033Losses = sl033Trades.filter(t => (parseFloat(t.pnl)||0) < 0).length;
-  const sl033Be     = sl033Trades.filter(t => isBreakEven(t.pnl, undefined, t)).length;
-  const sl033Pnl    = sl033Trades.reduce((a,t)=>a+sv(t),0);
+  // ── 0.33% SL section (winners only) ──
+  const sl033Winners = trades.filter(t => (parseFloat(t.pnl)||0) > 0 && !isBreakEven(t.pnl, undefined, t));
+  const sl033Yes = sl033Winners.filter(t => t.sl033 === 'yes');
+  const sl033No  = sl033Winners.filter(t => t.sl033 === 'no');
+  const sl033Tagged = sl033Yes.length + sl033No.length;
+  const sl033Pct = sl033Tagged > 0 ? Math.round(sl033Yes.length / sl033Tagged * 100) : 0;
+  const sl033Untagged = sl033Winners.length - sl033Tagged;
 
   const sl033Section = `
     <div style="margin-bottom:20px">
-      <div class="chart-card-title" style="margin-bottom:12px">&#9632; 0.33% STOP LOSS</div>
-      ${!sl033Trades.length ? `<div class="chart-card" style="padding:16px"><span style="font-family:'EB Garamond',serif;font-size:0.95rem;color:var(--muted)">No trades tagged yet. Mark trades in Trade Review → 0.33% Stop Loss.</span></div>` : `
+      <div class="chart-card-title" style="margin-bottom:12px">&#9632; 0.33% STOP LOSS · WINNERS</div>
+      ${!sl033Tagged ? `<div class="chart-card" style="padding:16px"><span style="font-family:'EB Garamond',serif;font-size:0.95rem;color:var(--muted)">No winners tagged yet. Mark winners in Trade Review → 0.33% Stop Loss.</span></div>` : `
       <div class="kpi-grid">
-        ${kpiCard('◎', 'Would Benefit', `${sl033Trades.length}`, 'pos', `${sl033Pct}% of all trades`, `${sl033Wins}W · ${sl033Losses}L${sl033Be ? ` · ${sl033Be}BE` : ''}`)}
-        ${kpiCard('◉', 'P&L on Those Trades', `${sMoney(sl033Pnl)}`, sl033Pnl>=0?'pos':'neg', `Actual outcome`, `Result without 0.33% SL applied`)}
-
-        ${kpiCard('%', 'Of All Trades', `${sl033Pct}%`, parseInt(sl033Pct)>30?'warn':'hi', `${sl033Trades.length} / ${sl033Total} trades`, parseInt(sl033Pct)>30?'High frequency — consider rule change':'Occasional occurrence')}
+        ${kpiCard('✓', 'Used It', `${sl033Yes.length} · ${sl033Pct}%`, 'pos', `${sl033Yes.length} of ${sl033Tagged} winners`, `Price entered the extra 0.33% zone`)}
+        ${kpiCard('✕', "Didn't Use It", `${sl033No.length} · ${100 - sl033Pct}%`, 'hi', `${sl033No.length} of ${sl033Tagged} winners`, `Price stayed out of the extra zone`)}
+        ${kpiCard('◎', 'Winners Tagged', `${sl033Tagged} / ${sl033Winners.length}`, 'hi', sl033Untagged ? `${sl033Untagged} winner${sl033Untagged>1?'s':''} not tagged yet` : 'All winners tagged', sl033Pct >= 50 ? 'The extra 0.33% is saving winners' : 'Extra 0.33% rarely used')}
       </div>`}
     </div>`;
 
