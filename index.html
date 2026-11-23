@@ -9152,13 +9152,11 @@ function renderFvStrategySections(tr, variant) {
   const rLine = arr => { const rs = arr.map(t => mgR(t)).filter(v => v !== null && isFinite(v)); if (!rs.length) return ''; const tot = rs.reduce((a, v) => a + v, 0), avg = tot / rs.length;
     const c = v => v >= 0 ? 'var(--green)' : 'var(--red)';
     return `<div style="display:flex;gap:18px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)"><div><span style="${F};font-size:1.25rem;font-weight:700;color:${c(tot)}">${_fmtR(tot)}</span> ${LBL('TOTAL')}</div><div><span style="${F};font-size:1.25rem;font-weight:700;color:${c(avg)}">${_fmtR(avg)}</span> ${LBL('AVG')}</div></div>`; };
-  const direction = section('DIRECTION', isAV ? 5 : 4, [
-    card('↘ Short', tr.filter(t=>t.fvDirection==='Short')),
-    card('↗ Long', tr.filter(t=>t.fvDirection==='Long')),
-    (a => card('↺ Reversal', a, {after:rLine(a)}))(tr.filter(t=>hasTag(t,'Reversal'))),
-    (a => card('⟲ Re-entry', a, {after:rLine(a)}))(tr.filter(t=>hasTag(t,'Re-entry'))),
-    ...(isAV ? [card('→ Continuation', tr.filter(t=>hasTag(t,'Continuation')))] : []),
-  ]);
+  const dirSL = [card('↘ Short', tr.filter(t=>t.fvDirection==='Short')), card('↗ Long', tr.filter(t=>t.fvDirection==='Long'))];
+  const dirRR = [(a => card('↺ Reversal', a, {after:rLine(a)}))(tr.filter(t=>hasTag(t,'Reversal'))), (a => card('⟲ Re-entry', a, {after:rLine(a)}))(tr.filter(t=>hasTag(t,'Re-entry')))];
+  const direction = section('DIRECTION', isAV ? 5 : 4, isAV
+    ? [...dirSL, ...dirRR, (a => card('→ Continuation', a, {after:rLine(a)}))(tr.filter(t=>hasTag(t,'Continuation')))]
+    : [...dirRR, ...dirSL]);
   const brk = arr => {
     const row = (lab, a) => { const s=st(a); return `<div style="display:flex;align-items:baseline;gap:12px;padding:5px 0"><span style="${F};font-size:0.85rem;letter-spacing:0.06em;color:var(--muted);width:78px;white-space:nowrap">${lab}</span><span style="${F};font-size:1.5rem;font-weight:700;color:${wrCol(s.wr)}">${s.wr===null?'—':s.wr+'%'}</span><span class="kpi-card-sub">${s.n} trade${s.n!==1?'s':''}</span></div>`; };
     return `<div class="fv-break" style="display:none;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">${row('↘ SHORT', arr.filter(t=>t.fvDirection==='Short'))}${row('↗ LONG', arr.filter(t=>t.fvDirection==='Long'))}</div><div class="fv-hint" data-closed="▾ Short / Long" style="${F};font-size:0.75rem;color:var(--muted);margin-top:8px">▾ Short / Long</div>`;
