@@ -9149,11 +9149,14 @@ function renderFvStrategySections(tr, variant) {
       <div style="display:grid;grid-template-columns:repeat(${cols},minmax(0,1fr));gap:12px;align-items:start">${cards.join('')}</div>
     </div>`;
   const hasTag = (t,v) => Array.isArray(t.fvDirTags) && t.fvDirTags.includes(v);
+  const rLine = arr => { const rs = arr.map(t => mgR(t)).filter(v => v !== null && isFinite(v)); if (!rs.length) return ''; const tot = rs.reduce((a, v) => a + v, 0), avg = tot / rs.length;
+    const c = v => v >= 0 ? 'var(--green)' : 'var(--red)';
+    return `<div style="display:flex;gap:18px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)"><div><span style="${F};font-size:1.25rem;font-weight:700;color:${c(tot)}">${_fmtR(tot)}</span> ${LBL('TOTAL')}</div><div><span style="${F};font-size:1.25rem;font-weight:700;color:${c(avg)}">${_fmtR(avg)}</span> ${LBL('AVG')}</div></div>`; };
   const direction = section('DIRECTION', isAV ? 5 : 4, [
     card('↘ Short', tr.filter(t=>t.fvDirection==='Short')),
     card('↗ Long', tr.filter(t=>t.fvDirection==='Long')),
-    card('↺ Reversal', tr.filter(t=>hasTag(t,'Reversal'))),
-    card('⟲ Re-entry', tr.filter(t=>hasTag(t,'Re-entry'))),
+    (a => card('↺ Reversal', a, {after:rLine(a)}))(tr.filter(t=>hasTag(t,'Reversal'))),
+    (a => card('⟲ Re-entry', a, {after:rLine(a)}))(tr.filter(t=>hasTag(t,'Re-entry'))),
     ...(isAV ? [card('→ Continuation', tr.filter(t=>hasTag(t,'Continuation')))] : []),
   ]);
   const brk = arr => {
